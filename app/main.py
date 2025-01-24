@@ -29,6 +29,46 @@ async def get_population_by_code(code: str):
         raise HTTPException(status_code=404, detail="Code non trouvé")
     return data
 
+@app.get("/population/children/commune/{code}")
+async def get_commune_children(code: str):
+    return population_service.get_children_under_3(code)
+
+@app.get("/population/children/epci/{epci}")
+async def get_epci_children(epci: str):
+    return population_service.aggregate_children_by_epci(epci, geocode_service)
+
+@app.get("/population/children/department/{dep}")
+async def get_department_children(dep: str):
+    return population_service.aggregate_children_by_department(dep, geocode_service)
+
+@app.get("/population/children/region/{reg}")
+async def get_region_children(reg: str):
+    return population_service.aggregate_children_by_region(reg, geocode_service)
+
+@app.get("/population/children/france")
+async def get_france_children():
+    return population_service.aggregate_children_france(geocode_service)
+
+@app.get("/population/rates/commune/{code}")
+async def get_commune_rates(code: str):
+    return population_service.get_population_and_children_rate(code)
+
+@app.get("/population/rates/epci/{epci}")
+async def get_epci_rates(epci: str):
+    return population_service.aggregate_children_by_epci(epci, geocode_service)
+
+@app.get("/population/rates/department/{dep}")
+async def get_department_rates(dep: str):
+    return population_service.aggregate_children_by_department(dep, geocode_service)
+
+@app.get("/population/rates/region/{reg}")
+async def get_region_rates(reg: str):
+    return population_service.aggregate_children_by_region(reg, geocode_service)
+
+@app.get("/population/rates/france")
+async def get_france_rates():
+    return population_service.aggregate_children_france(geocode_service)
+
 @app.get("/historical", response_model=List[HistoricalData])
 async def get_historical():
     return historical_service.get_all_data()
