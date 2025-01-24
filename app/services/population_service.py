@@ -9,8 +9,6 @@ class PopulationService:
             encoding="utf-8",
             low_memory=False
         )
-        print(self.df.head())  # Affiche les premières lignes
-        print(self.df.columns)  # Affiche les noms des colonnes
 
     def get_all_data(self):
         return self.df.to_dict(orient="records")

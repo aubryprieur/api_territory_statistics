@@ -9,7 +9,6 @@ class HistoricalService:
             encoding="utf-8",
             low_memory=False
         )
-        print("Colonnes disponibles:", self.df.columns.tolist())
 
     def get_all_data(self):
         return self.df.to_dict(orient="records")

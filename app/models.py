@@ -18,3 +18,18 @@ class HistoricalData(BaseModel):
     D82_POP: float
     D75_POP: float
     D68_POP: float
+
+class Birth(BaseModel):
+   GEO: str
+   GEO_OBJECT: str
+   FREQ: str
+   EC_MEASURE: str
+   TIME_PERIOD: int
+   OBS_VALUE: float
+
+class GeoCode(BaseModel):
+    CODE: str
+    LIBELLE: str
+    TYPE: str
+    REG: str
+    DEP: str
