@@ -16,10 +16,12 @@ class BirthService:
    def get_by_code(self, geo: str):
        try:
            formatted_geo = str(int(geo))
-           return self.df[
+           result = self.df[
                (self.df["GEO"] == formatted_geo) &
                (self.df["GEO_OBJECT"] == "COM")
-           ].to_dict(orient="records")
+           ]
+           result = result.sort_values("TIME_PERIOD")
+           return result.to_dict(orient="records")
        except ValueError:
            return []
 
