@@ -147,3 +147,7 @@ async def get_region_median_revenues(code: str):
 @app.get("/revenues/median/france")
 async def get_france_median_revenues():
    return revenue_service.get_median_revenues_france()
+
+@app.get("/revenues/median/iris/{commune}")
+async def get_iris_median_revenues(commune: str):
+   return revenue_service.get_iris_revenues_by_commune(commune)
