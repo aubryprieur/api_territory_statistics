@@ -9,8 +9,6 @@ class GeoCodeService:
            encoding="utf-8",
            low_memory=False
        )
-       print("Colonnes:", self.df.columns)
-       print("Premières lignes:", self.df.head())
 
    def get_by_code(self, code: str):
        return self.df[self.df["CODGEO"] == code].to_dict(orient="records")
@@ -30,8 +28,6 @@ class GeoCodeService:
            ]
 
            yearly_births = births_df.groupby("TIME_PERIOD")["OBS_VALUE"].sum()
-           print("\nNaissances par année (COM uniquement):")
-           print(yearly_births)
 
            return {
                "epci": epci,

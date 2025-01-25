@@ -44,11 +44,8 @@ class BirthService:
        if geo:
            try:
                formatted_geo = str(int(geo))
-               print(f"Code recherché: {geo}, Code formaté: {formatted_geo}")
-               print("Valeurs uniques GEO:", self.df['GEO'].unique()[:10])
                result = result[result["GEO"] == formatted_geo]
            except ValueError:
-               print(f"Erreur: impossible de convertir {geo} en entier")
                return []
        if geo_object:
            result = result[result["GEO_OBJECT"] == geo_object]
