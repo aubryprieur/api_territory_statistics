@@ -4,7 +4,7 @@ from pathlib import Path
 class BirthService:
    def __init__(self):
        self.df = pd.read_csv(
-           Path("data/DS_ETAT_CIVIL_NAIS_COMMUNES_data.csv"),
+           Path("data/births/DS_ETAT_CIVIL_NAIS_COMMUNES_data.csv"),
            delimiter=";",
            encoding="utf-8",
            low_memory=False

@@ -33,3 +33,11 @@ class GeoCode(BaseModel):
     TYPE: str
     REG: str
     DEP: str
+
+class Revenue(BaseModel):
+   commune: str
+   median_revenues: dict
+
+class RevenueEPCI(BaseModel):
+   epci: str
+   median_revenues: dict

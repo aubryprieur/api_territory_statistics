@@ -4,8 +4,9 @@ from fastapi.staticfiles import StaticFiles
 from .services.population_service import PopulationService
 from .services.historical_service import HistoricalService
 from .services.birth_service import BirthService
-from .models import Population, HistoricalData, Birth
 from .services.geocode_service import GeoCodeService
+from .services.revenue_service import RevenueService
+from .models import Population, HistoricalData, Birth, Revenue
 
 app = FastAPI(title="API Population")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -13,6 +14,7 @@ population_service = PopulationService()
 historical_service = HistoricalService()
 birth_service = BirthService()
 geocode_service = GeoCodeService()
+revenue_service = RevenueService()
 
 @app.get("/")
 async def root():
@@ -125,3 +127,23 @@ async def get_region_births(reg: str):
 @app.get("/geocodes/france/births")
 async def get_france_births():
    return geocode_service.aggregate_births_france(birth_service)
+
+@app.get("/revenues/median/commune/{code}")
+async def get_commune_median_revenues(code: str):
+    return revenue_service.get_median_revenues(code)
+
+@app.get("/revenues/median/epci/{code}")
+async def get_epci_median_revenues(code: str):
+    return revenue_service.get_median_revenues_epci(code)
+
+@app.get("/revenues/median/department/{code}")
+async def get_department_median_revenues(code: str):
+   return revenue_service.get_median_revenues_department(code)
+
+@app.get("/revenues/median/region/{code}")
+async def get_region_median_revenues(code: str):
+   return revenue_service.get_median_revenues_region(code)
+
+@app.get("/revenues/median/france")
+async def get_france_median_revenues():
+   return revenue_service.get_median_revenues_france()

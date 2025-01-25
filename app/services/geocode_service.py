@@ -4,7 +4,7 @@ from pathlib import Path
 class GeoCodeService:
    def __init__(self):
        self.df = pd.read_csv(
-           Path("data/COG_au_01-01-2024.csv"),
+           Path("data/geography/COG_au_01-01-2024.csv"),
            delimiter=";",
            encoding="utf-8",
            low_memory=False
