@@ -6,7 +6,9 @@ from .services.historical_service import HistoricalService
 from .services.birth_service import BirthService
 from .services.geocode_service import GeoCodeService
 from .services.revenue_service import RevenueService
+from .services.family_service import FamilyService
 from .models import Population, HistoricalData, Birth, Revenue
+
 
 app = FastAPI(title="API Population")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -15,6 +17,7 @@ historical_service = HistoricalService()
 birth_service = BirthService()
 geocode_service = GeoCodeService()
 revenue_service = RevenueService()
+family_service = FamilyService()
 
 @app.get("/")
 async def root():
@@ -151,3 +154,23 @@ async def get_france_median_revenues():
 @app.get("/revenues/median/iris/{commune}")
 async def get_iris_median_revenues(commune: str):
    return revenue_service.get_iris_revenues_by_commune(commune)
+
+@app.get("/families/commune/{code}")
+async def get_commune_families(code: str):
+   return family_service.get_families_by_commune(code)
+
+@app.get("/families/epci/{code}")
+async def get_epci_families(code: str):
+   return family_service.get_families_by_epci(code, geocode_service)
+
+@app.get("/families/department/{code}")
+async def get_department_families(code: str):
+    return family_service.get_families_by_department(code, geocode_service)
+
+@app.get("/families/region/{code}")
+async def get_region_families(code: str):
+    return family_service.get_families_by_region(code, geocode_service)
+
+@app.get("/families/france")
+async def get_france_families():
+    return family_service.get_families_france()
