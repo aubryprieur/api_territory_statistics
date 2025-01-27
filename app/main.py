@@ -161,16 +161,18 @@ async def get_iris_families(commune: str):
 
 @app.get("/families/{level}/{code}")
 async def get_families(level: str, code: str, start_year: int = None, end_year: int = None):
-   if level == "commune":
-       return family_service.get_families_by_commune(code, start_year, end_year)
-   elif level == "epci":
-       return family_service.get_families_by_epci(code, geocode_service, start_year, end_year)
-   elif level == "department":
-       return family_service.get_families_by_department(code, geocode_service, start_year, end_year)
-   elif level == "region":
-       return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
-   elif level == "france":
-       return family_service.get_families_france(start_year, end_year)
-   else:
-       raise HTTPException(status_code=404, detail=f"Level {level} not found")
+    if level == "commune":
+        return family_service.get_families_by_commune(code, start_year, end_year)
+    elif level == "epci":
+        return family_service.get_families_by_epci(code, geocode_service, start_year, end_year)
+    elif level == "department":
+        return family_service.get_families_by_department(code, geocode_service, start_year, end_year)
+    elif level == "region":
+        return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
+    else:
+        raise HTTPException(status_code=404, detail=f"Level {level} not found")
+
+@app.get("/families/france")
+async def get_france_families(start_year: int = None, end_year: int = None):
+    return family_service.get_families_france(start_year, end_year)
 

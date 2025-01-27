@@ -82,64 +82,64 @@ class FamilyService:
 
     # Modifier chaque méthode pour inclure l'évolution :
 
-    def get_families_by_commune(self, code: str):
-     try:
-         data = self._get_data_for_commune(code)
-         evolutions = self._calculate_evolution(data)
-         return {
-             "commune": code,
-             "family_data": data,
-             "evolution": evolutions
-         }
-     except Exception as e:
-         return {"error": str(e)}
+    def get_families_by_commune(self, code: str, start_year: int = None, end_year: int = None):
+        try:
+            data = self._get_data_for_commune(code)
+            evolutions = self._calculate_evolution(data, start_year, end_year)
+            return {
+                "commune": code,
+                "family_data": data,
+                "evolution": evolutions
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
-    def get_families_by_epci(self, epci: str, geocode_service):
-     try:
-         data = self._get_data_for_epci(epci, geocode_service)
-         evolutions = self._calculate_evolution(data)
-         return {
-             "epci": epci,
-             "family_data": data,
-             "evolution": evolutions
-         }
-     except Exception as e:
-         return {"error": str(e)}
+    def get_families_by_epci(self, epci: str, geocode_service, start_year: int = None, end_year: int = None):
+        try:
+            data = self._get_data_for_epci(epci, geocode_service)
+            evolutions = self._calculate_evolution(data, start_year, end_year)
+            return {
+                "epci": epci,
+                "family_data": data,
+                "evolution": evolutions
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
-    def get_families_by_department(self, dep: str, geocode_service):
-     try:
-         data = self._get_data_for_department(dep, geocode_service)
-         evolutions = self._calculate_evolution(data)
-         return {
-             "department": dep,
-             "family_data": data,
-             "evolution": evolutions
-         }
-     except Exception as e:
-         return {"error": str(e)}
+    def get_families_by_department(self, dep: str, geocode_service, start_year: int = None, end_year: int = None):
+        try:
+            data = self._get_data_for_department(dep, geocode_service)
+            evolutions = self._calculate_evolution(data, start_year, end_year)
+            return {
+                "department": dep,
+                "family_data": data,
+                "evolution": evolutions
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
-    def get_families_by_region(self, reg: str, geocode_service):
-     try:
-         data = self._get_data_for_region(reg, geocode_service)
-         evolutions = self._calculate_evolution(data)
-         return {
-             "region": reg,
-             "family_data": data,
-             "evolution": evolutions
-         }
-     except Exception as e:
-         return {"error": str(e)}
+    def get_families_by_region(self, reg: str, geocode_service, start_year: int = None, end_year: int = None):
+        try:
+            data = self._get_data_for_region(reg, geocode_service)
+            evolutions = self._calculate_evolution(data, start_year, end_year)
+            return {
+                "region": reg,
+                "family_data": data,
+                "evolution": evolutions
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
-    def get_families_france(self):
-     try:
-         data = self._get_data_for_france()
-         evolutions = self._calculate_evolution(data)
-         return {
-             "family_data": data,
-             "evolution": evolutions
-         }
-     except Exception as e:
-         return {"error": str(e)}
+    def get_families_france(self, start_year: int = None, end_year: int = None):
+        try:
+            data = self._get_data_for_france()
+            evolutions = self._calculate_evolution(data, start_year, end_year)
+            return {
+                "family_data": data,
+                "evolution": evolutions
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
     # Méthodes helpers pour extraire les données par niveau géographique
 
@@ -153,13 +153,18 @@ class FamilyService:
      return data
 
     def _get_data_for_epci(self, epci: str, geocode_service):
-     data = {}
-     for year in sorted(self.dfs.keys()):
-         suffix = str(year)[2:]
-         communes = geocode_service.df[geocode_service.df["EPCI"] == epci]["CODGEO"].tolist()
-         epci_data = self.dfs[year][self.dfs[year]["CODGEO"].isin(communes)]
-         data[year] = self._extract_year_data(epci_data, suffix, sum_data=True)
-     return data
+        data = {}
+        years = sorted(self.dfs.keys())
+        for year in years:
+            try:
+                suffix = str(year)[2:]
+                communes = geocode_service.df[geocode_service.df["EPCI"] == epci]["CODGEO"].tolist()
+                epci_data = self.dfs[year][self.dfs[year]["CODGEO"].isin(communes)]
+                if not epci_data.empty:
+                    data[year] = self._extract_year_data(epci_data, suffix, sum_data=True)
+            except KeyError:
+                continue
+        return data
 
     def _get_data_for_department(self, dep: str, geocode_service):
      data = {}
