@@ -41,3 +41,13 @@ class Revenue(BaseModel):
 class RevenueEPCI(BaseModel):
    epci: str
    median_revenues: dict
+
+class Family(BaseModel):
+    commune: str
+    family_data: dict
+    evolution: dict
+
+class IrisData(BaseModel):
+    iris_code: str
+    iris_name: str
+    data: dict

@@ -7,7 +7,7 @@ from .services.birth_service import BirthService
 from .services.geocode_service import GeoCodeService
 from .services.revenue_service import RevenueService
 from .services.family_service import FamilyService
-from .models import Population, HistoricalData, Birth, Revenue
+from .models import Population, HistoricalData, Birth, Revenue, Family
 
 
 app = FastAPI(title="API Population")
@@ -153,24 +153,24 @@ async def get_france_median_revenues():
 
 @app.get("/revenues/median/iris/{commune}")
 async def get_iris_median_revenues(commune: str):
-   return revenue_service.get_iris_revenues_by_commune(commune)
+    return revenue_service.get_iris_revenues_by_commune(commune, geocode_service)
 
-@app.get("/families/commune/{code}")
-async def get_commune_families(code: str):
-   return family_service.get_families_by_commune(code)
+@app.get("/families/iris/{commune}")
+async def get_iris_families(commune: str):
+    return family_service.get_iris_families_by_commune(commune, geocode_service)
 
-@app.get("/families/epci/{code}")
-async def get_epci_families(code: str):
-   return family_service.get_families_by_epci(code, geocode_service)
+@app.get("/families/{level}/{code}")
+async def get_families(level: str, code: str, start_year: int = None, end_year: int = None):
+   if level == "commune":
+       return family_service.get_families_by_commune(code, start_year, end_year)
+   elif level == "epci":
+       return family_service.get_families_by_epci(code, geocode_service, start_year, end_year)
+   elif level == "department":
+       return family_service.get_families_by_department(code, geocode_service, start_year, end_year)
+   elif level == "region":
+       return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
+   elif level == "france":
+       return family_service.get_families_france(start_year, end_year)
+   else:
+       raise HTTPException(status_code=404, detail=f"Level {level} not found")
 
-@app.get("/families/department/{code}")
-async def get_department_families(code: str):
-    return family_service.get_families_by_department(code, geocode_service)
-
-@app.get("/families/region/{code}")
-async def get_region_families(code: str):
-    return family_service.get_families_by_region(code, geocode_service)
-
-@app.get("/families/france")
-async def get_france_families():
-    return family_service.get_families_france()

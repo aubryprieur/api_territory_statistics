@@ -9,11 +9,6 @@ class RevenueService:
        self.dfs_reg = {}
        self.dfs_france = {}
        self.dfs_iris = {}
-       self.iris_geo = pd.read_csv(
-           Path("data/geography/reference_IRIS_geo2024.csv"),
-           delimiter=";",
-           encoding="utf-8"
-       )
 
        for year in range(2017, 2022):
            self.dfs[year] = pd.read_csv(
@@ -132,9 +127,9 @@ class RevenueService:
            "median_revenues": medians
        }
 
-    def get_iris_revenues_by_commune(self, commune: str):
+    def get_iris_revenues_by_commune(self, commune: str, geocode_service):
        try:
-           iris_data = self.iris_geo[self.iris_geo["DEPCOM"] == str(commune)]
+           iris_data = geocode_service.iris_geo[geocode_service.iris_geo["DEPCOM"] == str(commune)]
            medians = {}
 
            for year in range(2017, 2022):

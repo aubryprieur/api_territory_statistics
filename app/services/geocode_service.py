@@ -9,6 +9,12 @@ class GeoCodeService:
            encoding="utf-8",
            low_memory=False
        )
+       self.iris_geo = pd.read_csv(
+           Path("data/geography/reference_IRIS_geo2024.csv"),
+           delimiter=";",
+           encoding="utf-8",
+           low_memory=False
+       )
 
    def get_by_code(self, code: str):
        return self.df[self.df["CODGEO"] == code].to_dict(orient="records")
