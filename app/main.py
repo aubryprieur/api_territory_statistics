@@ -7,7 +7,8 @@ from .services.birth_service import BirthService
 from .services.geocode_service import GeoCodeService
 from .services.revenue_service import RevenueService
 from .services.family_service import FamilyService
-from .models import Population, HistoricalData, Birth, Revenue, Family
+from .services.childcare_service import ChildcareService
+from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare
 
 
 app = FastAPI(title="API Population")
@@ -18,6 +19,7 @@ birth_service = BirthService()
 geocode_service = GeoCodeService()
 revenue_service = RevenueService()
 family_service = FamilyService()
+childcare_service = ChildcareService()
 
 @app.get("/")
 async def root():
@@ -176,3 +178,22 @@ async def get_families(level: str, code: str, start_year: int = None, end_year: 
 async def get_france_families(start_year: int = None, end_year: int = None):
     return family_service.get_families_france(start_year, end_year)
 
+@app.get("/childcare/commune/{code}", response_model=dict)
+async def get_commune_childcare(code: str, start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_by_commune(code, start_year, end_year)
+
+@app.get("/childcare/epci/{epci}", response_model=dict)
+async def get_epci_childcare(epci: str, start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_by_epci(epci, start_year, end_year)
+
+@app.get("/childcare/department/{dep}", response_model=dict)
+async def get_department_childcare(dep: str, start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_by_department(dep, start_year, end_year)
+
+@app.get("/childcare/region/{reg}", response_model=dict)
+async def get_region_childcare(reg: str, start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_by_region(reg, start_year, end_year)
+
+@app.get("/childcare/france", response_model=dict)
+async def get_france_childcare(start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_france(start_year, end_year)

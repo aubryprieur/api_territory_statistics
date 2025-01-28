@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Dict, Optional
 
 class Population(BaseModel):
     NIVGEO: str
@@ -51,3 +52,11 @@ class IrisData(BaseModel):
     iris_code: str
     iris_name: str
     data: dict
+
+class Childcare(BaseModel):
+    coverage_rates: Dict[str, float]
+    evolution: Optional[Dict] = None
+    commune_name: Optional[str] = None
+    epci: Optional[Dict] = None
+    department: Optional[Dict] = None
+    region: Optional[Dict] = None
