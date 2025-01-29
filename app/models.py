@@ -60,3 +60,17 @@ class Childcare(BaseModel):
     epci: Optional[Dict] = None
     department: Optional[Dict] = None
     region: Optional[Dict] = None
+
+class LargeFamilyData(BaseModel):
+    total_families: float
+    families_with_3_children: float
+    families_with_4_plus_children: float
+    total_large_families: float
+    large_families_percentage: float
+
+class LargeFamilyResponse(BaseModel):
+    commune: Optional[str] = None
+    epci: Optional[str] = None
+    department: Optional[str] = None
+    region: Optional[str] = None
+    large_families_data: Dict[int, LargeFamilyData]

@@ -8,7 +8,8 @@ from .services.geocode_service import GeoCodeService
 from .services.revenue_service import RevenueService
 from .services.family_service import FamilyService
 from .services.childcare_service import ChildcareService
-from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare
+from .services.large_family_service import LargeFamilyService
+from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse
 
 
 app = FastAPI(title="API Population")
@@ -20,6 +21,7 @@ geocode_service = GeoCodeService()
 revenue_service = RevenueService()
 family_service = FamilyService()
 childcare_service = ChildcareService()
+large_family_service = LargeFamilyService()
 
 @app.get("/")
 async def root():
@@ -157,6 +159,46 @@ async def get_france_median_revenues():
 async def get_iris_median_revenues(commune: str):
     return revenue_service.get_iris_revenues_by_commune(commune, geocode_service)
 
+@app.get("/childcare/commune/{code}", response_model=dict)
+async def get_commune_childcare(code: str, start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_by_commune(code, start_year, end_year)
+
+@app.get("/childcare/epci/{epci}", response_model=dict)
+async def get_epci_childcare(epci: str, start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_by_epci(epci, start_year, end_year)
+
+@app.get("/childcare/department/{dep}", response_model=dict)
+async def get_department_childcare(dep: str, start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_by_department(dep, start_year, end_year)
+
+@app.get("/childcare/region/{reg}", response_model=dict)
+async def get_region_childcare(reg: str, start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_by_region(reg, start_year, end_year)
+
+@app.get("/childcare/france", response_model=dict)
+async def get_france_childcare(start_year: int = None, end_year: int = None):
+    return childcare_service.get_coverage_france(start_year, end_year)
+
+@app.get("/families/large/commune/{code}", response_model=LargeFamilyResponse)
+async def get_commune_large_families(code: str):
+    return large_family_service.get_large_families_by_commune(code)
+
+@app.get("/families/large/epci/{epci}", response_model=LargeFamilyResponse)
+async def get_epci_large_families(epci: str):
+    return large_family_service.get_large_families_by_epci(epci, geocode_service)
+
+@app.get("/families/large/department/{dep}", response_model=LargeFamilyResponse)
+async def get_department_large_families(dep: str):
+    return large_family_service.get_large_families_by_department(dep, geocode_service)
+
+@app.get("/families/large/region/{reg}", response_model=LargeFamilyResponse)
+async def get_region_large_families(reg: str):
+    return large_family_service.get_large_families_by_region(reg, geocode_service)
+
+@app.get("/families/large/france", response_model=LargeFamilyResponse)
+async def get_france_large_families():
+    return large_family_service.get_large_families_france()
+
 @app.get("/families/iris/{commune}")
 async def get_iris_families(commune: str):
     return family_service.get_iris_families_by_commune(commune, geocode_service)
@@ -177,23 +219,3 @@ async def get_families(level: str, code: str, start_year: int = None, end_year: 
 @app.get("/families/france")
 async def get_france_families(start_year: int = None, end_year: int = None):
     return family_service.get_families_france(start_year, end_year)
-
-@app.get("/childcare/commune/{code}", response_model=dict)
-async def get_commune_childcare(code: str, start_year: int = None, end_year: int = None):
-    return childcare_service.get_coverage_by_commune(code, start_year, end_year)
-
-@app.get("/childcare/epci/{epci}", response_model=dict)
-async def get_epci_childcare(epci: str, start_year: int = None, end_year: int = None):
-    return childcare_service.get_coverage_by_epci(epci, start_year, end_year)
-
-@app.get("/childcare/department/{dep}", response_model=dict)
-async def get_department_childcare(dep: str, start_year: int = None, end_year: int = None):
-    return childcare_service.get_coverage_by_department(dep, start_year, end_year)
-
-@app.get("/childcare/region/{reg}", response_model=dict)
-async def get_region_childcare(reg: str, start_year: int = None, end_year: int = None):
-    return childcare_service.get_coverage_by_region(reg, start_year, end_year)
-
-@app.get("/childcare/france", response_model=dict)
-async def get_france_childcare(start_year: int = None, end_year: int = None):
-    return childcare_service.get_coverage_france(start_year, end_year)
