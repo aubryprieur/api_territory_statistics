@@ -93,6 +93,8 @@ class PublicSafetyResponse(BaseModel):
 class EmploymentRates(BaseModel):
     activity_rate: float
     employment_rate: float
+    part_time_rate_25_54: float
+    part_time_rate_15_64: float
 
 class EmploymentResponse(BaseModel):
     territory_type: str
