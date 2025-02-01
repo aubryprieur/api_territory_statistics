@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 class Population(BaseModel):
     NIVGEO: str
@@ -74,3 +74,18 @@ class LargeFamilyResponse(BaseModel):
     department: Optional[str] = None
     region: Optional[str] = None
     large_families_data: Dict[int, LargeFamilyData]
+
+class PublicSafetyDataItem(BaseModel):
+    annee: int
+    classe: str
+    tauxpourmille: float
+
+class GeoLevelData(BaseModel):
+    code: str
+    name: Optional[str]
+    data: List[PublicSafetyDataItem]
+
+class PublicSafetyResponse(BaseModel):
+    commune: GeoLevelData
+    department: GeoLevelData
+    region: GeoLevelData

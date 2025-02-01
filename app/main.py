@@ -9,7 +9,8 @@ from .services.revenue_service import RevenueService
 from .services.family_service import FamilyService
 from .services.childcare_service import ChildcareService
 from .services.large_family_service import LargeFamilyService
-from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse
+from .services.public_safety_service import PublicSafetyService
+from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse
 
 
 app = FastAPI(title="API Population")
@@ -22,6 +23,7 @@ revenue_service = RevenueService()
 family_service = FamilyService()
 childcare_service = ChildcareService()
 large_family_service = LargeFamilyService()
+public_safety_service = PublicSafetyService()
 
 @app.get("/")
 async def root():
@@ -219,3 +221,7 @@ async def get_families(level: str, code: str, start_year: int = None, end_year: 
 @app.get("/families/france")
 async def get_france_families(start_year: int = None, end_year: int = None):
     return family_service.get_families_france(start_year, end_year)
+
+@app.get("/public-safety/commune/{code}", response_model=PublicSafetyResponse)
+async def get_commune_public_safety(code: str):
+    return public_safety_service.get_by_commune(code)
