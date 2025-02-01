@@ -10,7 +10,8 @@ from .services.family_service import FamilyService
 from .services.childcare_service import ChildcareService
 from .services.large_family_service import LargeFamilyService
 from .services.public_safety_service import PublicSafetyService
-from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse
+from .services.employment_service import EmploymentService
+from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse
 
 
 app = FastAPI(title="API Population")
@@ -24,6 +25,8 @@ family_service = FamilyService()
 childcare_service = ChildcareService()
 large_family_service = LargeFamilyService()
 public_safety_service = PublicSafetyService()
+employment_service = EmploymentService()
+
 
 @app.get("/")
 async def root():
@@ -225,3 +228,23 @@ async def get_france_families(start_year: int = None, end_year: int = None):
 @app.get("/public-safety/commune/{code}", response_model=PublicSafetyResponse)
 async def get_commune_public_safety(code: str):
     return public_safety_service.get_by_commune(code)
+
+@app.get("/employment/rates/commune/{code}", response_model=EmploymentResponse)
+async def get_commune_employment_rates(code: str):
+    return employment_service.get_commune_rates(code)
+
+@app.get("/employment/rates/epci/{epci}", response_model=EmploymentResponse)
+async def get_epci_employment_rates(epci: str):
+    return employment_service.get_epci_rates(epci)
+
+@app.get("/employment/rates/department/{dep}", response_model=EmploymentResponse)
+async def get_department_employment_rates(dep: str):
+    return employment_service.get_department_rates(dep)
+
+@app.get("/employment/rates/region/{reg}", response_model=EmploymentResponse)
+async def get_region_employment_rates(reg: str):
+    return employment_service.get_region_rates(reg)
+
+@app.get("/employment/rates/france", response_model=EmploymentResponse)
+async def get_france_employment_rates():
+    return employment_service.get_france_rates()

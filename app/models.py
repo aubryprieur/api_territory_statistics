@@ -89,3 +89,13 @@ class PublicSafetyResponse(BaseModel):
     commune: GeoLevelData
     department: GeoLevelData
     region: GeoLevelData
+
+class EmploymentRates(BaseModel):
+    activity_rate: float
+    employment_rate: float
+
+class EmploymentResponse(BaseModel):
+    territory_type: str
+    code: str
+    name: str
+    rates: EmploymentRates
