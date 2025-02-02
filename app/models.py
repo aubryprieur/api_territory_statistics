@@ -35,13 +35,44 @@ class GeoCode(BaseModel):
     REG: str
     DEP: str
 
+class RevenueData(BaseModel):
+    median_revenues: Dict[int, Optional[float]]
+    poverty_rates: Dict[int, Optional[float]]
+
 class Revenue(BaseModel):
-   commune: str
-   median_revenues: dict
+    commune: str
+    median_revenues: Dict[int, Optional[float]]
+    poverty_rates: Dict[int, Optional[float]]
 
 class RevenueEPCI(BaseModel):
-   epci: str
-   median_revenues: dict
+    epci: str
+    median_revenues: Dict[int, Optional[float]]
+    poverty_rates: Dict[int, Optional[float]]
+
+class RevenueDepartment(BaseModel):
+    department: str
+    median_revenues: Dict[int, Optional[float]]
+    poverty_rates: Dict[int, Optional[float]]
+
+class RevenueRegion(BaseModel):
+    region: str
+    median_revenues: Dict[int, Optional[float]]
+    poverty_rates: Dict[int, Optional[float]]
+
+class RevenueFrance(BaseModel):
+    median_revenues: Dict[int, Optional[float]]
+    poverty_rates: Dict[int, Optional[float]]
+
+class IrisRevenueData(BaseModel):
+    iris_code: str
+    iris_name: str
+    median: float
+    poverty_rate: float
+
+class IrisRevenueResponse(BaseModel):
+    commune: str
+    iris_count: int
+    iris_data: Dict[int, List[IrisRevenueData]]
 
 class Family(BaseModel):
     commune: str
