@@ -132,3 +132,19 @@ class EmploymentResponse(BaseModel):
     code: str
     name: str
     rates: EmploymentRates
+
+class SchoolingData(BaseModel):
+    # Pour les 2 ans
+    total_children_2y: float
+    schooled_children_2y: float
+    schooling_rate_2y: float
+    # Pour les 3-5 ans
+    total_children_3_5y: float
+    schooled_children_3_5y: float
+    schooling_rate_3_5y: float
+
+class SchoolingResponse(BaseModel):
+    territory_type: str
+    code: str
+    name: str
+    data: Dict[int, SchoolingData]

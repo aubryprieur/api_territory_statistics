@@ -11,8 +11,8 @@ from .services.childcare_service import ChildcareService
 from .services.large_family_service import LargeFamilyService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
-from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse
-
+from .services.schooling_service import SchoolingService
+from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse, SchoolingResponse, SchoolingData
 
 app = FastAPI(title="API Population")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -26,6 +26,7 @@ childcare_service = ChildcareService()
 large_family_service = LargeFamilyService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
+schooling_service = SchoolingService()
 
 
 @app.get("/")
@@ -248,3 +249,23 @@ async def get_region_employment_rates(reg: str):
 @app.get("/employment/rates/france", response_model=EmploymentResponse)
 async def get_france_employment_rates():
     return employment_service.get_france_rates()
+
+@app.get("/education/schooling/commune/{code}", response_model=SchoolingResponse)
+async def get_commune_schooling(code: str):
+    return schooling_service.get_commune_schooling(code)
+
+@app.get("/education/schooling/epci/{epci}", response_model=SchoolingResponse)
+async def get_epci_schooling(epci: str):
+    return schooling_service.get_epci_schooling(epci)
+
+@app.get("/education/schooling/department/{dep}", response_model=SchoolingResponse)
+async def get_department_schooling(dep: str):
+    return schooling_service.get_department_schooling(dep)
+
+@app.get("/education/schooling/region/{reg}", response_model=SchoolingResponse)
+async def get_region_schooling(reg: str):
+    return schooling_service.get_region_schooling(reg)
+
+@app.get("/education/schooling/france", response_model=SchoolingResponse)
+async def get_france_schooling():
+    return schooling_service.get_france_schooling()
