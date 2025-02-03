@@ -148,3 +148,18 @@ class SchoolingResponse(BaseModel):
     code: str
     name: str
     data: Dict[int, SchoolingData]
+
+class FamilyTypeDistribution(BaseModel):
+    code: str
+    count: float
+    percentage: float
+
+class FamilyEmploymentDistribution(BaseModel):
+    total_count: float
+    distributions: Dict[str, FamilyTypeDistribution]  # label -> distribution
+
+class FamilyEmploymentResponse(BaseModel):
+    territory_type: str
+    code: str
+    name: str
+    data: Dict[int, FamilyEmploymentDistribution]

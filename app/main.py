@@ -12,7 +12,8 @@ from .services.large_family_service import LargeFamilyService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
 from .services.schooling_service import SchoolingService
-from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse, SchoolingResponse, SchoolingData
+from .services.family_employment_service import FamilyEmploymentService
+from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse, SchoolingResponse, SchoolingData, FamilyEmploymentResponse, FamilyEmploymentDistribution
 
 app = FastAPI(title="API Population")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -27,6 +28,7 @@ large_family_service = LargeFamilyService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
 schooling_service = SchoolingService()
+family_employment_service = FamilyEmploymentService()
 
 
 @app.get("/")
@@ -209,19 +211,6 @@ async def get_france_large_families():
 async def get_iris_families(commune: str):
     return family_service.get_iris_families_by_commune(commune, geocode_service)
 
-@app.get("/families/{level}/{code}")
-async def get_families(level: str, code: str, start_year: int = None, end_year: int = None):
-    if level == "commune":
-        return family_service.get_families_by_commune(code, start_year, end_year)
-    elif level == "epci":
-        return family_service.get_families_by_epci(code, geocode_service, start_year, end_year)
-    elif level == "department":
-        return family_service.get_families_by_department(code, geocode_service, start_year, end_year)
-    elif level == "region":
-        return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
-    else:
-        raise HTTPException(status_code=404, detail=f"Level {level} not found")
-
 @app.get("/families/france")
 async def get_france_families(start_year: int = None, end_year: int = None):
     return family_service.get_families_france(start_year, end_year)
@@ -269,3 +258,36 @@ async def get_region_schooling(reg: str):
 @app.get("/education/schooling/france", response_model=SchoolingResponse)
 async def get_france_schooling():
     return schooling_service.get_france_schooling()
+
+@app.get("/families/employment/commune/{code}", response_model=FamilyEmploymentResponse)
+async def get_commune_family_employment(code: str):
+    return family_employment_service.get_commune_distribution(code)
+
+@app.get("/families/employment/epci/{epci}", response_model=FamilyEmploymentResponse)
+async def get_epci_family_employment(epci: str):
+    return family_employment_service.get_epci_distribution(epci)
+
+@app.get("/families/employment/department/{dep}", response_model=FamilyEmploymentResponse)
+async def get_department_family_employment(dep: str):
+    return family_employment_service.get_department_distribution(dep)
+
+@app.get("/families/employment/region/{reg}", response_model=FamilyEmploymentResponse)
+async def get_region_family_employment(reg: str):
+    return family_employment_service.get_region_distribution(reg)
+
+@app.get("/families/employment/france", response_model=FamilyEmploymentResponse)
+async def get_france_family_employment():
+    return family_employment_service.get_france_distribution()
+
+@app.get("/families/{level}/{code}")
+async def get_families(level: str, code: str, start_year: int = None, end_year: int = None):
+    if level == "commune":
+        return family_service.get_families_by_commune(code, start_year, end_year)
+    elif level == "epci":
+        return family_service.get_families_by_epci(code, geocode_service, start_year, end_year)
+    elif level == "department":
+        return family_service.get_families_by_department(code, geocode_service, start_year, end_year)
+    elif level == "region":
+        return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
+    else:
+        raise HTTPException(status_code=404, detail=f"Level {level} not found")
