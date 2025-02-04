@@ -259,25 +259,47 @@ async def get_region_schooling(reg: str):
 async def get_france_schooling():
     return schooling_service.get_france_schooling()
 
-@app.get("/families/employment/commune/{code}", response_model=FamilyEmploymentResponse)
-async def get_commune_family_employment(code: str):
-    return family_employment_service.get_commune_distribution(code)
+# Routes pour les 0-2 ans
+@app.get("/families/employment/under3/commune/{code}", response_model=FamilyEmploymentResponse)
+async def get_commune_family_employment_under3(code: str):
+    return family_employment_service.get_commune_distribution(code, age_group=0)
 
-@app.get("/families/employment/epci/{epci}", response_model=FamilyEmploymentResponse)
-async def get_epci_family_employment(epci: str):
-    return family_employment_service.get_epci_distribution(epci)
+@app.get("/families/employment/under3/epci/{epci}", response_model=FamilyEmploymentResponse)
+async def get_epci_family_employment_under3(epci: str):
+    return family_employment_service.get_epci_distribution(epci, age_group=0)
 
-@app.get("/families/employment/department/{dep}", response_model=FamilyEmploymentResponse)
-async def get_department_family_employment(dep: str):
-    return family_employment_service.get_department_distribution(dep)
+@app.get("/families/employment/under3/department/{dep}", response_model=FamilyEmploymentResponse)
+async def get_department_family_employment_under3(dep: str):
+    return family_employment_service.get_department_distribution(dep, age_group=0)
 
-@app.get("/families/employment/region/{reg}", response_model=FamilyEmploymentResponse)
-async def get_region_family_employment(reg: str):
-    return family_employment_service.get_region_distribution(reg)
+@app.get("/families/employment/under3/region/{reg}", response_model=FamilyEmploymentResponse)
+async def get_region_family_employment_under3(reg: str):
+    return family_employment_service.get_region_distribution(reg, age_group=0)
 
-@app.get("/families/employment/france", response_model=FamilyEmploymentResponse)
-async def get_france_family_employment():
-    return family_employment_service.get_france_distribution()
+@app.get("/families/employment/under3/france", response_model=FamilyEmploymentResponse)
+async def get_france_family_employment_under3():
+    return family_employment_service.get_france_distribution(age_group=0)
+
+# Routes pour les 3-5 ans
+@app.get("/families/employment/3to5/commune/{code}", response_model=FamilyEmploymentResponse)
+async def get_commune_family_employment_3to5(code: str):
+    return family_employment_service.get_commune_distribution(code, age_group=3)
+
+@app.get("/families/employment/3to5/epci/{epci}", response_model=FamilyEmploymentResponse)
+async def get_epci_family_employment_3to5(epci: str):
+    return family_employment_service.get_epci_distribution(epci, age_group=3)
+
+@app.get("/families/employment/3to5/department/{dep}", response_model=FamilyEmploymentResponse)
+async def get_department_family_employment_3to5(dep: str):
+    return family_employment_service.get_department_distribution(dep, age_group=3)
+
+@app.get("/families/employment/3to5/region/{reg}", response_model=FamilyEmploymentResponse)
+async def get_region_family_employment_3to5(reg: str):
+    return family_employment_service.get_region_distribution(reg, age_group=3)
+
+@app.get("/families/employment/3to5/france", response_model=FamilyEmploymentResponse)
+async def get_france_family_employment_3to5():
+    return family_employment_service.get_france_distribution(age_group=3)
 
 @app.get("/families/{level}/{code}")
 async def get_families(level: str, code: str, start_year: int = None, end_year: int = None):

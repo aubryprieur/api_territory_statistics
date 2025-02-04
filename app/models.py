@@ -156,7 +156,8 @@ class FamilyTypeDistribution(BaseModel):
 
 class FamilyEmploymentDistribution(BaseModel):
     total_count: float
-    distributions: Dict[str, FamilyTypeDistribution]  # label -> distribution
+    distributions: Dict[str, FamilyTypeDistribution]
+    age_group: str
 
 class FamilyEmploymentResponse(BaseModel):
     territory_type: str

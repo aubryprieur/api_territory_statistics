@@ -44,17 +44,17 @@ class FamilyEmploymentService:
                 print(f"Erreur lors du chargement des données {year}: {str(e)}")
                 self.dfs[year] = pd.DataFrame()
 
-    def _calculate_distribution(self, data):
-        """Calcule la répartition des TF12 pour AGEFOR5 = 0"""
+    def _calculate_distribution(self, data, age_group=0):
+        """Calcule la répartition des TF12 pour AGEFOR5 spécifié (0 = moins de 3 ans, 3 = 3-5 ans)"""
         try:
-            print("\nDonnées avant filtrage:")
+            print(f"\nDonnées avant filtrage pour AGEFOR5 = {age_group}:")
             print("Nombre de lignes:", len(data))
             print("Valeurs uniques AGEFOR5:", data["AGEFOR5"].unique())
             print("Valeurs uniques TF12:", data["TF12"].unique())
 
-            # Filtrer pour AGEFOR5 = 0
-            filtered_data = data[data["AGEFOR5"] == 0]
-            print("\nAprès filtrage AGEFOR5 = 0:")
+            # Filtrer pour AGEFOR5 spécifié
+            filtered_data = data[data["AGEFOR5"] == age_group]
+            print(f"\nAprès filtrage AGEFOR5 = {age_group}:")
             print("Nombre de lignes filtrées:", len(filtered_data))
 
             # Calculer le total
@@ -68,10 +68,7 @@ class FamilyEmploymentService:
                     count = filtered_data[filtered_data["TF12"] == tf12]["NB"].sum()
                     percentage = (count / total * 100) if total > 0 else 0
 
-                    # Utiliser le libellé comme clé
                     key = self.tf12_labels.get(tf12, f"Type {tf12}")
-
-                    # Créer le dictionnaire conforme au modèle FamilyTypeDistribution
                     distributions[key] = {
                         "code": str(tf12),
                         "count": float(count),
@@ -81,7 +78,8 @@ class FamilyEmploymentService:
 
             return {
                 "total_count": float(total),
-                "distributions": distributions
+                "distributions": distributions,
+                "age_group": "0-2 ans" if age_group == 0 else "3-5 ans"
             }
         except Exception as e:
             print(f"Erreur dans le calcul de la distribution: {str(e)}")
@@ -89,10 +87,11 @@ class FamilyEmploymentService:
             print(traceback.format_exc())
             return {
                 "total_count": 0,
-                "distributions": {}
+                "distributions": {},
+                "age_group": "0-2 ans" if age_group == 0 else "3-5 ans"
             }
 
-    def get_commune_distribution(self, code: str):
+    def get_commune_distribution(self, code: str, age_group=0):
         """Récupère la distribution pour une commune"""
         try:
             print(f"\nRecherche pour la commune {code}")
@@ -115,7 +114,7 @@ class FamilyEmploymentService:
                 print(f"Nombre de lignes trouvées pour la commune: {len(commune_data)}")
                 if not commune_data.empty:
                     print("Exemple de ligne:", commune_data.iloc[0].to_dict())
-                results[year] = self._calculate_distribution(commune_data)
+                results[year] = self._calculate_distribution(commune_data, age_group)
 
             return {
                 "territory_type": "commune",
@@ -134,7 +133,7 @@ class FamilyEmploymentService:
                 "data": {}
             }
 
-    def get_epci_distribution(self, epci: str):
+    def get_epci_distribution(self, epci: str, age_group=0):
         """Récupère la distribution pour un EPCI"""
         try:
             communes = self.geo_df[self.geo_df['EPCI'] == str(epci)]['CODGEO'].tolist()
@@ -150,7 +149,7 @@ class FamilyEmploymentService:
             for year in self.dfs:
                 df_year = self.dfs[year]
                 epci_data = df_year[df_year["CODGEO"].isin(communes)]
-                results[year] = self._calculate_distribution(epci_data)
+                results[year] = self._calculate_distribution(epci_data, age_group)
 
             return {
                 "territory_type": "epci",
@@ -167,7 +166,7 @@ class FamilyEmploymentService:
                 "data": {}
             }
 
-    def get_department_distribution(self, dep: str):
+    def get_department_distribution(self, dep: str, age_group=0):
         """Récupère la distribution pour un département"""
         try:
             communes = self.geo_df[self.geo_df['DEP'] == str(dep)]['CODGEO'].tolist()
@@ -183,7 +182,7 @@ class FamilyEmploymentService:
             for year in self.dfs:
                 df_year = self.dfs[year]
                 dep_data = df_year[df_year["CODGEO"].isin(communes)]
-                results[year] = self._calculate_distribution(dep_data)
+                results[year] = self._calculate_distribution(dep_data, age_group)
 
             return {
                 "territory_type": "department",
@@ -200,7 +199,7 @@ class FamilyEmploymentService:
                 "data": {}
             }
 
-    def get_region_distribution(self, reg: str):
+    def get_region_distribution(self, reg: str, age_group=0):
         """Récupère la distribution pour une région"""
         try:
             communes = self.geo_df[self.geo_df['REG'] == str(reg)]['CODGEO'].tolist()
@@ -216,7 +215,7 @@ class FamilyEmploymentService:
             for year in self.dfs:
                 df_year = self.dfs[year]
                 reg_data = df_year[df_year["CODGEO"].isin(communes)]
-                results[year] = self._calculate_distribution(reg_data)
+                results[year] = self._calculate_distribution(reg_data, age_group)
 
             return {
                 "territory_type": "region",
@@ -233,25 +232,25 @@ class FamilyEmploymentService:
                 "data": {}
             }
 
-    def get_france_distribution(self):
-            """Récupère la distribution pour la France entière en agrégeant directement les données"""
-            try:
-                results = {}
-                for year in self.dfs:
-                    # On utilise directement tout le dataframe sans filtrage géographique
-                    results[year] = self._calculate_distribution(self.dfs[year])
+    def get_france_distribution(self, age_group=0):
+        """Récupère la distribution pour la France entière en agrégeant directement les données"""
+        try:
+            results = {}
+            for year in self.dfs:
+                # On utilise directement tout le dataframe sans filtrage géographique
+                results[year] = self._calculate_distribution(self.dfs[year], age_group)
 
-                return {
-                    "territory_type": "country",
-                    "code": "FR",
-                    "name": "France",
-                    "data": results
-                }
-            except Exception as e:
-                print(f"Erreur pour la France: {str(e)}")
-                return {
-                    "territory_type": "country",
-                    "code": "FR",
-                    "name": "France",
-                    "data": {}
-                }
+            return {
+                "territory_type": "country",
+                "code": "FR",
+                "name": "France",
+                "data": results
+            }
+        except Exception as e:
+            print(f"Erreur pour la France: {str(e)}")
+            return {
+                "territory_type": "country",
+                "code": "FR",
+                "name": "France",
+                "data": {}
+            }
