@@ -35,10 +35,6 @@ family_employment_service = FamilyEmploymentService()
 async def root():
     return {"message": "API Population 2021"}
 
-@app.get("/population", response_model=List[Population])
-async def get_population():
-    return population_service.get_all_data()
-
 @app.get("/population/{code}", response_model=List[Population])
 async def get_population_by_code(code: str):
     data = population_service.get_by_code(code)
@@ -48,7 +44,7 @@ async def get_population_by_code(code: str):
 
 @app.get("/population/children/commune/{code}")
 async def get_commune_children(code: str):
-    return population_service.get_children_under_3(code)
+    return population_service.get_population_and_children_rate(code)
 
 @app.get("/population/children/epci/{epci}")
 async def get_epci_children(epci: str):

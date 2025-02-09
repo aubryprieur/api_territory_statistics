@@ -10,9 +10,6 @@ class PopulationService:
            low_memory=False
        )
 
-   def get_all_data(self):
-       return self.df.to_dict(orient="records")
-
    def get_by_code(self, codgeo: str):
        return self.df[self.df["CODGEO"] == str(codgeo)].to_dict(orient="records")
 
