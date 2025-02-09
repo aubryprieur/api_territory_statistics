@@ -20,6 +20,52 @@ class HistoricalData(BaseModel):
     D75_POP: float
     D68_POP: float
 
+class PopulationChildrenRate(BaseModel):
+    total_population: float
+    children_under_3: float
+    children_3_to_5: float
+    under_3_rate: float
+    three_to_five_rate: float
+
+class PopulationChildrenEPCI(BaseModel):
+    epci: str
+    epci_name: str
+    total_population: float
+    children_under_3: float
+    children_3_to_5: float
+    under_3_rate: float
+    three_to_five_rate: float
+    communes_count: int
+
+class PopulationChildrenDepartment(BaseModel):
+    department: str
+    total_population: float
+    children_under_3: float
+    children_3_to_5: float
+    under_3_rate: float
+    three_to_five_rate: float
+    communes_count: int
+
+class PopulationChildrenRegion(BaseModel):
+    region: str
+    total_population: float
+    children_under_3: float
+    children_3_to_5: float
+    under_3_rate: float
+    three_to_five_rate: float
+    communes_count: int
+    departments_count: int
+
+class PopulationChildrenFrance(BaseModel):
+    total_population: float
+    children_under_3: float
+    children_3_to_5: float
+    under_3_rate: float
+    three_to_five_rate: float
+    communes_count: int
+    departments_count: int
+    regions_count: int
+
 class Birth(BaseModel):
    GEO: str
    GEO_OBJECT: str

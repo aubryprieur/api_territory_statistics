@@ -13,7 +13,7 @@ from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
 from .services.schooling_service import SchoolingService
 from .services.family_employment_service import FamilyEmploymentService
-from .models import Population, HistoricalData, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse, SchoolingResponse, SchoolingData, FamilyEmploymentResponse, FamilyEmploymentDistribution
+from .models import Population, HistoricalData, PopulationChildrenRate, PopulationChildrenEPCI, PopulationChildrenDepartment, PopulationChildrenRegion, PopulationChildrenFrance, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse, SchoolingResponse, SchoolingData, FamilyEmploymentResponse, FamilyEmploymentDistribution
 
 app = FastAPI(title="API Population")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -42,49 +42,26 @@ async def get_population_by_code(code: str):
         raise HTTPException(status_code=404, detail="Code non trouvé")
     return data
 
-@app.get("/population/children/commune/{code}")
+
+@app.get("/population/children/commune/{code}", response_model=PopulationChildrenRate)
 async def get_commune_children(code: str):
     return population_service.get_population_and_children_rate(code)
 
-@app.get("/population/children/epci/{epci}")
+@app.get("/population/children/epci/{epci}", response_model=PopulationChildrenEPCI)
 async def get_epci_children(epci: str):
     return population_service.aggregate_children_by_epci(epci, geocode_service)
 
-@app.get("/population/children/department/{dep}")
+@app.get("/population/children/department/{dep}", response_model=PopulationChildrenDepartment)
 async def get_department_children(dep: str):
     return population_service.aggregate_children_by_department(dep, geocode_service)
 
-@app.get("/population/children/region/{reg}")
+@app.get("/population/children/region/{reg}", response_model=PopulationChildrenRegion)
 async def get_region_children(reg: str):
     return population_service.aggregate_children_by_region(reg, geocode_service)
 
-@app.get("/population/children/france")
+@app.get("/population/children/france", response_model=PopulationChildrenFrance)
 async def get_france_children():
     return population_service.aggregate_children_france(geocode_service)
-
-@app.get("/population/rates/commune/{code}")
-async def get_commune_rates(code: str):
-    return population_service.get_population_and_children_rate(code)
-
-@app.get("/population/rates/epci/{epci}")
-async def get_epci_rates(epci: str):
-    return population_service.aggregate_children_by_epci(epci, geocode_service)
-
-@app.get("/population/rates/department/{dep}")
-async def get_department_rates(dep: str):
-    return population_service.aggregate_children_by_department(dep, geocode_service)
-
-@app.get("/population/rates/region/{reg}")
-async def get_region_rates(reg: str):
-    return population_service.aggregate_children_by_region(reg, geocode_service)
-
-@app.get("/population/rates/france")
-async def get_france_rates():
-    return population_service.aggregate_children_france(geocode_service)
-
-@app.get("/historical", response_model=List[HistoricalData])
-async def get_historical():
-    return historical_service.get_all_data()
 
 @app.get("/historical/{code}", response_model=List[HistoricalData])
 async def get_historical_by_code(code: str):
