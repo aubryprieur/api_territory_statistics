@@ -35,58 +35,97 @@ family_employment_service = FamilyEmploymentService()
 async def root():
     return {"message": "API Population 2021"}
 
-@app.get("/population/{code}", response_model=List[Population])
+@app.get("/population/{code}",
+    response_model=List[Population],
+    summary="Obtenir la structure de la population d'une commune",
+    description="Récupère la répartition détaillée de la population d'une commune par sexe et par âge (de 0 à 100 ans)",
+    response_description="Liste détaillée des effectifs de population par sexe et âge")
 async def get_population_by_code(code: str):
+    """
+    Récupère la pyramide des âges d'une commune :
+
+    - **code**: Code INSEE de la commune
+
+    Retourne une liste où chaque élément contient :
+    - Le niveau géographique (NIVGEO)
+    - Le code de la commune (CODGEO)
+    - Le nom de la commune (LIBGEO)
+    - Le sexe (SEXE) : 1 pour les hommes, 2 pour les femmes
+    - L'âge (AGED100) : de 0 à 100 ans
+    - Le nombre de personnes (NB)
+    """
     data = population_service.get_by_code(code)
     if not data:
         raise HTTPException(status_code=404, detail="Code non trouvé")
     return data
 
-
-@app.get("/population/children/commune/{code}", response_model=PopulationChildrenRate)
+@app.get("/population/children/commune/{code}",
+    response_model=PopulationChildrenRate,
+    summary="Obtenir les données des enfants de 0-5 ans pour une commune",
+    description="Récupère les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour une commune",
+    response_description="Les données démographiques incluant la population totale, le nombre d'enfants par tranche d'âge et leurs taux")
 async def get_commune_children(code: str):
+    """
+    Obtient les statistiques des enfants pour une commune :
+
+    - **code**: Code INSEE de la commune
+    """
     return population_service.get_population_and_children_rate(code)
 
-@app.get("/population/children/epci/{epci}", response_model=PopulationChildrenEPCI)
+@app.get("/population/children/epci/{epci}",
+    response_model=PopulationChildrenEPCI,
+    summary="Obtenir les données des enfants de 0-5 ans pour un EPCI",
+    description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour toutes les communes d'un EPCI",
+    response_description="Les données démographiques incluant la population totale de l'EPCI, le nombre d'enfants par tranche d'âge, leurs taux et le nombre de communes")
 async def get_epci_children(epci: str):
+    """
+    Agrège les statistiques des enfants pour un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
     return population_service.aggregate_children_by_epci(epci, geocode_service)
 
-@app.get("/population/children/department/{dep}", response_model=PopulationChildrenDepartment)
+@app.get("/population/children/department/{dep}",
+    response_model=PopulationChildrenDepartment,
+    summary="Obtenir les données des enfants de 0-5 ans pour un département",
+    description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour toutes les communes d'un département",
+    response_description="Les données démographiques incluant la population totale du département, le nombre d'enfants par tranche d'âge, leurs taux et le nombre de communes")
 async def get_department_children(dep: str):
+    """
+    Agrège les statistiques des enfants pour un département :
+
+    - **dep**: Code du département
+    """
     return population_service.aggregate_children_by_department(dep, geocode_service)
 
-@app.get("/population/children/region/{reg}", response_model=PopulationChildrenRegion)
+@app.get("/population/children/region/{reg}",
+    response_model=PopulationChildrenRegion,
+    summary="Obtenir les données des enfants de 0-5 ans pour une région",
+    description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour toutes les communes d'une région",
+    response_description="Les données démographiques incluant la population totale de la région, le nombre d'enfants par tranche d'âge, leurs taux, le nombre de communes et de départements")
 async def get_region_children(reg: str):
+    """
+    Agrège les statistiques des enfants pour une région :
+
+    - **reg**: Code de la région
+    """
     return population_service.aggregate_children_by_region(reg, geocode_service)
 
-@app.get("/population/children/france", response_model=PopulationChildrenFrance)
+@app.get("/population/children/france",
+    response_model=PopulationChildrenFrance,
+    summary="Obtenir les données des enfants de 0-5 ans pour la France entière",
+    description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour l'ensemble de la France",
+    response_description="Les données démographiques incluant la population totale nationale, le nombre d'enfants par tranche d'âge, leurs taux, le nombre de communes, de départements et de régions")
 async def get_france_children():
+    """
+    Agrège les statistiques des enfants au niveau national
+    """
     return population_service.aggregate_children_france(geocode_service)
 
 @app.get("/historical/{code}", response_model=List[HistoricalData])
 async def get_historical_by_code(code: str):
     return historical_service.get_by_code(code)
 
-@app.get("/births", response_model=List[Birth])
-async def get_births():
-    return birth_service.get_all_data()
-
-@app.get("/births/year/{year}", response_model=List[Birth])
-async def get_births_by_year(year: int):
-    return birth_service.get_by_year(year)
-
-@app.get("/births/{code}", response_model=List[Birth])
-async def get_births_by_code(code: str):
-    return birth_service.get_by_code(code)
-
-@app.get("/births/stats")
-async def get_births_stats():
-    return birth_service.get_stats()
-
-@app.get("/births/filter", response_model=List[Birth])
-async def get_filtered_births(geo: str = None, geo_object: str = None):
-    print("Paramètres:", geo, geo_object)
-    return birth_service.get_filtered_data(geo, geo_object)
 
 @app.get("/geocodes/{code}")
 async def get_geocode(code: str):
@@ -100,21 +139,63 @@ async def get_by_region(reg: str):
 async def get_by_department(dep: str):
    return geocode_service.get_by_department(dep)
 
-@app.get("/geocodes/epci/{epci}/births")
-async def get_epci_births(epci: str):
-   return geocode_service.aggregate_births_by_epci(epci, birth_service)
+@app.get("/births/{code}", response_model=List[Birth],
+    summary="Obtenir les naissances par commune",
+    description="Récupère les données historiques des naissances pour une commune spécifique",
+    response_description="Les données de naissance annuelles pour la commune")
+async def get_births_by_code(code: str):
+    """
+    Récupère les données de naissance pour une commune :
 
-@app.get("/geocodes/department/{dep}/births")
+    - **code**: Code INSEE de la commune
+    """
+    return birth_service.get_by_code(code)
+
+@app.get("/geocodes/epci/{epci}/births",
+    summary="Obtenir les naissances agrégées par EPCI",
+    description="Récupère et agrège les données de naissance pour toutes les communes d'un EPCI",
+    response_description="Les données de naissance agrégées incluant le nombre total de naissances, le nombre de communes et l'évolution par année")
+async def get_epci_births(epci: str):
+    """
+    Agrège les naissances au niveau EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    return geocode_service.aggregate_births_by_epci(epci, birth_service)
+
+@app.get("/geocodes/department/{dep}/births",
+    summary="Obtenir les naissances agrégées par département",
+    description="Récupère et agrège les données de naissance pour toutes les communes d'un département",
+    response_description="Les données de naissance agrégées incluant le nombre total de naissances, le nombre de communes et l'évolution par année")
 async def get_department_births(dep: str):
+    """
+    Agrège les naissances au niveau départemental :
+
+    - **dep**: Code du département
+    """
     return geocode_service.aggregate_births_by_department(dep, birth_service)
 
-@app.get("/geocodes/region/{reg}/births")
+@app.get("/geocodes/region/{reg}/births",
+    summary="Obtenir les naissances agrégées par région",
+    description="Récupère et agrège les données de naissance pour toutes les communes d'une région",
+    response_description="Les données de naissance agrégées incluant le nombre total de naissances, le nombre de communes, le nombre de départements et l'évolution par année")
 async def get_region_births(reg: str):
-   return geocode_service.aggregate_births_by_region(reg, birth_service)
+    """
+    Agrège les naissances au niveau régional :
 
-@app.get("/geocodes/france/births")
+    - **reg**: Code de la région
+    """
+    return geocode_service.aggregate_births_by_region(reg, birth_service)
+
+@app.get("/geocodes/france/births",
+    summary="Obtenir les naissances agrégées pour la France entière",
+    description="Récupère et agrège les données de naissance pour toutes les communes de France",
+    response_description="Les données de naissance agrégées incluant le nombre total de naissances, le nombre de communes, le nombre de départements, le nombre de régions et l'évolution par année")
 async def get_france_births():
-   return geocode_service.aggregate_births_france(birth_service)
+    """
+    Agrège les naissances au niveau national
+    """
+    return geocode_service.aggregate_births_france(birth_service)
 
 @app.get("/revenues/median/commune/{code}")
 async def get_commune_median_revenues(code: str):
