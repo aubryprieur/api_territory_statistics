@@ -111,3 +111,179 @@ class ChildcareService:
             }
         except Exception as e:
             return {"error": str(e)}
+
+    def get_coverage_by_epci(self, epci: str, start_year: int = None, end_year: int = None):
+        """Récupère les données de couverture pour un EPCI"""
+        try:
+            if 'epci' not in self.dfs or self.dfs['epci'].empty:
+                return {"error": "Données EPCI non disponibles"}
+
+            df = self.dfs['epci']
+            data = df[df['numepci'] == str(epci)]
+
+            if data.empty:
+                return {"error": f"EPCI {epci} non trouvé"}
+
+            if start_year and end_year:
+                data = data[(data['annee'] >= start_year) & (data['annee'] <= end_year)]
+
+            result = {}
+
+            for _, row in data.iterrows():
+                year = int(row['annee'])
+                result[year] = {
+                    "territory_name": row['nomepci'],
+                    "department": {
+                        "code": row['numdep'],
+                        "name": row['nomdep']
+                    },
+                    "coverage_rates": {
+                        "eaje_psu": float(row['txcouv_psu_col_epci']),
+                        "eaje_hors_psu": float(row['txcouv_hors_psu_col_epci']),
+                        "eaje_total": float(row['txcouv_eaje_epci']),
+                        "preschool": float(row['txcouv_prescol_epci']),
+                        "childminder": float(row['txcouv_am_ind_epci']),
+                        "home_care": float(row['txcouv_gad_ind_epci']),
+                        "individual_total": float(row['txcouv_ind_epci']),
+                        "global": float(row['txcouv_epci'])
+                    }
+                }
+
+            return {
+                "coverage_data": result,
+                "data_source": "current"
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_coverage_by_epci: {str(e)}")
+            return {"error": str(e)}
+
+    def get_coverage_by_department(self, dep: str, start_year: int = None, end_year: int = None):
+        """Récupère les données de couverture pour un département"""
+        try:
+            if 'department' not in self.dfs or self.dfs['department'].empty:
+                return {"error": "Données départementales non disponibles"}
+
+            df = self.dfs['department']
+            data = df[df['numdep'] == str(dep)]
+
+            if data.empty:
+                return {"error": f"Département {dep} non trouvé"}
+
+            if start_year and end_year:
+                data = data[(data['annee'] >= start_year) & (data['annee'] <= end_year)]
+
+            result = {}
+
+            for _, row in data.iterrows():
+                year = int(row['annee'])
+                result[year] = {
+                    "territory_name": row['nomdep'],
+                    "region": {
+                        "code": row['numregi'],
+                        "name": row['nomregi']
+                    },
+                    "coverage_rates": {
+                        "eaje_psu": float(row['txcouv_psu_col_dep']),
+                        "eaje_hors_psu": float(row['txcouv_hors_psu_col_dep']),
+                        "eaje_total": float(row['txcouv_eaje_dep']),
+                        "preschool": float(row['txcouv_prescol_dep']),
+                        "childminder": float(row['txcouv_am_ind_dep']),
+                        "home_care": float(row['txcouv_gad_ind_dep']),
+                        "individual_total": float(row['txcouv_ind_dep']),
+                        "global": float(row['txcouv_dep'])
+                    }
+                }
+
+            return {
+                "coverage_data": result,
+                "data_source": "current"
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_coverage_by_department: {str(e)}")
+            return {"error": str(e)}
+
+    def get_coverage_by_region(self, reg: str, start_year: int = None, end_year: int = None):
+        """Récupère les données de couverture pour une région"""
+        try:
+            if 'region' not in self.dfs or self.dfs['region'].empty:
+                return {"error": "Données régionales non disponibles"}
+
+            df = self.dfs['region']
+            data = df[df['numregi'] == str(reg)]  # Changed from 'reg' to 'numregi'
+
+            if data.empty:
+                return {"error": f"Région {reg} non trouvée"}
+
+            if start_year and end_year:
+                data = data[(data['annee'] >= start_year) & (data['annee'] <= end_year)]
+
+            result = {}
+
+            for _, row in data.iterrows():
+                year = int(row['annee'])
+                result[year] = {
+                    "territory_name": row['nomregi'],  # Changed from 'nomreg' to 'nomregi'
+                    "coverage_rates": {
+                        "eaje_psu": float(row['txcouv_psu_col_reg']),  # Changed from 'txcouv_psu_reg'
+                        "eaje_hors_psu": float(row['txcouv_hors_psu_col_reg']),
+                        "eaje_total": float(row['txcouv_eaje_reg']),
+                        "preschool": float(row['txcouv_prescol_reg']),
+                        "childminder": float(row['txcouv_am_ind_reg']),  # Changed from 'txcouv_am_reg'
+                        "home_care": float(row['txcouv_gad_ind_reg']),  # Changed from 'txcouv_gad_reg'
+                        "individual_total": float(row['txcouv_ind_reg']),
+                        "global": float(row['txcouv_reg'])
+                    }
+                }
+
+            return {
+                "coverage_data": result,
+                "data_source": "current"
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_coverage_by_region: {str(e)}")
+            return {"error": str(e)}
+
+
+    def get_coverage_france(self, start_year: int = None, end_year: int = None):
+        """Récupère les données de couverture pour la France entière"""
+        try:
+            # Vérifier que nous avons les données pour la France
+            if 'france' not in self.dfs or self.dfs['france'].empty:
+                return {"error": "Données nationales non disponibles"}
+
+            df = self.dfs['france']
+
+            # Filtrer sur les années si spécifiées
+            if start_year and end_year:
+                df = df[(df['annee'] >= start_year) & (df['annee'] <= end_year)]
+
+            result = {}
+
+            # Traiter chaque année
+            for _, row in df.iterrows():
+                year = int(row['annee'])
+                result[year] = {
+                    "territory_name": row['national'],
+                    "coverage_rates": {
+                        "eaje_psu": float(row['txcouv_psu_nat']),
+                        "eaje_hors_psu": float(row['txcouv_hors_psu_col_nat']),
+                        "eaje_total": float(row['txcouv_eaje_nat']),
+                        "preschool": float(row['txcouv_prescol_nat']),
+                        "childminder": float(row['txcouv_am_nat']),
+                        "home_care": float(row['txcouv_gad_nat']),
+                        "individual_total": float(row['txcouv_ind_nat']),
+                        "global": float(row['txcouv_nat'])
+                    }
+                }
+
+            return {
+                "coverage_data": result,
+                "data_source": "current"
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_coverage_france: {str(e)}")
+            return {"error": str(e)}
