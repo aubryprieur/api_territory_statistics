@@ -197,25 +197,83 @@ async def get_france_births():
     """
     return geocode_service.aggregate_births_france(birth_service)
 
-@app.get("/revenues/median/commune/{code}")
+@app.get("/revenues/median/commune/{code}",
+    summary="Obtenir les revenus médians d'une commune",
+    description="Récupère l'historique des revenus médians et des taux de pauvreté d'une commune depuis 2017",
+    response_description="Les revenus médians et taux de pauvreté par année pour la commune")
 async def get_commune_median_revenues(code: str):
+    """
+    Obtient les données de revenus pour une commune :
+
+    - **code**: Code INSEE de la commune
+
+    Retourne pour chaque année depuis 2017 :
+    - Le revenu médian des ménages
+    - Le taux de pauvreté (seuil à 60% du revenu médian)
+    """
     return revenue_service.get_median_revenues(code)
 
-@app.get("/revenues/median/epci/{code}")
+@app.get("/revenues/median/epci/{code}",
+    summary="Obtenir les revenus médians d'un EPCI",
+    description="Récupère l'historique des revenus médians et des taux de pauvreté d'un EPCI depuis 2017",
+    response_description="Les revenus médians et taux de pauvreté par année pour l'EPCI")
 async def get_epci_median_revenues(code: str):
+    """
+    Obtient les données de revenus agrégées pour un EPCI :
+
+    - **code**: Code de l'EPCI
+
+    Retourne pour chaque année depuis 2017 :
+    - Le revenu médian des ménages de l'EPCI
+    - Le taux de pauvreté (seuil à 60% du revenu médian)
+    """
     return revenue_service.get_median_revenues_epci(code)
 
-@app.get("/revenues/median/department/{code}")
+@app.get("/revenues/median/department/{code}",
+    summary="Obtenir les revenus médians d'un département",
+    description="Récupère l'historique des revenus médians et des taux de pauvreté d'un département depuis 2017",
+    response_description="Les revenus médians et taux de pauvreté par année pour le département")
 async def get_department_median_revenues(code: str):
-   return revenue_service.get_median_revenues_department(code)
+    """
+    Obtient les données de revenus agrégées pour un département :
 
-@app.get("/revenues/median/region/{code}")
+    - **code**: Code du département
+
+    Retourne pour chaque année depuis 2017 :
+    - Le revenu médian des ménages du département
+    - Le taux de pauvreté (seuil à 60% du revenu médian)
+    """
+    return revenue_service.get_median_revenues_department(code)
+
+@app.get("/revenues/median/region/{code}",
+    summary="Obtenir les revenus médians d'une région",
+    description="Récupère l'historique des revenus médians et des taux de pauvreté d'une région depuis 2017",
+    response_description="Les revenus médians et taux de pauvreté par année pour la région")
 async def get_region_median_revenues(code: str):
-   return revenue_service.get_median_revenues_region(code)
+    """
+    Obtient les données de revenus agrégées pour une région :
 
-@app.get("/revenues/median/france")
+    - **code**: Code de la région
+
+    Retourne pour chaque année depuis 2017 :
+    - Le revenu médian des ménages de la région
+    - Le taux de pauvreté (seuil à 60% du revenu médian)
+    """
+    return revenue_service.get_median_revenues_region(code)
+
+@app.get("/revenues/median/france",
+    summary="Obtenir les revenus médians de la France",
+    description="Récupère l'historique des revenus médians et des taux de pauvreté au niveau national depuis 2017",
+    response_description="Les revenus médians et taux de pauvreté par année pour la France entière")
 async def get_france_median_revenues():
-   return revenue_service.get_median_revenues_france()
+    """
+    Obtient les données de revenus agrégées au niveau national
+
+    Retourne pour chaque année depuis 2017 :
+    - Le revenu médian des ménages en France
+    - Le taux de pauvreté (seuil à 60% du revenu médian)
+    """
+    return revenue_service.get_median_revenues_france()
 
 @app.get("/revenues/median/iris/{commune}")
 async def get_iris_median_revenues(commune: str):
