@@ -275,8 +275,26 @@ async def get_france_median_revenues():
     """
     return revenue_service.get_median_revenues_france()
 
-@app.get("/revenues/median/iris/{commune}")
+@app.get("/revenues/median/iris/{commune}",
+    summary="Obtenir les revenus médians par IRIS d'une commune",
+    description="""Récupère l'historique des revenus médians et des taux de pauvreté pour chaque IRIS d'une commune depuis 2017.
+
+Les IRIS (Îlots Regroupés pour l'Information Statistique) sont des découpages du territoire communal. Une commune d'au moins 10 000 habitants est découpée en IRIS, ainsi que la plupart des communes de 5 000 à 10 000 habitants.""",
+    response_description="Les revenus médians et taux de pauvreté par année pour chaque IRIS de la commune")
 async def get_iris_median_revenues(commune: str):
+    """
+    Obtient les données de revenus détaillées par IRIS pour une commune :
+
+    - **commune**: Code INSEE de la commune
+
+    Retourne pour chaque IRIS et pour chaque année depuis 2017 :
+    - Le code de l'IRIS
+    - Le nom de l'IRIS
+    - Le revenu médian des ménages de l'IRIS
+    - Le taux de pauvreté de l'IRIS (seuil à 60% du revenu médian)
+
+    Note : Les données IRIS ne sont disponibles que pour les communes de plus de 5 000 habitants.
+    """
     return revenue_service.get_iris_revenues_by_commune(commune, geocode_service)
 
 @app.get("/childcare/commune/{code}", response_model=dict)

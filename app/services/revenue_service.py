@@ -173,19 +173,38 @@ class RevenueService:
 
     def get_iris_revenues_by_commune(self, commune: str, geocode_service):
         try:
+            # Vérifie si la commune existe dans les données IRIS
             iris_data = geocode_service.iris_geo[geocode_service.iris_geo["DEPCOM"] == str(commune)]
+            if iris_data.empty:
+                return {"error": f"Aucun IRIS trouvé pour la commune {commune}"}
+
             results = {}
 
             for year in range(2017, 2022):
                 year_data = []
+                if year not in self.dfs_iris:
+                    continue
+
                 iris_df = self.dfs_iris[year]
+                year_suffix = str(year)[2:]
+
+                # Construction des noms de colonnes pour l'année avec le préfixe DISP_
+                median_col = f"DISP_MED{year_suffix}"
+                poverty_col = f"DISP_TP60{year_suffix}"  # Ajout du préfixe DISP_
+
+                # Vérifie si les colonnes existent
+                if median_col not in iris_df.columns or poverty_col not in iris_df.columns:
+                    print(f"Colonnes manquantes pour l'année {year}. Recherchées : {median_col}, {poverty_col}")
+                    print(f"Colonnes disponibles : {iris_df.columns.tolist()}")
+                    continue
 
                 for iris_code in iris_data["CODE_IRIS"]:
                     try:
                         row = iris_df[iris_df["IRIS"] == iris_code]
                         if not row.empty:
-                            median = self._convert_to_float(row[f"DISP_MED{str(year)[2:]}"].values[0])
-                            poverty_rate = self._convert_to_float(row[f"TP60{str(year)[2:]}"].values[0])
+                            median = self._convert_to_float(row[median_col].values[0])
+                            poverty_rate = self._convert_to_float(row[poverty_col].values[0])
+
                             if median is not None and poverty_rate is not None:
                                 iris_name = iris_data[iris_data["CODE_IRIS"] == iris_code]["LIB_IRIS"].values[0]
                                 year_data.append({
@@ -194,10 +213,15 @@ class RevenueService:
                                     "median": median,
                                     "poverty_rate": poverty_rate
                                 })
-                    except (IndexError, ValueError):
+                    except (IndexError, ValueError) as e:
+                        print(f"Erreur pour IRIS {iris_code}, année {year}: {str(e)}")
                         continue
 
-                results[year] = year_data
+                if year_data:  # N'ajoute l'année que si on a des données
+                    results[year] = year_data
+
+            if not results:
+                return {"error": f"Aucune donnée de revenu trouvée pour la commune {commune}"}
 
             return {
                 "commune": commune,
@@ -205,5 +229,5 @@ class RevenueService:
                 "iris_data": results
             }
         except Exception as e:
-            print(f"Erreur détaillée: {str(e)}")
+            print(f"Erreur détaillée dans get_iris_revenues_by_commune: {str(e)}")
             return {"error": str(e)}
