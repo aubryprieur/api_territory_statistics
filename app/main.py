@@ -122,8 +122,38 @@ async def get_france_children():
     """
     return population_service.aggregate_children_france(geocode_service)
 
-@app.get("/historical/{code}", response_model=List[HistoricalData])
+@app.get("/historical/{code}",
+    response_model=List[HistoricalData],
+    summary="Obtenir l'historique de population d'une commune depuis 1968",
+    description="""Récupère les données historiques de population d'une commune pour les recensements de :
+- 1968 (D68_POP)
+- 1975 (D75_POP)
+- 1982 (D82_POP)
+- 1990 (D90_POP)
+- 1999 (D99_POP)
+- 2010 (P10_POP)
+- 2015 (P15_POP)
+- 2021 (P21_POP)
+
+Cette évolution permet d'observer les tendances démographiques sur plus de 50 ans.""",
+    response_description="Les données de population pour chaque recensement depuis 1968")
 async def get_historical_by_code(code: str):
+    """
+    Obtient l'évolution historique de la population d'une commune :
+
+    - **code**: Code INSEE de la commune
+
+    Retourne pour chaque recensement :
+    - CODGEO : Code INSEE de la commune
+    - P21_POP : Population en 2021
+    - P15_POP : Population en 2015
+    - P10_POP : Population en 2010
+    - D99_POP : Population en 1999
+    - D90_POP : Population en 1990
+    - D82_POP : Population en 1982
+    - D75_POP : Population en 1975
+    - D68_POP : Population en 1968
+    """
     return historical_service.get_by_code(code)
 
 
@@ -297,52 +327,401 @@ async def get_iris_median_revenues(commune: str):
     """
     return revenue_service.get_iris_revenues_by_commune(commune, geocode_service)
 
-@app.get("/childcare/commune/{code}", response_model=dict)
-async def get_commune_childcare(code: str, start_year: int = None, end_year: int = None):
+@app.get("/childcare/commune/{code}",
+    response_model=dict,
+    summary="Obtenir les taux de couverture des modes d'accueil pour une commune",
+    description="""Récupère les taux de couverture des différents modes d'accueil pour une commune depuis 2017.
+
+Les modes d'accueil incluent :
+- Accueil collectif PSU (crèches PSU)
+- Accueil collectif hors PSU
+- Total accueil collectif (EAJE)
+- Préscolarisation
+- Assistantes maternelles
+- Garde à domicile
+- Total accueil individuel
+- Couverture globale (tous modes d'accueil)""",
+    response_description="Les taux de couverture par année et par mode d'accueil")
+async def get_commune_childcare(
+    code: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les taux de couverture pour une commune :
+
+    - **code**: Code INSEE de la commune
+    - **start_year**: Année de début (optionnel, >= 2017)
+    - **end_year**: Année de fin (optionnel, <= 2022)
+    """
     return childcare_service.get_coverage_by_commune(code, start_year, end_year)
 
-@app.get("/childcare/epci/{epci}", response_model=dict)
-async def get_epci_childcare(epci: str, start_year: int = None, end_year: int = None):
+@app.get("/childcare/epci/{epci}",
+    response_model=dict,
+    summary="Obtenir les taux de couverture des modes d'accueil pour un EPCI",
+    description="""Récupère les taux de couverture des différents modes d'accueil pour un EPCI (Établissement Public de Coopération Intercommunale) depuis 2017.
+
+Les modes d'accueil incluent :
+- Accueil collectif PSU (crèches PSU)
+- Accueil collectif hors PSU
+- Total accueil collectif (EAJE)
+- Préscolarisation
+- Assistantes maternelles
+- Garde à domicile
+- Total accueil individuel
+- Couverture globale (tous modes d'accueil)
+
+Inclut également les informations sur le département de rattachement.""",
+    response_description="Les taux de couverture par année et par mode d'accueil, avec les informations territoriales")
+async def get_epci_childcare(
+    epci: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les taux de couverture pour un EPCI :
+
+    - **epci**: Code de l'EPCI
+    - **start_year**: Année de début (optionnel, >= 2017)
+    - **end_year**: Année de fin (optionnel, <= 2022)
+    """
     return childcare_service.get_coverage_by_epci(epci, start_year, end_year)
 
-@app.get("/childcare/department/{dep}", response_model=dict)
-async def get_department_childcare(dep: str, start_year: int = None, end_year: int = None):
+@app.get("/childcare/department/{dep}",
+    response_model=dict,
+    summary="Obtenir les taux de couverture des modes d'accueil pour un département",
+    description="""Récupère les taux de couverture des différents modes d'accueil pour un département depuis 2017.
+
+Les modes d'accueil incluent :
+- Accueil collectif PSU (crèches PSU)
+- Accueil collectif hors PSU
+- Total accueil collectif (EAJE)
+- Préscolarisation
+- Assistantes maternelles
+- Garde à domicile
+- Total accueil individuel
+- Couverture globale (tous modes d'accueil)
+
+Inclut également les informations sur la région de rattachement.""",
+    response_description="Les taux de couverture par année et par mode d'accueil, avec les informations territoriales")
+async def get_department_childcare(
+    dep: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les taux de couverture pour un département :
+
+    - **dep**: Code du département
+    - **start_year**: Année de début (optionnel, >= 2017)
+    - **end_year**: Année de fin (optionnel, <= 2022)
+    """
     return childcare_service.get_coverage_by_department(dep, start_year, end_year)
 
-@app.get("/childcare/region/{reg}", response_model=dict)
-async def get_region_childcare(reg: str, start_year: int = None, end_year: int = None):
+@app.get("/childcare/region/{reg}",
+    response_model=dict,
+    summary="Obtenir les taux de couverture des modes d'accueil pour une région",
+    description="""Récupère les taux de couverture des différents modes d'accueil pour une région depuis 2017.
+
+Les modes d'accueil incluent :
+- Accueil collectif PSU (crèches PSU)
+- Accueil collectif hors PSU
+- Total accueil collectif (EAJE)
+- Préscolarisation
+- Assistantes maternelles
+- Garde à domicile
+- Total accueil individuel
+- Couverture globale (tous modes d'accueil)""",
+    response_description="Les taux de couverture par année et par mode d'accueil")
+async def get_region_childcare(
+    reg: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les taux de couverture pour une région :
+
+    - **reg**: Code de la région
+    - **start_year**: Année de début (optionnel, >= 2017)
+    - **end_year**: Année de fin (optionnel, <= 2022)
+    """
     return childcare_service.get_coverage_by_region(reg, start_year, end_year)
 
-@app.get("/childcare/france", response_model=dict)
-async def get_france_childcare(start_year: int = None, end_year: int = None):
+@app.get("/childcare/france",
+    response_model=dict,
+    summary="Obtenir les taux de couverture des modes d'accueil pour la France",
+    description="""Récupère les taux de couverture des différents modes d'accueil au niveau national depuis 2017.
+
+Les modes d'accueil incluent :
+- Accueil collectif PSU (crèches PSU)
+- Accueil collectif hors PSU
+- Total accueil collectif (EAJE)
+- Préscolarisation
+- Assistantes maternelles
+- Garde à domicile
+- Total accueil individuel
+- Couverture globale (tous modes d'accueil)""",
+    response_description="Les taux de couverture par année et par mode d'accueil pour la France entière")
+async def get_france_childcare(
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les taux de couverture pour la France entière :
+
+    - **start_year**: Année de début (optionnel, >= 2017)
+    - **end_year**: Année de fin (optionnel, <= 2022)
+    """
     return childcare_service.get_coverage_france(start_year, end_year)
 
-@app.get("/families/large/commune/{code}", response_model=LargeFamilyResponse)
+@app.get("/families/large/commune/{code}",
+    response_model=LargeFamilyResponse,
+    summary="Obtenir les statistiques des familles nombreuses pour une commune",
+    description="""Récupère l'évolution des familles nombreuses (3 enfants ou plus) dans une commune depuis 2010.
+
+Les données incluent :
+- Le nombre total de familles
+- Le nombre de familles avec 3 enfants
+- Le nombre de familles avec 4 enfants ou plus
+- Le total des familles nombreuses
+- Le pourcentage de familles nombreuses""",
+    response_description="Statistiques annuelles sur les familles nombreuses dans la commune")
 async def get_commune_large_families(code: str):
+    """
+    Obtient les statistiques des familles nombreuses pour une commune :
+
+    - **code**: Code INSEE de la commune
+    """
     return large_family_service.get_large_families_by_commune(code)
 
-@app.get("/families/large/epci/{epci}", response_model=LargeFamilyResponse)
+@app.get("/families/large/epci/{epci}",
+    response_model=LargeFamilyResponse,
+    summary="Obtenir les statistiques des familles nombreuses pour un EPCI",
+    description="""Récupère l'évolution des familles nombreuses (3 enfants ou plus) dans un EPCI depuis 2010.
+
+Les données sont agrégées pour toutes les communes de l'EPCI et incluent :
+- Le nombre total de familles
+- Le nombre de familles avec 3 enfants
+- Le nombre de familles avec 4 enfants ou plus
+- Le total des familles nombreuses
+- Le pourcentage de familles nombreuses""",
+    response_description="Statistiques annuelles sur les familles nombreuses dans l'EPCI")
 async def get_epci_large_families(epci: str):
+    """
+    Obtient les statistiques des familles nombreuses agrégées pour un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
     return large_family_service.get_large_families_by_epci(epci, geocode_service)
 
-@app.get("/families/large/department/{dep}", response_model=LargeFamilyResponse)
+@app.get("/families/large/department/{dep}",
+    response_model=LargeFamilyResponse,
+    summary="Obtenir les statistiques des familles nombreuses pour un département",
+    description="""Récupère l'évolution des familles nombreuses (3 enfants ou plus) dans un département depuis 2010.
+
+Les données sont agrégées pour toutes les communes du département et incluent :
+- Le nombre total de familles
+- Le nombre de familles avec 3 enfants
+- Le nombre de familles avec 4 enfants ou plus
+- Le total des familles nombreuses
+- Le pourcentage de familles nombreuses""",
+    response_description="Statistiques annuelles sur les familles nombreuses dans le département")
 async def get_department_large_families(dep: str):
+    """
+    Obtient les statistiques des familles nombreuses agrégées pour un département :
+
+    - **dep**: Code du département
+    """
     return large_family_service.get_large_families_by_department(dep, geocode_service)
 
-@app.get("/families/large/region/{reg}", response_model=LargeFamilyResponse)
+@app.get("/families/large/region/{reg}",
+    response_model=LargeFamilyResponse,
+    summary="Obtenir les statistiques des familles nombreuses pour une région",
+    description="""Récupère l'évolution des familles nombreuses (3 enfants ou plus) dans une région depuis 2010.
+
+Les données sont agrégées pour toutes les communes de la région et incluent :
+- Le nombre total de familles
+- Le nombre de familles avec 3 enfants
+- Le nombre de familles avec 4 enfants ou plus
+- Le total des familles nombreuses
+- Le pourcentage de familles nombreuses""",
+    response_description="Statistiques annuelles sur les familles nombreuses dans la région")
 async def get_region_large_families(reg: str):
+    """
+    Obtient les statistiques des familles nombreuses agrégées pour une région :
+
+    - **reg**: Code de la région
+    """
     return large_family_service.get_large_families_by_region(reg, geocode_service)
 
-@app.get("/families/large/france", response_model=LargeFamilyResponse)
+@app.get("/families/large/france",
+    response_model=LargeFamilyResponse,
+    summary="Obtenir les statistiques des familles nombreuses pour la France",
+    description="""Récupère l'évolution des familles nombreuses (3 enfants ou plus) au niveau national depuis 2010.
+
+Les données sont agrégées pour toute la France et incluent :
+- Le nombre total de familles
+- Le nombre de familles avec 3 enfants
+- Le nombre de familles avec 4 enfants ou plus
+- Le total des familles nombreuses
+- Le pourcentage de familles nombreuses""",
+    response_description="Statistiques annuelles sur les familles nombreuses pour la France entière")
 async def get_france_large_families():
+    """
+    Obtient les statistiques des familles nombreuses agrégées au niveau national
+    """
     return large_family_service.get_large_families_france()
 
-@app.get("/families/iris/{commune}")
+@app.get("/families/iris/{commune}",
+    summary="Obtenir les statistiques des familles par IRIS d'une commune",
+    description="""Récupère la composition des familles au niveau des IRIS (quartiers) d'une commune depuis 2017.
+
+Les IRIS (Îlots Regroupés pour l'Information Statistique) sont le découpage le plus fin du territoire.
+Les données sont disponibles uniquement pour :
+- Les communes d'au moins 10 000 habitants
+- La plupart des communes de 5 000 à 10 000 habitants
+
+Pour chaque IRIS et chaque année :
+- Le nombre total de familles
+- Les couples avec enfant(s)
+- Les familles monoparentales
+- Les couples sans enfant
+
+Les données incluent également une analyse de l'évolution entre 2017 et 2021 pour chaque IRIS.""",
+    response_description="Statistiques détaillées par IRIS avec leur évolution")
 async def get_iris_families(commune: str):
+    """
+    Obtient les statistiques des familles détaillées par IRIS d'une commune :
+
+    - **commune**: Code INSEE de la commune
+
+    Note : Les données IRIS ne sont disponibles que depuis 2017 et uniquement pour les communes de plus de 5 000 habitants.
+    """
     return family_service.get_iris_families_by_commune(commune, geocode_service)
 
-@app.get("/families/france")
-async def get_france_families(start_year: int = None, end_year: int = None):
+@app.get("/families/commune/{code}",
+    summary="Obtenir les statistiques des familles pour une commune",
+    description="""Récupère l'évolution de la composition des familles pour une commune depuis 2010.
+
+Les données incluent pour chaque année :
+- Le nombre total de familles
+- Les couples avec enfant(s)
+- Les familles monoparentales (détail père/mère)
+- Les couples sans enfant
+
+Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées.""")
+async def get_commune_families(
+    code: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les statistiques des familles pour une commune :
+
+    - **code**: Code INSEE de la commune
+    - **start_year**: Année de début (optionnel, >= 2010)
+    - **end_year**: Année de fin (optionnel, <= 2021)
+    """
+    return family_service.get_families_by_commune(code, start_year, end_year)
+
+@app.get("/families/epci/{epci}",
+    summary="Obtenir les statistiques des familles pour un EPCI",
+    description="""Récupère l'évolution de la composition des familles pour un EPCI depuis 2010.
+
+Les données sont agrégées pour toutes les communes de l'EPCI et incluent pour chaque année :
+- Le nombre total de familles
+- Les couples avec enfant(s)
+- Les familles monoparentales (détail père/mère)
+- Les couples sans enfant
+
+Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées.""")
+async def get_epci_families(
+    epci: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les statistiques des familles agrégées pour un EPCI :
+
+    - **epci**: Code de l'EPCI
+    - **start_year**: Année de début (optionnel, >= 2010)
+    - **end_year**: Année de fin (optionnel, <= 2021)
+    """
+    return family_service.get_families_by_epci(epci, geocode_service, start_year, end_year)
+
+@app.get("/families/department/{dep}",
+    summary="Obtenir les statistiques des familles pour un département",
+    description="""Récupère l'évolution de la composition des familles pour un département depuis 2010.
+
+Les données sont agrégées pour toutes les communes du département et incluent pour chaque année :
+- Le nombre total de familles
+- Les couples avec enfant(s)
+- Les familles monoparentales (détail père/mère)
+- Les couples sans enfant
+
+Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées.""")
+async def get_department_families(
+    dep: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les statistiques des familles agrégées pour un département :
+
+    - **dep**: Code du département
+    - **start_year**: Année de début (optionnel, >= 2010)
+    - **end_year**: Année de fin (optionnel, <= 2021)
+    """
+    return family_service.get_families_by_department(dep, geocode_service, start_year, end_year)
+
+@app.get("/families/region/{reg}",
+    summary="Obtenir les statistiques des familles pour une région",
+    description="""Récupère l'évolution de la composition des familles pour une région depuis 2010.
+
+Les données sont agrégées pour toutes les communes de la région et incluent pour chaque année :
+- Le nombre total de familles
+- Les couples avec enfant(s)
+- Les familles monoparentales (détail père/mère)
+- Les couples sans enfant
+
+Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées.""")
+async def get_region_families(
+    reg: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les statistiques des familles agrégées pour une région :
+
+    - **reg**: Code de la région
+    - **start_year**: Année de début (optionnel, >= 2010)
+    - **end_year**: Année de fin (optionnel, <= 2021)
+    """
+    return family_service.get_families_by_region(reg, geocode_service, start_year, end_year)
+
+@app.get("/families/france",
+    summary="Obtenir les statistiques des familles pour la France entière",
+    description="""Récupère l'évolution de la composition des familles au niveau national depuis 2010.
+
+Les données incluent pour chaque année :
+- Le nombre total de familles
+- Les couples avec enfant(s)
+- Les familles monoparentales (détail père/mère)
+- Les couples sans enfant
+
+Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées, permettant d'observer
+les tendances démographiques nationales sur la structure des familles.""",
+    response_description="Statistiques nationales annuelles avec analyse de l'évolution")
+async def get_france_families(
+    start_year: int = None,
+    end_year: int = None
+):
+    """
+    Obtient les statistiques des familles agrégées au niveau national :
+
+    - **start_year**: Année de début (optionnel, >= 2010)
+    - **end_year**: Année de fin (optionnel, <= 2021)
+    """
     return family_service.get_families_france(start_year, end_year)
 
 @app.get("/public-safety/commune/{code}", response_model=PublicSafetyResponse)
