@@ -790,97 +790,522 @@ async def get_region_public_safety(reg: str):
     """
     return public_safety_service.get_by_region(reg)
 
-@app.get("/employment/rates/commune/{code}", response_model=EmploymentResponse)
+@app.get("/employment/rates/commune/{code}",
+    response_model=EmploymentResponse,
+    summary="Obtenir les taux d'emploi des femmes pour une commune",
+    description="""Récupère les indicateurs d'emploi des femmes pour une commune en 2021.
+
+Les données incluent :
+- Taux d'activité (femmes actives / population totale)
+- Taux d'emploi (femmes ayant un emploi / population totale)
+- Taux de temps partiel pour les 25-54 ans
+- Taux de temps partiel pour les 15-64 ans""",
+    response_description="Indicateurs d'emploi des femmes de la commune")
 async def get_commune_employment_rates(code: str):
+    """
+    Obtient les statistiques d'emploi des femmes pour une commune :
+
+    - **code**: Code INSEE de la commune
+    """
     return employment_service.get_commune_rates(code)
 
-@app.get("/employment/rates/epci/{epci}", response_model=EmploymentResponse)
+@app.get("/employment/rates/epci/{epci}",
+    response_model=EmploymentResponse,
+    summary="Obtenir les taux d'emploi des femmes pour un EPCI",
+    description="""Récupère les indicateurs d'emploi des femmes agrégés pour un EPCI (Établissement Public de Coopération Intercommunale) en 2021.
+
+Les données incluent :
+- Taux d'activité (femmes actives / population totale)
+- Taux d'emploi (femmes ayant un emploi / population totale)
+- Taux de temps partiel pour les 25-54 ans
+- Taux de temps partiel pour les 15-64 ans""",
+    response_description="Indicateurs d'emploi des femmes agrégés pour l'EPCI")
 async def get_epci_employment_rates(epci: str):
+    """
+    Obtient les statistiques d'emploi des femmes agrégées pour un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
     return employment_service.get_epci_rates(epci)
 
-@app.get("/employment/rates/department/{dep}", response_model=EmploymentResponse)
+@app.get("/employment/rates/department/{dep}",
+    response_model=EmploymentResponse,
+    summary="Obtenir les taux d'emploi des femmes pour un département",
+    description="""Récupère les indicateurs d'emploi des femmes agrégés pour un département en 2021.
+
+Les données incluent :
+- Taux d'activité (femmes actives / population totale)
+- Taux d'emploi (femmes ayant un emploi / population totale)
+- Taux de temps partiel pour les 25-54 ans
+- Taux de temps partiel pour les 15-64 ans""",
+    response_description="Indicateurs d'emploi des femmes agrégés pour le département")
 async def get_department_employment_rates(dep: str):
+    """
+    Obtient les statistiques d'emploi des femmes agrégées pour un département :
+
+    - **dep**: Code du département
+    """
     return employment_service.get_department_rates(dep)
 
-@app.get("/employment/rates/region/{reg}", response_model=EmploymentResponse)
+@app.get("/employment/rates/region/{reg}",
+    response_model=EmploymentResponse,
+    summary="Obtenir les taux d'emploi des femmes pour une région",
+    description="""Récupère les indicateurs d'emploi des femmes agrégés pour une région en 2021.
+
+Les données incluent :
+- Taux d'activité (femmes actives / population totale)
+- Taux d'emploi (femmes ayant un emploi / population totale)
+- Taux de temps partiel pour les 25-54 ans
+- Taux de temps partiel pour les 15-64 ans""",
+    response_description="Indicateurs d'emploi des femmes agrégés pour la région")
 async def get_region_employment_rates(reg: str):
+    """
+    Obtient les statistiques d'emploi des femmes agrégées pour une région :
+
+    - **reg**: Code de la région
+    """
     return employment_service.get_region_rates(reg)
 
-@app.get("/employment/rates/france", response_model=EmploymentResponse)
+@app.get("/employment/rates/france",
+    response_model=EmploymentResponse,
+    summary="Obtenir les taux d'emploi des femmes pour la France",
+    description="""Récupère les indicateurs d'emploi des femmes au niveau national en 2021.
+
+Les données incluent :
+- Taux d'activité (femmes actives / population totale)
+- Taux d'emploi (femmes ayant un emploi / population totale)
+- Taux de temps partiel pour les 25-54 ans
+- Taux de temps partiel pour les 15-64 ans""",
+    response_description="Indicateurs d'emploi des femmes au niveau national")
 async def get_france_employment_rates():
+    """
+    Obtient les statistiques d'emploi des femmes au niveau national
+    """
     return employment_service.get_france_rates()
 
-@app.get("/education/schooling/commune/{code}", response_model=SchoolingResponse)
+@app.get("/education/schooling/commune/{code}",
+   response_model=SchoolingResponse,
+   summary="Obtenir les taux de scolarisation pour une commune",
+   description="""Récupère l'évolution des taux de scolarisation par tranche d'âge pour une commune sur la période 2017-2021.
+
+Les données incluent pour chaque année :
+- Pour les enfants de 2 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation
+- Pour les enfants de 3 à 5 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation""",
+   response_description="Statistiques annuelles de scolarisation pour la commune")
 async def get_commune_schooling(code: str):
-    return schooling_service.get_commune_schooling(code)
+   """
+   Obtient les taux de scolarisation pour une commune :
 
-@app.get("/education/schooling/epci/{epci}", response_model=SchoolingResponse)
+   - **code**: Code INSEE de la commune
+   """
+   return schooling_service.get_commune_schooling(code)
+
+@app.get("/education/schooling/epci/{epci}",
+   response_model=SchoolingResponse,
+   summary="Obtenir les taux de scolarisation pour un EPCI",
+   description="""Récupère l'évolution des taux de scolarisation par tranche d'âge agrégés pour un EPCI (Établissement Public de Coopération Intercommunale) sur la période 2017-2021.
+
+Les données incluent pour chaque année :
+- Pour les enfants de 2 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation
+- Pour les enfants de 3 à 5 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation""",
+   response_description="Statistiques annuelles de scolarisation agrégées pour l'EPCI")
 async def get_epci_schooling(epci: str):
-    return schooling_service.get_epci_schooling(epci)
+   """
+   Obtient les taux de scolarisation agrégés pour un EPCI :
 
-@app.get("/education/schooling/department/{dep}", response_model=SchoolingResponse)
+   - **epci**: Code de l'EPCI
+   """
+   return schooling_service.get_epci_schooling(epci)
+
+@app.get("/education/schooling/department/{dep}",
+   response_model=SchoolingResponse,
+   summary="Obtenir les taux de scolarisation pour un département",
+   description="""Récupère l'évolution des taux de scolarisation par tranche d'âge agrégés pour un département sur la période 2017-2021.
+
+Les données incluent pour chaque année :
+- Pour les enfants de 2 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation
+- Pour les enfants de 3 à 5 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation""",
+   response_description="Statistiques annuelles de scolarisation agrégées pour le département")
 async def get_department_schooling(dep: str):
-    return schooling_service.get_department_schooling(dep)
+   """
+   Obtient les taux de scolarisation agrégés pour un département :
 
-@app.get("/education/schooling/region/{reg}", response_model=SchoolingResponse)
+   - **dep**: Code du département
+   """
+   return schooling_service.get_department_schooling(dep)
+
+@app.get("/education/schooling/region/{reg}",
+   response_model=SchoolingResponse,
+   summary="Obtenir les taux de scolarisation pour une région",
+   description="""Récupère l'évolution des taux de scolarisation par tranche d'âge agrégés pour une région sur la période 2017-2021.
+
+Les données incluent pour chaque année :
+- Pour les enfants de 2 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation
+- Pour les enfants de 3 à 5 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation""",
+   response_description="Statistiques annuelles de scolarisation agrégées pour la région")
 async def get_region_schooling(reg: str):
-    return schooling_service.get_region_schooling(reg)
+   """
+   Obtient les taux de scolarisation agrégés pour une région :
 
-@app.get("/education/schooling/france", response_model=SchoolingResponse)
+   - **reg**: Code de la région
+   """
+   return schooling_service.get_region_schooling(reg)
+
+@app.get("/education/schooling/france",
+   response_model=SchoolingResponse,
+   summary="Obtenir les taux de scolarisation pour la France",
+   description="""Récupère l'évolution des taux de scolarisation par tranche d'âge au niveau national sur la période 2017-2021.
+
+Les données incluent pour chaque année :
+- Pour les enfants de 2 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation
+- Pour les enfants de 3 à 5 ans :
+ * Nombre total d'enfants
+ * Nombre d'enfants scolarisés
+ * Taux de scolarisation""",
+   response_description="Statistiques annuelles de scolarisation au niveau national")
 async def get_france_schooling():
-    return schooling_service.get_france_schooling()
+   """
+   Obtient les taux de scolarisation au niveau national
+   """
+   return schooling_service.get_france_schooling()
 
 # Routes pour les 0-2 ans
-@app.get("/families/employment/under3/commune/{code}", response_model=FamilyEmploymentResponse)
+@app.get("/families/employment/under3/commune/{code}",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour une commune",
+   description="""Récupère la distribution des situations d'emploi des familles ayant des enfants de moins de 3 ans pour une commune en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi""",
+   response_description="Distribution des situations d'emploi des familles avec leur pourcentage")
 async def get_commune_family_employment_under3(code: str):
-    return family_employment_service.get_commune_distribution(code, age_group=0)
+   """
+   Obtient la répartition des situations d'emploi pour une commune :
 
-@app.get("/families/employment/under3/epci/{epci}", response_model=FamilyEmploymentResponse)
+   - **code**: Code INSEE de la commune
+   """
+   return family_employment_service.get_commune_distribution(code, age_group=0)
+
+@app.get("/families/employment/under3/epci/{epci}",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour un EPCI",
+   description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de moins de 3 ans pour un EPCI (Établissement Public de Coopération Intercommunale) en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi""",
+   response_description="Distribution agrégée des situations d'emploi des familles avec leur pourcentage")
 async def get_epci_family_employment_under3(epci: str):
-    return family_employment_service.get_epci_distribution(epci, age_group=0)
+   """
+   Obtient la répartition agrégée des situations d'emploi pour un EPCI :
 
-@app.get("/families/employment/under3/department/{dep}", response_model=FamilyEmploymentResponse)
+   - **epci**: Code de l'EPCI
+   """
+   return family_employment_service.get_epci_distribution(epci, age_group=0)
+
+@app.get("/families/employment/under3/department/{dep}",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour un département",
+   description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de moins de 3 ans pour un département en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi""",
+   response_description="Distribution agrégée des situations d'emploi des familles avec leur pourcentage")
 async def get_department_family_employment_under3(dep: str):
-    return family_employment_service.get_department_distribution(dep, age_group=0)
+   """
+   Obtient la répartition agrégée des situations d'emploi pour un département :
 
-@app.get("/families/employment/under3/region/{reg}", response_model=FamilyEmploymentResponse)
+   - **dep**: Code du département
+   """
+   return family_employment_service.get_department_distribution(dep, age_group=0)
+
+@app.get("/families/employment/under3/region/{reg}",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour une région",
+   description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de moins de 3 ans pour une région en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi""",
+   response_description="Distribution agrégée des situations d'emploi des familles avec leur pourcentage")
 async def get_region_family_employment_under3(reg: str):
-    return family_employment_service.get_region_distribution(reg, age_group=0)
+   """
+   Obtient la répartition agrégée des situations d'emploi pour une région :
 
-@app.get("/families/employment/under3/france", response_model=FamilyEmploymentResponse)
+   - **reg**: Code de la région
+   """
+   return family_employment_service.get_region_distribution(reg, age_group=0)
+
+@app.get("/families/employment/under3/france",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour la France",
+   description="""Récupère la distribution nationale des situations d'emploi des familles ayant des enfants de moins de 3 ans en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi""",
+   response_description="Distribution nationale des situations d'emploi des familles avec leur pourcentage")
 async def get_france_family_employment_under3():
-    return family_employment_service.get_france_distribution(age_group=0)
+   """
+   Obtient la répartition des situations d'emploi au niveau national
+   """
+   return family_employment_service.get_france_distribution(age_group=0)
 
 # Routes pour les 3-5 ans
-@app.get("/families/employment/3to5/commune/{code}", response_model=FamilyEmploymentResponse)
+@app.get("/families/employment/3to5/commune/{code}",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour une commune",
+   description="""Récupère la distribution des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour une commune en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi
+
+Pour chaque situation, les données indiquent :
+- Le nombre de familles concernées
+- Le pourcentage par rapport au total des familles de la commune""",
+   response_description="Distribution des situations d'emploi des familles avec leur nombre et pourcentage")
 async def get_commune_family_employment_3to5(code: str):
-    return family_employment_service.get_commune_distribution(code, age_group=3)
+   """
+   Obtient la répartition des situations d'emploi pour une commune :
 
-@app.get("/families/employment/3to5/epci/{epci}", response_model=FamilyEmploymentResponse)
+   - **code**: Code INSEE de la commune
+   """
+   return family_employment_service.get_commune_distribution(code, age_group=3)
+
+@app.get("/families/employment/3to5/epci/{epci}",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour un EPCI",
+   description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour un EPCI (Établissement Public de Coopération Intercommunale) en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi
+
+Pour chaque situation, les données agrégées indiquent :
+- Le nombre total de familles concernées dans l'EPCI
+- Le pourcentage par rapport au total des familles de l'EPCI""",
+   response_description="Distribution agrégée des situations d'emploi des familles avec leur nombre et pourcentage")
 async def get_epci_family_employment_3to5(epci: str):
-    return family_employment_service.get_epci_distribution(epci, age_group=3)
+   """
+   Obtient la répartition agrégée des situations d'emploi pour un EPCI :
 
-@app.get("/families/employment/3to5/department/{dep}", response_model=FamilyEmploymentResponse)
+   - **epci**: Code de l'EPCI
+   """
+   return family_employment_service.get_epci_distribution(epci, age_group=3)
+
+@app.get("/families/employment/3to5/department/{dep}",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour un département",
+   description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour un département en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi
+
+Pour chaque situation, les données agrégées indiquent :
+- Le nombre total de familles concernées dans le département
+- Le pourcentage par rapport au total des familles du département""",
+   response_description="Distribution agrégée des situations d'emploi des familles avec leur nombre et pourcentage")
 async def get_department_family_employment_3to5(dep: str):
-    return family_employment_service.get_department_distribution(dep, age_group=3)
+   """
+   Obtient la répartition agrégée des situations d'emploi pour un département :
 
-@app.get("/families/employment/3to5/region/{reg}", response_model=FamilyEmploymentResponse)
+   - **dep**: Code du département
+   """
+   return family_employment_service.get_department_distribution(dep, age_group=3)
+
+@app.get("/families/employment/3to5/region/{reg}",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour une région",
+   description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour une région en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi
+
+Pour chaque situation, les données agrégées indiquent :
+- Le nombre total de familles concernées dans la région
+- Le pourcentage par rapport au total des familles de la région""",
+   response_description="Distribution agrégée des situations d'emploi des familles avec leur nombre et pourcentage")
 async def get_region_family_employment_3to5(reg: str):
-    return family_employment_service.get_region_distribution(reg, age_group=3)
+   """
+   Obtient la répartition agrégée des situations d'emploi pour une région :
 
-@app.get("/families/employment/3to5/france", response_model=FamilyEmploymentResponse)
+   - **reg**: Code de la région
+   """
+   return family_employment_service.get_region_distribution(reg, age_group=3)
+
+@app.get("/families/employment/3to5/france",
+   response_model=FamilyEmploymentResponse,
+   summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour la France",
+   description="""Récupère la distribution nationale des situations d'emploi des familles ayant des enfants de 3 à 5 ans en 2021.
+
+Les situations analysées sont :
+- Familles monoparentales :
+ * Homme actif ayant un emploi
+ * Homme sans emploi
+ * Femme active ayant un emploi
+ * Femme sans emploi
+- Couples avec enfant(s) :
+ * Deux parents actifs ayant un emploi
+ * Homme actif ayant un emploi, conjoint sans emploi
+ * Femme active ayant un emploi, conjoint sans emploi
+ * Aucun parent actif ayant un emploi
+
+Pour chaque situation, les données indiquent :
+- Le nombre total de familles concernées en France
+- Le pourcentage par rapport au total des familles en France""",
+   response_description="Distribution nationale des situations d'emploi des familles avec leur nombre et pourcentage")
 async def get_france_family_employment_3to5():
-    return family_employment_service.get_france_distribution(age_group=3)
+   """
+   Obtient la répartition des situations d'emploi au niveau national
+   """
+   return family_employment_service.get_france_distribution(age_group=3)
 
-@app.get("/families/{level}/{code}")
-async def get_families(level: str, code: str, start_year: int = None, end_year: int = None):
-    if level == "commune":
-        return family_service.get_families_by_commune(code, start_year, end_year)
-    elif level == "epci":
-        return family_service.get_families_by_epci(code, geocode_service, start_year, end_year)
-    elif level == "department":
-        return family_service.get_families_by_department(code, geocode_service, start_year, end_year)
-    elif level == "region":
-        return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
-    else:
-        raise HTTPException(status_code=404, detail=f"Level {level} not found")
+@app.get("/families/{level}/{code}",
+   summary="Obtenir l'évolution de la composition des familles par niveau géographique",
+   description="""Récupère l'évolution historique de la composition des familles depuis 2010 pour le niveau géographique choisi.
+
+Les niveaux géographiques disponibles sont :
+- commune : Données à l'échelle communale
+- epci : Données agrégées à l'échelle de l'EPCI (Établissement Public de Coopération Intercommunale)
+- department : Données agrégées à l'échelle départementale
+- region : Données agrégées à l'échelle régionale
+
+Pour chaque année, les données incluent :
+- Le nombre total de familles
+- Les couples avec enfant(s)
+- Les familles monoparentales (détail père/mère)
+- Les couples sans enfant
+
+L'évolution est calculée entre les années spécifiées (start_year et end_year) et indique pour chaque catégorie :
+- La valeur de départ
+- La valeur finale
+- Le pourcentage d'évolution
+- La période concernée""")
+async def get_families(
+   level: str,
+   code: str,
+   start_year: int = None,
+   end_year: int = None
+):
+   """
+   Obtient l'évolution de la composition des familles pour un territoire :
+
+   - **level**: Niveau géographique ('commune', 'epci', 'department' ou 'region')
+   - **code**: Code du territoire (INSEE, EPCI, département ou région)
+   - **start_year**: Année de début pour le calcul de l'évolution (optionnel, >= 2010)
+   - **end_year**: Année de fin pour le calcul de l'évolution (optionnel, <= 2021)
+   """
+   if level == "commune":
+       return family_service.get_families_by_commune(code, start_year, end_year)
+   elif level == "epci":
+       return family_service.get_families_by_epci(code, geocode_service, start_year, end_year)
+   elif level == "department":
+       return family_service.get_families_by_department(code, geocode_service, start_year, end_year)
+   elif level == "region":
+       return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
+   else:
+       raise HTTPException(status_code=404, detail=f"Level {level} not found")
