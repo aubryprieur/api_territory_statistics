@@ -724,9 +724,71 @@ async def get_france_families(
     """
     return family_service.get_families_france(start_year, end_year)
 
-@app.get("/public-safety/commune/{code}", response_model=PublicSafetyResponse)
+@app.get("/public-safety/commune/{code}",
+   response_model=PublicSafetyResponse,
+   summary="Obtenir les indicateurs de sécurité d'une commune",
+   description="""Récupère les indicateurs de sécurité publique pour une commune et ses territoires parents (département et région).
+
+Les données incluent pour chaque année :
+- Les taux d'atteintes aux personnes
+- Les taux d'atteintes aux biens
+- Les taux de violences intrafamiliales
+- Les taux d'infractions économiques et financières
+
+Les données communales sont comparées avec celles du département et de la région pour permettre une mise en perspective territoriale.""",
+   response_description="Indicateurs de sécurité communaux, départementaux et régionaux")
 async def get_commune_public_safety(code: str):
-    return public_safety_service.get_by_commune(code)
+   """
+   Obtient les indicateurs de sécurité pour une commune :
+
+   - **code**: Code INSEE de la commune
+
+   La réponse inclut :
+   - Les données de la commune
+   - Les données du département parent
+   - Les données de la région parente
+   """
+   return public_safety_service.get_by_commune(code)
+
+@app.get("/public-safety/department/{dep}",
+    response_model=PublicSafetyResponse,
+    summary="Obtenir les indicateurs de sécurité d'un département",
+    description="""Récupère les indicateurs de sécurité publique pour un département et sa région parente.
+
+Les données incluent pour chaque année :
+- Les taux d'atteintes aux personnes
+- Les taux d'atteintes aux biens
+- Les taux de violences intrafamiliales
+- Les taux d'infractions économiques et financières
+
+Les données départementales sont comparées avec celles de la région parente.""",
+    response_description="Indicateurs de sécurité départementaux et régionaux")
+async def get_department_public_safety(dep: str):
+    """
+    Obtient les indicateurs de sécurité pour un département :
+
+    - **dep**: Code du département
+    """
+    return public_safety_service.get_by_department(dep)
+
+@app.get("/public-safety/region/{reg}",
+    response_model=PublicSafetyResponse,
+    summary="Obtenir les indicateurs de sécurité d'une région",
+    description="""Récupère les indicateurs de sécurité publique pour une région.
+
+Les données incluent pour chaque année :
+- Les taux d'atteintes aux personnes
+- Les taux d'atteintes aux biens
+- Les taux de violences intrafamiliales
+- Les taux d'infractions économiques et financières""",
+    response_description="Indicateurs de sécurité régionaux")
+async def get_region_public_safety(reg: str):
+    """
+    Obtient les indicateurs de sécurité pour une région :
+
+    - **reg**: Code de la région
+    """
+    return public_safety_service.get_by_region(reg)
 
 @app.get("/employment/rates/commune/{code}", response_model=EmploymentResponse)
 async def get_commune_employment_rates(code: str):

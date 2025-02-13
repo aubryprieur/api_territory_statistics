@@ -125,8 +125,91 @@ class PublicSafetyService:
         except Exception as e:
             print(f"Erreur dans get_by_commune: {str(e)}")
             return {
-                "error": str(e),
                 "commune": {"code": code, "name": None, "data": []},
                 "department": {"code": "", "name": None, "data": []},
                 "region": {"code": "", "name": None, "data": []}
+            }
+
+    def get_by_department(self, dep: str):
+        """Récupère les données de sécurité pour un département et sa région parente"""
+        try:
+            # Récupérer le code région du département
+            geo_info = self.geo_df[self.geo_df['DEP'] == str(dep)]
+
+            if geo_info.empty:
+                return {
+                    "commune": {"code": "", "name": None, "data": []},
+                    "department": {"code": dep, "name": None, "data": []},
+                    "region": {"code": "", "name": None, "data": []}
+                }
+
+            geo_info = geo_info.iloc[0]
+            reg_code = geo_info['REG']
+
+            # Données du département
+            dep_data = self.df_department[
+                self.df_department['Code.département'] == str(dep)
+            ][['annee', 'classe', 'tauxpourmille']]
+            dep_data = self.clean_data_for_json(dep_data)
+
+            # Données de la région
+            reg_data = self.df_region[
+                self.df_region['Code.région'] == str(reg_code)
+            ][['annee', 'classe', 'tauxpourmille']]
+            reg_data = self.clean_data_for_json(reg_data)
+
+            return {
+                "commune": {"code": "", "name": None, "data": []},
+                "department": {
+                    "code": dep,
+                    "name": f"Département {dep}",
+                    "data": dep_data.to_dict(orient="records")
+                },
+                "region": {
+                    "code": reg_code,
+                    "name": f"Région {reg_code}",
+                    "data": reg_data.to_dict(orient="records")
+                }
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_by_department: {str(e)}")
+            return {
+                "commune": {"code": "", "name": None, "data": []},
+                "department": {"code": dep, "name": None, "data": []},
+                "region": {"code": "", "name": None, "data": []}
+            }
+
+    def get_by_region(self, reg: str):
+        """Récupère les données de sécurité pour une région"""
+        try:
+            # Données de la région
+            reg_data = self.df_region[
+                self.df_region['Code.région'] == str(reg)
+            ][['annee', 'classe', 'tauxpourmille']]
+            reg_data = self.clean_data_for_json(reg_data)
+
+            if reg_data.empty:
+                return {
+                    "commune": {"code": "", "name": None, "data": []},
+                    "department": {"code": "", "name": None, "data": []},
+                    "region": {"code": reg, "name": None, "data": []}
+                }
+
+            return {
+                "commune": {"code": "", "name": None, "data": []},
+                "department": {"code": "", "name": None, "data": []},
+                "region": {
+                    "code": reg,
+                    "name": f"Région {reg}",
+                    "data": reg_data.to_dict(orient="records")
+                }
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_by_region: {str(e)}")
+            return {
+                "commune": {"code": "", "name": None, "data": []},
+                "department": {"code": "", "name": None, "data": []},
+                "region": {"code": reg, "name": None, "data": []}
             }
