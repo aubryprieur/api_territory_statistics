@@ -13,7 +13,16 @@ from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
 from .services.schooling_service import SchoolingService
 from .services.family_employment_service import FamilyEmploymentService
-from .models import Population, HistoricalData, PopulationChildrenRate, PopulationChildrenEPCI, PopulationChildrenDepartment, PopulationChildrenRegion, PopulationChildrenFrance, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse, SchoolingResponse, SchoolingData, FamilyEmploymentResponse, FamilyEmploymentDistribution
+from app.models import Birth  # Uniquement le modèle SQLAlchemy
+from app.schemas import BirthSchema
+from app.schemas import (
+    Population, HistoricalData, PopulationChildrenRate, PopulationChildrenEPCI,
+    PopulationChildrenDepartment, PopulationChildrenRegion, PopulationChildrenFrance,
+    Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse,
+    EmploymentResponse, SchoolingResponse, SchoolingData,
+    FamilyEmploymentResponse, FamilyEmploymentDistribution
+)
+
 
 app = FastAPI(title="API Population")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -169,7 +178,7 @@ async def get_by_region(reg: str):
 async def get_by_department(dep: str):
    return geocode_service.get_by_department(dep)
 
-@app.get("/births/{code}", response_model=List[Birth],
+@app.get("/births/{code}", response_model=List[BirthSchema],
     summary="Obtenir les naissances par commune",
     description="Récupère les données historiques des naissances pour une commune spécifique",
     response_description="Les données de naissance annuelles pour la commune")
