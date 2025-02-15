@@ -11,6 +11,29 @@ class BirthSchema(BaseModel):
     class Config:
         orm_mode = True
 
+
+class FamilySchema(BaseModel):
+    geo_code: str
+    year: int
+    total_households: Optional[float] = None
+    single_men: Optional[float] = None
+    single_women: Optional[float] = None
+    couples_with_children: Optional[float] = None
+    single_parent_families: Optional[float] = None
+    single_fathers: Optional[float] = None
+    single_mothers: Optional[float] = None
+    couples_without_children: Optional[float] = None
+    large_families: Optional[float] = None
+    children_under_24_no_sibling: Optional[float] = None
+    children_under_24_one_sibling: Optional[float] = None
+    children_under_24_two_siblings: Optional[float] = None
+    children_under_24_three_siblings: Optional[float] = None
+    children_under_24_four_or_more_siblings: Optional[float] = None
+
+    class Config:
+        orm_mode = True
+
+
 class Population(BaseModel):
     NIVGEO: str
     CODGEO: str
@@ -121,11 +144,6 @@ class IrisRevenueResponse(BaseModel):
     commune: str
     iris_count: int
     iris_data: Dict[int, List[IrisRevenueData]]
-
-class Family(BaseModel):
-    commune: str
-    family_data: dict
-    evolution: dict
 
 class IrisData(BaseModel):
     iris_code: str
