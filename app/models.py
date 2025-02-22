@@ -44,3 +44,15 @@ class GeoCode(Base):
     dep = Column(String(5), nullable=False)  # Département
     reg = Column(String(5), nullable=False)  # Région
 
+class Schooling(Base):
+    __tablename__ = "schooling"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geo_code = Column(String(10), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    age = Column(String(3), nullable=False)  # Adapté à 3 caractères
+    sex = Column(String(1), nullable=False)
+    education_status = Column(String(1), nullable=True)
+    number = Column(Float, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
