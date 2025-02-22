@@ -56,3 +56,15 @@ class Schooling(Base):
     number = Column(Float, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class PublicSafety(Base):
+    __tablename__ = "public_safety"
+
+    id = Column(Integer, primary_key=True)
+    territory_type = Column(String(20), nullable=False, index=True)
+    territory_code = Column(String(10), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    indicator_class = Column(String(50), nullable=False)
+    rate = Column(Float, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

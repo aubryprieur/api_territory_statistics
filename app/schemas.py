@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Dict, Optional, List
+from datetime import datetime
 
 
 class BirthSchema(BaseModel):
@@ -172,10 +173,32 @@ class LargeFamilyResponse(BaseModel):
     region: Optional[str] = None
     large_families_data: Dict[int, LargeFamilyData]
 
+from pydantic import BaseModel
+from typing import Dict, Optional, List
+from datetime import datetime
+
+class PublicSafetyBase(BaseModel):
+    territory_type: str
+    territory_code: str
+    year: int
+    indicator_class: str
+    rate: float
+
+class PublicSafetyCreate(PublicSafetyBase):
+    pass
+
+class PublicSafety(PublicSafetyBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
 class PublicSafetyDataItem(BaseModel):
-    annee: int
-    classe: str
-    tauxpourmille: float
+    year: int
+    indicator_class: str
+    rate: float
 
 class GeoLevelData(BaseModel):
     code: str
