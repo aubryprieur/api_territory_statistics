@@ -68,3 +68,22 @@ class PublicSafety(Base):
     rate = Column(Float, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class Employment(Base):
+    __tablename__ = "employment"
+
+    id = Column(Integer, primary_key=True)
+    geo_code = Column(String(10), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    # Population active féminine
+    women_15_64 = Column(Float, nullable=True)
+    women_active_15_64 = Column(Float, nullable=True)
+    women_employed_15_64 = Column(Float, nullable=True)
+    # Temps partiel
+    women_employees_25_54 = Column(Float, nullable=True)
+    women_part_time_25_54 = Column(Float, nullable=True)
+    women_employees_15_64 = Column(Float, nullable=True)
+    women_part_time_15_64 = Column(Float, nullable=True)
+    # Métadonnées
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
