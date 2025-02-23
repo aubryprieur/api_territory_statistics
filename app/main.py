@@ -13,7 +13,16 @@ from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
 from .services.schooling_service import SchoolingService
 from .services.family_employment_service import FamilyEmploymentService
-from .models import Population, HistoricalData, PopulationChildrenRate, PopulationChildrenEPCI, PopulationChildrenDepartment, PopulationChildrenRegion, PopulationChildrenFrance, Birth, Revenue, Family, Childcare, LargeFamilyResponse, PublicSafetyResponse, EmploymentResponse, SchoolingResponse, SchoolingData, FamilyEmploymentResponse, FamilyEmploymentDistribution
+from app.models import Birth  # Uniquement le modèle SQLAlchemy
+from app.schemas import BirthSchema, FamilySchema
+from app.schemas import (
+    Population, HistoricalData, PopulationChildrenRate, PopulationChildrenEPCI,
+    PopulationChildrenDepartment, PopulationChildrenRegion, PopulationChildrenFrance,
+    Revenue, Childcare, LargeFamilyResponse, PublicSafetyResponse,
+    EmploymentResponse, SchoolingResponse, SchoolingData,
+    FamilyEmploymentResponse, FamilyEmploymentDistribution
+)
+
 
 app = FastAPI(title="API Population")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -169,7 +178,7 @@ async def get_by_region(reg: str):
 async def get_by_department(dep: str):
    return geocode_service.get_by_department(dep)
 
-@app.get("/births/{code}", response_model=List[Birth],
+@app.get("/births/{code}", response_model=List[BirthSchema],
     summary="Obtenir les naissances par commune",
     description="Récupère les données historiques des naissances pour une commune spécifique",
     response_description="Les données de naissance annuelles pour la commune")
@@ -647,7 +656,7 @@ async def get_epci_families(
     - **start_year**: Année de début (optionnel, >= 2010)
     - **end_year**: Année de fin (optionnel, <= 2021)
     """
-    return family_service.get_families_by_epci(epci, geocode_service, start_year, end_year)
+    return family_service.get_families_by_epci(epci, start_year, end_year)
 
 @app.get("/families/department/{dep}",
     summary="Obtenir les statistiques des familles pour un département",
@@ -672,7 +681,7 @@ async def get_department_families(
     - **start_year**: Année de début (optionnel, >= 2010)
     - **end_year**: Année de fin (optionnel, <= 2021)
     """
-    return family_service.get_families_by_department(dep, geocode_service, start_year, end_year)
+    return family_service.get_families_by_department(dep, start_year, end_year)
 
 @app.get("/families/region/{reg}",
     summary="Obtenir les statistiques des familles pour une région",
@@ -697,7 +706,7 @@ async def get_region_families(
     - **start_year**: Année de début (optionnel, >= 2010)
     - **end_year**: Année de fin (optionnel, <= 2021)
     """
-    return family_service.get_families_by_region(reg, geocode_service, start_year, end_year)
+    return family_service.get_families_by_region(reg, start_year, end_year)
 
 @app.get("/families/france",
     summary="Obtenir les statistiques des familles pour la France entière",

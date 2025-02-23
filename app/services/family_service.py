@@ -1,300 +1,176 @@
-import pandas as pd
-from pathlib import Path
+import math
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from app.database import SessionLocal
+from app.models import Family, GeoCode
+
 
 class FamilyService:
     def __init__(self):
-        self.dfs = {}
-        self.dfs_iris = {}
-        # Charger les données communes
-        for year in range(2010, 2022):
-            try:
-                self.dfs[year] = pd.read_csv(
-                    Path(f"data/families/commune/base-cc-coupl-fam-men-{year}.CSV"),
-                    delimiter=";",
-                    encoding="utf-8",
-                    low_memory=False
-                )
-            except FileNotFoundError:
-                continue
+        """ Initialise la connexion à la base de données """
+        self.db = SessionLocal()
 
-        # Charger les données IRIS (2017-2021)
-        for year in range(2017, 2022):
-            try:
-                self.dfs_iris[year] = pd.read_csv(
-                    Path(f"data/families/iris/base-ic-couples-familles-menages-{year}.CSV"),
-                    delimiter=";",
-                    encoding="utf-8",
-                    low_memory=False
-                )
-            except FileNotFoundError:
-                continue
+    def close(self):
+        """ Ferme la session de base de données proprement """
+        self.db.close()
 
-    def _calculate_percentages(self, total, couples_children, single_parent, single_father, single_mother, couples_no_children):
-        return {
-            "total_families": total,
-            "couples_with_children": {
-                "count": couples_children,
-                "percentage": round((couples_children / total * 100), 1) if total > 0 else 0
-            },
-            "single_parent": {
-                "count": single_parent,
-                "percentage": round((single_parent / total * 100), 1) if total > 0 else 0
-            },
-            "single_father": {
-                "count": single_father,
-                "percentage": round((single_father / total * 100), 1) if total > 0 else 0
-            },
-            "single_mother": {
-                "count": single_mother,
-                "percentage": round((single_mother / total * 100), 1) if total > 0 else 0
-            },
-            "couples_without_children": {
-                "count": couples_no_children,
-                "percentage": round((couples_no_children / total * 100), 1) if total > 0 else 0
-            }
-        }
-
-    def _calculate_evolution(self, data, start_year=None, end_year=None):
-       years = sorted(data.keys())
-       start_year = start_year or years[0]
-       end_year = end_year or years[-1]
-
-       if start_year not in years or end_year not in years:
-           return {"error": f"Years must be between {years[0]} and {years[-1]}"}
-
-       evolutions = {}
-       metrics = ["total_families", "couples_with_children", "single_parent",
-                 "single_father", "single_mother", "couples_without_children"]
-
-       for metric in metrics:
-           value_start = data[start_year][metric]["count"] if metric != "total_families" else data[start_year][metric]
-           value_end = data[end_year][metric]["count"] if metric != "total_families" else data[end_year][metric]
-
-           evolution = round(((value_end - value_start) / value_start * 100), 1) if value_start > 0 else 0
-           evolutions[metric] = {
-               "start_value": value_start,
-               "end_value": value_end,
-               "evolution_percentage": evolution,
-               "period": f"{start_year}-{end_year}"
-           }
-
-       return evolutions
-
-    # Modifier chaque méthode pour inclure l'évolution :
-
-    def get_families_by_commune(self, code: str, start_year: int = None, end_year: int = None):
+    def _safe_float(self, value):
+        """Convertit une valeur en float de manière sécurisée"""
         try:
-            data = self._get_data_for_commune(code)
-            evolutions = self._calculate_evolution(data, start_year, end_year)
-            return {
-                "commune": code,
-                "family_data": data,
-                "evolution": evolutions
-            }
-        except Exception as e:
-            return {"error": str(e)}
+            if value is None:
+                return 0.0
+            float_val = float(value)
+            if math.isnan(float_val) or math.isinf(float_val):
+                return 0.0
+            return float_val
+        except (TypeError, ValueError):
+            return 0.0
 
-    def get_families_by_epci(self, epci: str, geocode_service, start_year: int = None, end_year: int = None):
+    def get_families_by_commune(self, geo_code: str, start_year: int = None, end_year: int = None):
+        """ Récupère les données des familles pour une commune donnée """
         try:
-            data = self._get_data_for_epci(epci, geocode_service)
-            evolutions = self._calculate_evolution(data, start_year, end_year)
-            return {
-                "epci": epci,
-                "family_data": data,
-                "evolution": evolutions
-            }
-        except Exception as e:
+            results = self.db.query(Family).filter(Family.geo_code == geo_code).all()
+            return self._format_response(results, start_year, end_year)
+        except SQLAlchemyError as e:
             return {"error": str(e)}
+        finally:
+            self.close()
 
-    def get_families_by_department(self, dep: str, geocode_service, start_year: int = None, end_year: int = None):
+    def get_families_by_epci(self, epci: str, start_year: int = None, end_year: int = None):
+        """ Récupère les données agrégées par EPCI """
         try:
-            data = self._get_data_for_department(dep, geocode_service)
-            evolutions = self._calculate_evolution(data, start_year, end_year)
-            return {
-                "department": dep,
-                "family_data": data,
-                "evolution": evolutions
-            }
-        except Exception as e:
-            return {"error": str(e)}
+            # Connexion à la base de données
+            db = SessionLocal()
 
-    def get_families_by_region(self, reg: str, geocode_service, start_year: int = None, end_year: int = None):
-        try:
-            data = self._get_data_for_region(reg, geocode_service)
-            evolutions = self._calculate_evolution(data, start_year, end_year)
-            return {
-                "region": reg,
-                "family_data": data,
-                "evolution": evolutions
-            }
-        except Exception as e:
+            # Récupérer toutes les communes de l'EPCI
+            communes = [geo.codgeo for geo in db.query(GeoCode).filter(GeoCode.epci == epci).all()]
+            if not communes:
+                return {"error": "Aucune commune trouvée pour cet EPCI"}
+
+            # Récupérer les données des familles pour toutes les communes de l'EPCI
+            results = db.query(Family).filter(Family.geo_code.in_(communes)).all()
+
+            return self._format_response(results, start_year, end_year)
+        except SQLAlchemyError as e:
             return {"error": str(e)}
+        finally:
+            db.close()
+
+    def get_families_by_department(self, dep: str, start_year: int = None, end_year: int = None):
+        """ Récupère les données agrégées par département """
+        try:
+            # Connexion à la base de données
+            db = SessionLocal()
+
+            # Récupérer toutes les communes du département
+            communes = [geo.codgeo for geo in db.query(GeoCode).filter(GeoCode.dep == dep).all()]
+            if not communes:
+                return {"error": "Aucune commune trouvée pour ce département"}
+
+            # Récupérer les données des familles pour toutes les communes du département
+            results = db.query(Family).filter(Family.geo_code.in_(communes)).all()
+
+            return self._format_response(results, start_year, end_year)
+        except SQLAlchemyError as e:
+            return {"error": str(e)}
+        finally:
+            db.close()
+
+    def get_families_by_region(self, reg: str, start_year: int = None, end_year: int = None):
+        """ Récupère les données agrégées par région """
+        try:
+            db = SessionLocal()
+
+            # Le reg est maintenant comparé en tant que string
+            communes = [geo.codgeo for geo in db.query(GeoCode).filter(GeoCode.reg == str(reg)).all()]
+            if not communes:
+                return {"error": "Aucune commune trouvée pour cette région"}
+
+            results = db.query(Family).filter(Family.geo_code.in_(communes)).all()
+            return self._format_response(results, start_year, end_year)
+        except SQLAlchemyError as e:
+            return {"error": str(e)}
+        finally:
+            db.close()
 
     def get_families_france(self, start_year: int = None, end_year: int = None):
+        """ Récupère les données agrégées pour toute la France """
         try:
-            data = self._get_data_for_france()
-            evolutions = self._calculate_evolution(data, start_year, end_year)
-            return {
-                "family_data": data,
-                "evolution": evolutions
-            }
-        except Exception as e:
+            results = self.db.query(Family).all()
+            return self._format_response(results, start_year, end_year)
+        except SQLAlchemyError as e:
             return {"error": str(e)}
+        finally:
+            self.close()
 
-    # Méthodes helpers pour extraire les données par niveau géographique
+    def _format_response(self, results, start_year=None, end_year=None):
+        """Formate les résultats et calcule l'évolution si nécessaire"""
+        if not results:
+            return {"error": "Aucune donnée disponible"}
 
-    def _get_data_for_commune(self, code: str):
-     data = {}
-     for year in sorted(self.dfs.keys()):
-         suffix = str(year)[2:]
-         commune_data = self.dfs[year][self.dfs[year]["CODGEO"] == str(code)]
-         if not commune_data.empty:
-             data[year] = self._extract_year_data(commune_data, suffix)
-     return data
+        # Organisation des données par année
+        data_by_year = {}
+        for f in results:
+            if f.year not in data_by_year:
+                data_by_year[f.year] = {
+                    "total_families": 0.0,
+                    "couples_with_children": 0.0,
+                    "single_parent_families": 0.0,
+                    "single_fathers": 0.0,
+                    "single_mothers": 0.0,
+                    "couples_without_children": 0.0
+                }
 
-    def _get_data_for_epci(self, epci: str, geocode_service):
-        data = {}
-        years = sorted(self.dfs.keys())
-        for year in years:
+            # Utiliser _safe_float pour les valeurs
+            data_by_year[f.year]["total_families"] += self._safe_float(f.total_households)
+            data_by_year[f.year]["couples_with_children"] += self._safe_float(f.couples_with_children)
+            data_by_year[f.year]["single_parent_families"] += self._safe_float(f.single_parent_families)
+            data_by_year[f.year]["single_fathers"] += self._safe_float(f.single_fathers)
+            data_by_year[f.year]["single_mothers"] += self._safe_float(f.single_mothers)
+            data_by_year[f.year]["couples_without_children"] += self._safe_float(f.couples_without_children)
+
+        # Calcul des évolutions si demandé
+        evolution = self._calculate_evolution(data_by_year, start_year, end_year)
+
+        return {
+            "family_data": data_by_year,
+            "evolution": evolution
+        }
+
+    def _calculate_evolution(self, data, start_year, end_year):
+        """Calcule l'évolution des familles entre deux années"""
+        years = sorted(data.keys())
+        if not years:
+            return {"error": "Aucune donnée disponible pour l'évolution"}
+
+        start_year = start_year or years[0]
+        end_year = end_year or years[-1]
+
+        if start_year not in years or end_year not in years:
+            return {"error": f"Les années doivent être comprises entre {years[0]} et {years[-1]}"}
+
+        evolutions = {}
+        metrics = ["total_families", "couples_with_children", "single_parent_families",
+                  "single_fathers", "single_mothers", "couples_without_children"]
+
+        for metric in metrics:
             try:
-                suffix = str(year)[2:]
-                communes = geocode_service.df[geocode_service.df["EPCI"] == epci]["CODGEO"].tolist()
-                epci_data = self.dfs[year][self.dfs[year]["CODGEO"].isin(communes)]
-                if not epci_data.empty:
-                    data[year] = self._extract_year_data(epci_data, suffix, sum_data=True)
-            except KeyError:
-                continue
-        return data
+                value_start = self._safe_float(data[start_year][metric])
+                value_end = self._safe_float(data[end_year][metric])
 
-    def _get_data_for_department(self, dep: str, geocode_service):
-     data = {}
-     for year in sorted(self.dfs.keys()):
-         suffix = str(year)[2:]
-         communes = geocode_service.df[geocode_service.df["DEP"] == dep]["CODGEO"].tolist()
-         dep_data = self.dfs[year][self.dfs[year]["CODGEO"].isin(communes)]
-         data[year] = self._extract_year_data(dep_data, suffix, sum_data=True)
-     return data
+                if value_start > 0:
+                    evolution = ((value_end - value_start) / value_start * 100)
+                    evolution = round(self._safe_float(evolution), 1)
+                else:
+                    evolution = 0.0
+            except:
+                evolution = 0.0
 
-    def _get_data_for_region(self, reg: str, geocode_service):
-     data = {}
-     for year in sorted(self.dfs.keys()):
-         suffix = str(year)[2:]
-         communes = geocode_service.df[geocode_service.df["REG"] == float(reg)]["CODGEO"].tolist()
-         reg_data = self.dfs[year][self.dfs[year]["CODGEO"].isin(communes)]
-         data[year] = self._extract_year_data(reg_data, suffix, sum_data=True)
-     return data
-
-    def _get_data_for_france(self):
-     data = {}
-     for year in sorted(self.dfs.keys()):
-         suffix = str(year)[2:]
-         data[year] = self._extract_year_data(self.dfs[year], suffix, sum_data=True)
-     return data
-
-    def _extract_year_data(self, df, suffix, sum_data=False):
-     if sum_data:
-         total_families = float(df[f"C{suffix}_FAM"].sum())
-         couples_with_children = float(df[f"C{suffix}_COUPAENF"].sum())
-         single_parent = float(df[f"C{suffix}_FAMMONO"].sum())
-         single_father = float(df[f"C{suffix}_HMONO"].sum())
-         single_mother = float(df[f"C{suffix}_FMONO"].sum())
-         couples_without_children = float(df[f"C{suffix}_COUPSENF"].sum())
-     else:
-         total_families = float(df[f"C{suffix}_FAM"].iloc[0])
-         couples_with_children = float(df[f"C{suffix}_COUPAENF"].iloc[0])
-         single_parent = float(df[f"C{suffix}_FAMMONO"].iloc[0])
-         single_father = float(df[f"C{suffix}_HMONO"].iloc[0])
-         single_mother = float(df[f"C{suffix}_FMONO"].iloc[0])
-         couples_without_children = float(df[f"C{suffix}_COUPSENF"].iloc[0])
-
-     return self._calculate_percentages(
-         total_families, couples_with_children, single_parent,
-         single_father, single_mother, couples_without_children
-     )
-
-    def get_iris_families_by_commune(self, commune: str, geocode_service):
-        try:
-            iris_codes = set(geocode_service.iris_geo[geocode_service.iris_geo["DEPCOM"] == str(commune)]["CODE_IRIS"])
-            data = {}
-
-            for year in range(2017, 2022):
-                suffix = str(year)[2:]
-                iris_df = self.dfs_iris[year]
-                commune_data = iris_df[iris_df["COM"] == str(commune)]
-                iris_data = {}
-
-                for iris in iris_codes:
-                    iris_row = commune_data[commune_data["IRIS"] == iris]
-                    if not iris_row.empty:
-                        total_families = float(iris_row[f"C{suffix}_FAM"].iloc[0])
-                        couples_with_children = float(iris_row[f"C{suffix}_COUPAENF"].iloc[0])
-                        single_parent = float(iris_row[f"C{suffix}_FAMMONO"].iloc[0])
-                        couples_without_children = float(iris_row[f"C{suffix}_COUPSENF"].iloc[0])
-                        iris_name = geocode_service.iris_geo[
-                            geocode_service.iris_geo["CODE_IRIS"] == iris
-                        ]["LIB_IRIS"].iloc[0]
-                        iris_data[iris] = {
-                            "iris_name": iris_name,
-                            "data": {
-                                "total_families": total_families,
-                                "couples_with_children": {
-                                    "count": couples_with_children,
-                                    "percentage": round((couples_with_children / total_families * 100), 1) if total_families > 0 else 0
-                                },
-                                "single_parent": {
-                                    "count": single_parent,
-                                    "percentage": round((single_parent / total_families * 100), 1) if total_families > 0 else 0
-                                },
-                                "couples_without_children": {
-                                    "count": couples_without_children,
-                                    "percentage": round((couples_without_children / total_families * 100), 1) if total_families > 0 else 0
-                                }
-                            }
-                        }
-                if iris_data:
-                    data[year] = iris_data
-
-            evolutions = {}
-            for iris in iris_codes:
-                try:
-                    yearly_data = {
-                        year: data[year][iris]["data"]
-                        for year in data.keys()
-                        if iris in data[year]
-                    }
-                    if yearly_data:
-                        metrics = ["total_families", "couples_with_children", "single_parent", "couples_without_children"]
-                        evolution_data = {}
-                        start_year = min(yearly_data.keys())
-                        end_year = max(yearly_data.keys())
-
-                        for metric in metrics:
-                            if metric == "total_families":
-                                start_value = yearly_data[start_year][metric]
-                                end_value = yearly_data[end_year][metric]
-                            else:
-                                start_value = yearly_data[start_year][metric]["count"]
-                                end_value = yearly_data[end_year][metric]["count"]
-
-                            evolution = round(((end_value - start_value) / start_value * 100), 1) if start_value > 0 else 0
-                            evolution_data[metric] = {
-                                "start_value": start_value,
-                                "end_value": end_value,
-                                "evolution_percentage": evolution,
-                                "period": f"{start_year}-{end_year}"
-                            }
-
-                        evolutions[iris] = evolution_data
-                except Exception as e:
-                    print(f"Erreur évolution pour IRIS {iris}: {str(e)}")
-                    continue
-
-            return {
-                "commune": commune,
-                "iris_count": len(iris_codes),
-                "iris_data": data,
-                "evolution": evolutions
+            evolutions[metric] = {
+                "start_value": value_start,
+                "end_value": value_end,
+                "evolution_percentage": evolution,
+                "period": f"{start_year}-{end_year}"
             }
-        except Exception as e:
-            print(f"Erreur détaillée: {str(e)}")
-            return {"error": str(e)}
+
+        return evolutions

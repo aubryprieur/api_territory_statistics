@@ -1,212 +1,89 @@
-from pydantic import BaseModel
-from typing import Dict, Optional, List
+from sqlalchemy import Column, Integer, String, Float, DateTime, func
+from app.database import Base
 
-class Population(BaseModel):
-    NIVGEO: str
-    CODGEO: str
-    LIBGEO: str
-    SEXE: int
-    AGED100: int
-    NB: float
+class Birth(Base):
+    __tablename__ = "births"
 
-class HistoricalData(BaseModel):
-    CODGEO: str
-    P21_POP: float
-    P15_POP: float
-    P10_POP: float
-    D99_POP: float
-    D90_POP: float
-    D82_POP: float
-    D75_POP: float
-    D68_POP: float
+    id = Column(Integer, primary_key=True, index=True)
+    geo = Column(String, nullable=False)
+    geo_object = Column(String, nullable=False)
+    time_period = Column(Integer, nullable=False)
+    obs_value = Column(Float, nullable=False)
 
-class PopulationChildrenRate(BaseModel):
-    total_population: float
-    children_under_3: float
-    children_3_to_5: float
-    under_3_rate: float
-    three_to_five_rate: float
+class Family(Base):
+    __tablename__ = "families"
 
-class PopulationChildrenEPCI(BaseModel):
-    epci: str
-    epci_name: str
-    total_population: float
-    children_under_3: float
-    children_3_to_5: float
-    under_3_rate: float
-    three_to_five_rate: float
-    communes_count: int
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geo_code = Column(String(10), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    total_households = Column(Float, nullable=True)
+    single_men = Column(Float, nullable=True)
+    single_women = Column(Float, nullable=True)
+    couples_with_children = Column(Float, nullable=True)
+    single_parent_families = Column(Float, nullable=True)
+    single_fathers = Column(Float, nullable=True)
+    single_mothers = Column(Float, nullable=True)
+    couples_without_children = Column(Float, nullable=True)
+    large_families = Column(Float, nullable=True)
+    children_under_24_no_sibling = Column(Float, nullable=True)
+    children_under_24_one_sibling = Column(Float, nullable=True)
+    children_under_24_two_siblings = Column(Float, nullable=True)
+    children_under_24_three_siblings = Column(Float, nullable=True)
+    children_under_24_four_or_more_siblings = Column(Float, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-class PopulationChildrenDepartment(BaseModel):
-    department: str
-    total_population: float
-    children_under_3: float
-    children_3_to_5: float
-    under_3_rate: float
-    three_to_five_rate: float
-    communes_count: int
 
-class PopulationChildrenRegion(BaseModel):
-    region: str
-    total_population: float
-    children_under_3: float
-    children_3_to_5: float
-    under_3_rate: float
-    three_to_five_rate: float
-    communes_count: int
-    departments_count: int
+class GeoCode(Base):
+    __tablename__ = "geo_codes"
 
-class PopulationChildrenFrance(BaseModel):
-    total_population: float
-    children_under_3: float
-    children_3_to_5: float
-    under_3_rate: float
-    three_to_five_rate: float
-    communes_count: int
-    departments_count: int
-    regions_count: int
+    codgeo = Column(String(10), primary_key=True, index=True)  # Code commune
+    libgeo = Column(String, nullable=False)  # Nom de la commune
+    epci = Column(String(20), nullable=True)  # Code EPCI
+    libepci = Column(String, nullable=True)  # Nom de l'EPCI
+    dep = Column(String(5), nullable=False)  # Département
+    reg = Column(String(5), nullable=False)  # Région
 
-class Birth(BaseModel):
-   GEO: str
-   GEO_OBJECT: str
-   FREQ: str
-   EC_MEASURE: str
-   TIME_PERIOD: int
-   OBS_VALUE: float
+class Schooling(Base):
+    __tablename__ = "schooling"
 
-class GeoCode(BaseModel):
-    CODE: str
-    LIBELLE: str
-    TYPE: str
-    REG: str
-    DEP: str
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geo_code = Column(String(10), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    age = Column(String(3), nullable=False)  # Adapté à 3 caractères
+    sex = Column(String(1), nullable=False)
+    education_status = Column(String(1), nullable=True)
+    number = Column(Float, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-class RevenueData(BaseModel):
-    median_revenues: Dict[int, Optional[float]]
-    poverty_rates: Dict[int, Optional[float]]
+class PublicSafety(Base):
+    __tablename__ = "public_safety"
 
-class Revenue(BaseModel):
-    commune: str
-    median_revenues: Dict[int, Optional[float]]
-    poverty_rates: Dict[int, Optional[float]]
+    id = Column(Integer, primary_key=True)
+    territory_type = Column(String(20), nullable=False, index=True)
+    territory_code = Column(String(10), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    indicator_class = Column(String(50), nullable=False)
+    rate = Column(Float, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-class RevenueEPCI(BaseModel):
-    epci: str
-    median_revenues: Dict[int, Optional[float]]
-    poverty_rates: Dict[int, Optional[float]]
+class Employment(Base):
+    __tablename__ = "employment"
 
-class RevenueDepartment(BaseModel):
-    department: str
-    median_revenues: Dict[int, Optional[float]]
-    poverty_rates: Dict[int, Optional[float]]
-
-class RevenueRegion(BaseModel):
-    region: str
-    median_revenues: Dict[int, Optional[float]]
-    poverty_rates: Dict[int, Optional[float]]
-
-class RevenueFrance(BaseModel):
-    median_revenues: Dict[int, Optional[float]]
-    poverty_rates: Dict[int, Optional[float]]
-
-class IrisRevenueData(BaseModel):
-    iris_code: str
-    iris_name: str
-    median: float
-    poverty_rate: float
-
-class IrisRevenueResponse(BaseModel):
-    commune: str
-    iris_count: int
-    iris_data: Dict[int, List[IrisRevenueData]]
-
-class Family(BaseModel):
-    commune: str
-    family_data: dict
-    evolution: dict
-
-class IrisData(BaseModel):
-    iris_code: str
-    iris_name: str
-    data: dict
-
-class Childcare(BaseModel):
-    coverage_rates: Dict[str, float]
-    evolution: Optional[Dict] = None
-    commune_name: Optional[str] = None
-    epci: Optional[Dict] = None
-    department: Optional[Dict] = None
-    region: Optional[Dict] = None
-
-class LargeFamilyData(BaseModel):
-    total_families: float
-    families_with_3_children: float
-    families_with_4_plus_children: float
-    total_large_families: float
-    large_families_percentage: float
-
-class LargeFamilyResponse(BaseModel):
-    commune: Optional[str] = None
-    epci: Optional[str] = None
-    department: Optional[str] = None
-    region: Optional[str] = None
-    large_families_data: Dict[int, LargeFamilyData]
-
-class PublicSafetyDataItem(BaseModel):
-    annee: int
-    classe: str
-    tauxpourmille: float
-
-class GeoLevelData(BaseModel):
-    code: str
-    name: Optional[str]
-    data: List[PublicSafetyDataItem]
-
-class PublicSafetyResponse(BaseModel):
-    commune: GeoLevelData
-    department: GeoLevelData
-    region: GeoLevelData
-
-class EmploymentRates(BaseModel):
-    activity_rate: float
-    employment_rate: float
-    part_time_rate_25_54: float
-    part_time_rate_15_64: float
-
-class EmploymentResponse(BaseModel):
-    territory_type: str
-    code: str
-    name: str
-    rates: EmploymentRates
-
-class SchoolingData(BaseModel):
-    # Pour les 2 ans
-    total_children_2y: float
-    schooled_children_2y: float
-    schooling_rate_2y: float
-    # Pour les 3-5 ans
-    total_children_3_5y: float
-    schooled_children_3_5y: float
-    schooling_rate_3_5y: float
-
-class SchoolingResponse(BaseModel):
-    territory_type: str
-    code: str
-    name: str
-    data: Dict[int, SchoolingData]
-
-class FamilyTypeDistribution(BaseModel):
-    code: str
-    count: float
-    percentage: float
-
-class FamilyEmploymentDistribution(BaseModel):
-    total_count: float
-    distributions: Dict[str, FamilyTypeDistribution]
-    age_group: str
-
-class FamilyEmploymentResponse(BaseModel):
-    territory_type: str
-    code: str
-    name: str
-    data: Dict[int, FamilyEmploymentDistribution]
+    id = Column(Integer, primary_key=True)
+    geo_code = Column(String(10), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    # Population active féminine
+    women_15_64 = Column(Float, nullable=True)
+    women_active_15_64 = Column(Float, nullable=True)
+    women_employed_15_64 = Column(Float, nullable=True)
+    # Temps partiel
+    women_employees_25_54 = Column(Float, nullable=True)
+    women_part_time_25_54 = Column(Float, nullable=True)
+    women_employees_15_64 = Column(Float, nullable=True)
+    women_part_time_15_64 = Column(Float, nullable=True)
+    # Métadonnées
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

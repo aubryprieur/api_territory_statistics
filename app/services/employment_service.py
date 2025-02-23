@@ -1,49 +1,21 @@
-import pandas as pd
-from pathlib import Path
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from typing import Dict
+from app.database import SessionLocal
+from app.models import Employment, GeoCode
 
 class EmploymentService:
     def __init__(self):
-        # Chargement du fichier de géographie
-        try:
-            self.geo_df = pd.read_csv(
-                Path("data/geography/COG_au_01-01-2024.csv"),
-                delimiter=";",
-                encoding="utf-8",
-                dtype={"CODGEO": str, "DEP": str, "REG": str, "EPCI": str},
-                usecols=["CODGEO", "DEP", "REG", "EPCI", "LIBGEO"]
-            )
-        except Exception as e:
-            print(f"Erreur lors du chargement des données géographiques: {str(e)}")
-            self.geo_df = pd.DataFrame()
+        self.db = SessionLocal()
 
-        # Charger les données d'emploi et de population active
-        try:
-            self.df_active = pd.read_csv(
-                Path("data/employment/activity/base-cc-emploi-pop-active-2021.CSV"),
-                delimiter=";",
-                encoding="utf-8",
-                dtype={"CODGEO": str}
-            )
-        except Exception as e:
-            print(f"Erreur lors du chargement des données de population active: {str(e)}")
-            self.df_active = pd.DataFrame()
+    def close(self):
+        """Ferme la connexion à la base de données"""
+        self.db.close()
 
-        # Charger les données des caractéristiques d'emploi
+    def calculate_rates(self, data: list) -> Dict:
+        """Calcule tous les taux à partir des données"""
         try:
-            self.df_caract = pd.read_csv(
-                Path("data/employment/characteristics/base-cc-caract_emp-2021.CSV"),
-                delimiter=";",
-                encoding="utf-8",
-                dtype={"CODGEO": str}
-            )
-        except Exception as e:
-            print(f"Erreur lors du chargement des caractéristiques d'emploi: {str(e)}")
-            self.df_caract = pd.DataFrame()
-
-    def calculate_rates(self, active_data, caract_data):
-        """Calcule tous les taux"""
-        try:
-            if active_data.empty or caract_data.empty:
+            if not data:
                 return {
                     "activity_rate": 0,
                     "employment_rate": 0,
@@ -51,31 +23,26 @@ class EmploymentService:
                     "part_time_rate_15_64": 0
                 }
 
-            # Taux d'activité des femmes (actifs / population totale)
-            women_active = active_data['P21_FACT1564'].sum()
-            women_total = active_data['P21_F1564'].sum()
+            # Agréger les données
+            women_total = sum(d.women_15_64 or 0 for d in data)
+            women_active = sum(d.women_active_15_64 or 0 for d in data)
+            women_employed = sum(d.women_employed_15_64 or 0 for d in data)
+            women_part_time_25_54 = sum(d.women_part_time_25_54 or 0 for d in data)
+            women_total_25_54 = sum(d.women_employees_25_54 or 0 for d in data)
+            women_part_time_15_64 = sum(d.women_part_time_15_64 or 0 for d in data)
+            women_total_15_64 = sum(d.women_employees_15_64 or 0 for d in data)
+
+            # Calculer les taux
             activity_rate = (women_active / women_total * 100) if women_total > 0 else 0
-
-            # Taux d'emploi des femmes (actifs occupés / population totale)
-            women_employed = active_data['P21_FACTOCC1564'].sum()
             employment_rate = (women_employed / women_total * 100) if women_total > 0 else 0
-
-            # Taux de temps partiel des femmes salariées
-            # Pour les 25-54 ans
-            women_part_time_25_54 = caract_data['P21_FSAL2554_TP'].sum()
-            women_total_25_54 = caract_data['P21_FSAL2554'].sum()
             part_time_rate_25_54 = (women_part_time_25_54 / women_total_25_54 * 100) if women_total_25_54 > 0 else 0
-
-            # Pour les 15-64 ans
-            women_part_time_15_64 = caract_data['P21_FSAL1564_TP'].sum()
-            women_total_15_64 = caract_data['P21_FSAL1564'].sum()
             part_time_rate_15_64 = (women_part_time_15_64 / women_total_15_64 * 100) if women_total_15_64 > 0 else 0
 
             return {
-                "activity_rate": round(float(activity_rate), 1),
-                "employment_rate": round(float(employment_rate), 1),
-                "part_time_rate_25_54": round(float(part_time_rate_25_54), 1),
-                "part_time_rate_15_64": round(float(part_time_rate_15_64), 1)
+                "activity_rate": round(float(activity_rate), 2),
+                "employment_rate": round(float(employment_rate), 2),
+                "part_time_rate_25_54": round(float(part_time_rate_25_54), 2),
+                "part_time_rate_15_64": round(float(part_time_rate_15_64), 2)
             }
         except Exception as e:
             print(f"Erreur dans calculate_rates: {str(e)}")
@@ -84,11 +51,9 @@ class EmploymentService:
     def get_commune_rates(self, code: str):
         """Récupère les taux pour une commune"""
         try:
-            commune_active = self.df_active[self.df_active['CODGEO'] == str(code)]
-            commune_caract = self.df_caract[self.df_caract['CODGEO'] == str(code)]
-            geo_info = self.geo_df[self.geo_df['CODGEO'] == str(code)]
-
-            if geo_info.empty:
+            # Récupérer les informations géographiques
+            geo_info = self.db.query(GeoCode).filter(GeoCode.codgeo == str(code)).first()
+            if not geo_info:
                 return {
                     "territory_type": "commune",
                     "code": code,
@@ -101,11 +66,14 @@ class EmploymentService:
                     }
                 }
 
-            rates = self.calculate_rates(commune_active, commune_caract)
+            # Récupérer les données d'emploi
+            data = self.db.query(Employment).filter(Employment.geo_code == str(code)).all()
+            rates = self.calculate_rates(data)
+
             return {
                 "territory_type": "commune",
                 "code": code,
-                "name": geo_info.iloc[0]['LIBGEO'],
+                "name": geo_info.libgeo,
                 "rates": rates
             }
         except Exception as e:
@@ -121,19 +89,38 @@ class EmploymentService:
                     "part_time_rate_15_64": 0
                 }
             }
+        finally:
+            self.close()
 
     def get_epci_rates(self, epci: str):
         """Récupère les taux pour un EPCI"""
         try:
-            communes = self.geo_df[self.geo_df['EPCI'] == str(epci)]['CODGEO'].tolist()
-            epci_active = self.df_active[self.df_active['CODGEO'].isin(communes)]
-            epci_caract = self.df_caract[self.df_caract['CODGEO'].isin(communes)]
+            # Récupérer les communes de l'EPCI
+            communes = self.db.query(GeoCode.codgeo).filter(GeoCode.epci == str(epci)).all()
+            if not communes:
+                return {
+                    "territory_type": "epci",
+                    "code": epci,
+                    "name": "EPCI inconnu",
+                    "rates": {
+                        "activity_rate": 0,
+                        "employment_rate": 0,
+                        "part_time_rate_25_54": 0,
+                        "part_time_rate_15_64": 0
+                    }
+                }
 
-            rates = self.calculate_rates(epci_active, epci_caract)
+            commune_codes = [c[0] for c in communes]
+            data = self.db.query(Employment).filter(Employment.geo_code.in_(commune_codes)).all()
+            rates = self.calculate_rates(data)
+
+            epci_name = self.db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+            name = epci_name[0] if epci_name else f"EPCI {epci}"
+
             return {
                 "territory_type": "epci",
                 "code": epci,
-                "name": f"EPCI {epci}",
+                "name": name,
                 "rates": rates
             }
         except Exception as e:
@@ -149,15 +136,31 @@ class EmploymentService:
                     "part_time_rate_15_64": 0
                 }
             }
+        finally:
+            self.close()
 
     def get_department_rates(self, dep: str):
         """Récupère les taux pour un département"""
         try:
-            communes = self.geo_df[self.geo_df['DEP'] == str(dep)]['CODGEO'].tolist()
-            dep_active = self.df_active[self.df_active['CODGEO'].isin(communes)]
-            dep_caract = self.df_caract[self.df_caract['CODGEO'].isin(communes)]
+            # Récupérer les communes du département
+            communes = self.db.query(GeoCode.codgeo).filter(GeoCode.dep == str(dep)).all()
+            if not communes:
+                return {
+                    "territory_type": "department",
+                    "code": dep,
+                    "name": "Département inconnu",
+                    "rates": {
+                        "activity_rate": 0,
+                        "employment_rate": 0,
+                        "part_time_rate_25_54": 0,
+                        "part_time_rate_15_64": 0
+                    }
+                }
 
-            rates = self.calculate_rates(dep_active, dep_caract)
+            commune_codes = [c[0] for c in communes]
+            data = self.db.query(Employment).filter(Employment.geo_code.in_(commune_codes)).all()
+            rates = self.calculate_rates(data)
+
             return {
                 "territory_type": "department",
                 "code": dep,
@@ -177,15 +180,31 @@ class EmploymentService:
                     "part_time_rate_15_64": 0
                 }
             }
+        finally:
+            self.close()
 
     def get_region_rates(self, reg: str):
         """Récupère les taux pour une région"""
         try:
-            communes = self.geo_df[self.geo_df['REG'] == str(reg)]['CODGEO'].tolist()
-            reg_active = self.df_active[self.df_active['CODGEO'].isin(communes)]
-            reg_caract = self.df_caract[self.df_caract['CODGEO'].isin(communes)]
+            # Récupérer les communes de la région
+            communes = self.db.query(GeoCode.codgeo).filter(GeoCode.reg == str(reg)).all()
+            if not communes:
+                return {
+                    "territory_type": "region",
+                    "code": reg,
+                    "name": "Région inconnue",
+                    "rates": {
+                        "activity_rate": 0,
+                        "employment_rate": 0,
+                        "part_time_rate_25_54": 0,
+                        "part_time_rate_15_64": 0
+                    }
+                }
 
-            rates = self.calculate_rates(reg_active, reg_caract)
+            commune_codes = [c[0] for c in communes]
+            data = self.db.query(Employment).filter(Employment.geo_code.in_(commune_codes)).all()
+            rates = self.calculate_rates(data)
+
             return {
                 "territory_type": "region",
                 "code": reg,
@@ -205,11 +224,15 @@ class EmploymentService:
                     "part_time_rate_15_64": 0
                 }
             }
+        finally:
+            self.close()
 
     def get_france_rates(self):
         """Récupère les taux pour la France entière"""
         try:
-            rates = self.calculate_rates(self.df_active, self.df_caract)
+            data = self.db.query(Employment).all()
+            rates = self.calculate_rates(data)
+
             return {
                 "territory_type": "country",
                 "code": "FR",
@@ -229,3 +252,5 @@ class EmploymentService:
                     "part_time_rate_15_64": 0
                 }
             }
+        finally:
+            self.close()
