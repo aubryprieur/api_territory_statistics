@@ -87,3 +87,21 @@ class Employment(Base):
     # Métadonnées
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class Historical(Base):
+    __tablename__ = "historical"
+
+    id = Column(Integer, primary_key=True)
+    codgeo = Column(String(10), nullable=False, index=True)
+    # Recensements
+    pop_1968 = Column(Float, nullable=True)
+    pop_1975 = Column(Float, nullable=True)
+    pop_1982 = Column(Float, nullable=True)
+    pop_1990 = Column(Float, nullable=True)
+    pop_1999 = Column(Float, nullable=True)
+    pop_2010 = Column(Float, nullable=True)
+    pop_2015 = Column(Float, nullable=True)
+    pop_2021 = Column(Float, nullable=True)
+    # Métadonnées
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
