@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import Dict, Optional, List
 from datetime import datetime
 
-
 class BirthSchema(BaseModel):
     geo: str
     geo_object: str
@@ -11,7 +10,6 @@ class BirthSchema(BaseModel):
 
     class Config:
         orm_mode = True
-
 
 class FamilySchema(BaseModel):
     geo_code: str
@@ -134,22 +132,6 @@ class RevenueRegion(BaseModel):
 class RevenueFrance(BaseModel):
     median_revenues: Dict[int, Optional[float]]
     poverty_rates: Dict[int, Optional[float]]
-
-class IrisRevenueData(BaseModel):
-    iris_code: str
-    iris_name: str
-    median: float
-    poverty_rate: float
-
-class IrisRevenueResponse(BaseModel):
-    commune: str
-    iris_count: int
-    iris_data: Dict[int, List[IrisRevenueData]]
-
-class IrisData(BaseModel):
-    iris_code: str
-    iris_name: str
-    data: dict
 
 class Childcare(BaseModel):
     coverage_rates: Dict[str, float]

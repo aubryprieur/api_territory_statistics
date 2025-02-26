@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, func, Index
 from app.database import Base
 
 class Birth(Base):
@@ -105,3 +105,20 @@ class Historical(Base):
     # Métadonnées
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class Revenue(Base):
+    __tablename__ = "revenues"
+
+    id = Column(Integer, primary_key=True)
+    geo_code = Column(String(10), nullable=False, index=True)
+    geo_type = Column(String(10), nullable=False, index=True)  # 'commune', 'epci', 'department', 'region', 'france'
+    year = Column(Integer, nullable=False, index=True)
+    median_revenue = Column(Float, nullable=True)
+    poverty_rate = Column(Float, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        # Index composite pour accélérer les recherches fréquentes
+        Index('ix_revenues_geo_type_geo_code_year', 'geo_type', 'geo_code', 'year'),
+    )
