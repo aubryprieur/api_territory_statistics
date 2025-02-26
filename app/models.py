@@ -122,3 +122,21 @@ class Revenue(Base):
         # Index composite pour accélérer les recherches fréquentes
         Index('ix_revenues_geo_type_geo_code_year', 'geo_type', 'geo_code', 'year'),
     )
+
+class Population(Base):
+    __tablename__ = "populations"
+
+    id = Column(Integer, primary_key=True)
+    nivgeo = Column(String(10), nullable=False)
+    codgeo = Column(String(10), nullable=False, index=True)
+    libgeo = Column(String, nullable=False)
+    sexe = Column(String(1), nullable=False)
+    aged100 = Column(String(3), nullable=False)
+    nb = Column(Float, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        # Index composite pour accélérer les recherches fréquentes
+        Index('ix_populations_codgeo_sexe_aged100', 'codgeo', 'sexe', 'aged100'),
+    )

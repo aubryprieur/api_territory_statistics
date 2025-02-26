@@ -3,7 +3,7 @@ import logging
 from sqlalchemy import create_engine, pool
 from alembic import context
 from app.database import Base
-from app.models import Birth, Family, GeoCode  # Ajoute tous les modèles
+from app.models import Birth, Family, GeoCode, Population  # Ajoute tous les modèles
 
 # Configuration du logger
 fileConfig(context.config.config_file_name)
