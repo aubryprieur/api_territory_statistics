@@ -118,7 +118,12 @@ class FamilyService:
                     "single_parent_families": 0.0,
                     "single_fathers": 0.0,
                     "single_mothers": 0.0,
-                    "couples_without_children": 0.0
+                    "couples_without_children": 0.0,
+                    # Ajouter les nouvelles clés pour les familles nombreuses
+                    "families_with_3_children": 0.0,
+                    "families_with_4_plus_children": 0.0,
+                    "total_large_families": 0.0,
+                    "large_families_percentage": 0.0
                 }
 
             # Utiliser _safe_float pour les valeurs
@@ -128,6 +133,23 @@ class FamilyService:
             data_by_year[f.year]["single_fathers"] += self._safe_float(f.single_fathers)
             data_by_year[f.year]["single_mothers"] += self._safe_float(f.single_mothers)
             data_by_year[f.year]["couples_without_children"] += self._safe_float(f.couples_without_children)
+
+            # Ajouter les calculs pour les familles nombreuses
+            data_by_year[f.year]["families_with_3_children"] += self._safe_float(f.children_under_24_three_siblings)
+            data_by_year[f.year]["families_with_4_plus_children"] += self._safe_float(f.children_under_24_four_or_more_siblings)
+
+            # Calculer le total des familles nombreuses et le pourcentage
+            data_by_year[f.year]["total_large_families"] = (
+                data_by_year[f.year]["families_with_3_children"] +
+                data_by_year[f.year]["families_with_4_plus_children"]
+            )
+
+            # Calculer le pourcentage de familles nombreuses
+            total_families = data_by_year[f.year]["total_families"]
+            if total_families > 0:
+                data_by_year[f.year]["large_families_percentage"] = round(
+                    (data_by_year[f.year]["total_large_families"] / total_families) * 100, 1
+                )
 
         # Calcul des évolutions si demandé
         evolution = self._calculate_evolution(data_by_year, start_year, end_year)
@@ -150,8 +172,11 @@ class FamilyService:
             return {"error": f"Les années doivent être comprises entre {years[0]} et {years[-1]}"}
 
         evolutions = {}
+        # Ajouter les nouvelles métriques à la liste
         metrics = ["total_families", "couples_with_children", "single_parent_families",
-                  "single_fathers", "single_mothers", "couples_without_children"]
+                  "single_fathers", "single_mothers", "couples_without_children",
+                  "families_with_3_children", "families_with_4_plus_children",
+                  "total_large_families", "large_families_percentage"]
 
         for metric in metrics:
             try:
