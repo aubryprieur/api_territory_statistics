@@ -8,7 +8,6 @@ from .services.geocode_service import GeoCodeService
 from .services.revenue_service import RevenueService
 from .services.family_service import FamilyService
 from .services.childcare_service import ChildcareService
-from .services.large_family_service import LargeFamilyService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
 from .services.schooling_service import SchoolingService
@@ -18,7 +17,7 @@ from app.schemas import BirthSchema, FamilySchema
 from app.schemas import (
     Population, HistoricalData, PopulationChildrenRate, PopulationChildrenEPCI,
     PopulationChildrenDepartment, PopulationChildrenRegion, PopulationChildrenFrance,
-    Revenue, Childcare, LargeFamilyResponse, PublicSafetyResponse,
+    Revenue, Childcare, PublicSafetyResponse,
     EmploymentResponse, SchoolingResponse, SchoolingData,
     FamilyEmploymentResponse, FamilyEmploymentDistribution
 )
@@ -33,7 +32,6 @@ geocode_service = GeoCodeService()
 revenue_service = RevenueService()
 family_service = FamilyService()
 childcare_service = ChildcareService()
-large_family_service = LargeFamilyService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
 schooling_service = SchoolingService()

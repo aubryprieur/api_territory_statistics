@@ -2,13 +2,23 @@ import pandas as pd
 from sqlalchemy import create_engine
 from pathlib import Path
 import logging
+import os
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis .env
+load_dotenv()
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configuration de la base de données
-DATABASE_URL = "postgresql://postgres:5456CopaS@localhost:5432/myapi_db"
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:5456CopaS@localhost:5432/myapi_db")
+
+# Correction pour Heroku PostgreSQL
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 engine = create_engine(DATABASE_URL)
 
 def clean_database():

@@ -2,6 +2,11 @@ import psycopg2
 import pandas as pd
 from pathlib import Path
 import logging
+import os
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis .env
+load_dotenv()
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -9,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 # Configuration de la base de données
 DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'myapi_db',
-    'user': 'postgres',
-    'password': '5456CopaS'
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'database': os.environ.get('DB_NAME', 'myapi_db'),
+    'user': os.environ.get('DB_USER', 'postgres'),
+    'password': os.environ.get('DB_PASSWORD', '5456CopaS')
 }
 
 def clean_database():
