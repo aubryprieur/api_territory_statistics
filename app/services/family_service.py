@@ -119,11 +119,10 @@ class FamilyService:
                     "single_fathers": 0.0,
                     "single_mothers": 0.0,
                     "couples_without_children": 0.0,
-                    # Ajouter les nouvelles clés pour les familles nombreuses
+                    # Familles nombreuses
                     "families_with_3_children": 0.0,
                     "families_with_4_plus_children": 0.0,
                     "total_large_families": 0.0,
-                    "large_families_percentage": 0.0
                 }
 
             # Utiliser _safe_float pour les valeurs
@@ -134,21 +133,32 @@ class FamilyService:
             data_by_year[f.year]["single_mothers"] += self._safe_float(f.single_mothers)
             data_by_year[f.year]["couples_without_children"] += self._safe_float(f.couples_without_children)
 
-            # Ajouter les calculs pour les familles nombreuses
+            # Familles nombreuses
             data_by_year[f.year]["families_with_3_children"] += self._safe_float(f.children_under_24_three_siblings)
             data_by_year[f.year]["families_with_4_plus_children"] += self._safe_float(f.children_under_24_four_or_more_siblings)
 
-            # Calculer le total des familles nombreuses et le pourcentage
-            data_by_year[f.year]["total_large_families"] = (
-                data_by_year[f.year]["families_with_3_children"] +
-                data_by_year[f.year]["families_with_4_plus_children"]
-            )
+        # Calculer les totaux et pourcentages APRÈS avoir accumulé toutes les données
+        for year, data in data_by_year.items():
+            # Calculer le total des familles nombreuses
+            data["total_large_families"] = data["families_with_3_children"] + data["families_with_4_plus_children"]
 
-            # Calculer le pourcentage de familles nombreuses
-            total_families = data_by_year[f.year]["total_families"]
+            # Calculer tous les pourcentages
+            total_families = data["total_families"]
             if total_families > 0:
-                data_by_year[f.year]["large_families_percentage"] = round(
-                    (data_by_year[f.year]["total_large_families"] / total_families) * 100, 1
+                # Pourcentage existant (familles nombreuses)
+                data["large_families_percentage"] = round(
+                    (data["total_large_families"] / total_families) * 100, 2
+                )
+
+                # Nouveaux pourcentages demandés
+                data["couples_with_children_percentage"] = round(
+                    (data["couples_with_children"] / total_families) * 100, 2
+                )
+                data["single_parent_families_percentage"] = round(
+                    (data["single_parent_families"] / total_families) * 100, 2
+                )
+                data["couples_without_children_percentage"] = round(
+                    (data["couples_without_children"] / total_families) * 100, 2
                 )
 
         # Calcul des évolutions si demandé
@@ -160,42 +170,44 @@ class FamilyService:
         }
 
     def _calculate_evolution(self, data, start_year, end_year):
-        """Calcule l'évolution des familles entre deux années"""
-        years = sorted(data.keys())
-        if not years:
-            return {"error": "Aucune donnée disponible pour l'évolution"}
+      """Calcule l'évolution des familles entre deux années"""
+      years = sorted(data.keys())
+      if not years:
+          return {"error": "Aucune donnée disponible pour l'évolution"}
 
-        start_year = start_year or years[0]
-        end_year = end_year or years[-1]
+      start_year = start_year or years[0]
+      end_year = end_year or years[-1]
 
-        if start_year not in years or end_year not in years:
-            return {"error": f"Les années doivent être comprises entre {years[0]} et {years[-1]}"}
+      if start_year not in years or end_year not in years:
+          return {"error": f"Les années doivent être comprises entre {years[0]} et {years[-1]}"}
 
-        evolutions = {}
-        # Ajouter les nouvelles métriques à la liste
-        metrics = ["total_families", "couples_with_children", "single_parent_families",
-                  "single_fathers", "single_mothers", "couples_without_children",
-                  "families_with_3_children", "families_with_4_plus_children",
-                  "total_large_families", "large_families_percentage"]
+      evolutions = {}
+      # Ajouter les nouvelles métriques à la liste
+      metrics = ["total_families", "couples_with_children", "couples_with_children_percentage",
+                "single_parent_families", "single_parent_families_percentage",
+                "single_fathers", "single_mothers", "couples_without_children",
+                "couples_without_children_percentage",
+                "families_with_3_children", "families_with_4_plus_children",
+                "total_large_families", "large_families_percentage"]
 
-        for metric in metrics:
-            try:
-                value_start = self._safe_float(data[start_year][metric])
-                value_end = self._safe_float(data[end_year][metric])
+      for metric in metrics:
+          try:
+              value_start = self._safe_float(data[start_year].get(metric, 0))
+              value_end = self._safe_float(data[end_year].get(metric, 0))
 
-                if value_start > 0:
-                    evolution = ((value_end - value_start) / value_start * 100)
-                    evolution = round(self._safe_float(evolution), 1)
-                else:
-                    evolution = 0.0
-            except:
-                evolution = 0.0
+              if value_start > 0:
+                  evolution = ((value_end - value_start) / value_start * 100)
+                  evolution = round(self._safe_float(evolution), 2)
+              else:
+                  evolution = 0.0
+          except:
+              evolution = 0.0
 
-            evolutions[metric] = {
-                "start_value": value_start,
-                "end_value": value_end,
-                "evolution_percentage": evolution,
-                "period": f"{start_year}-{end_year}"
-            }
+          evolutions[metric] = {
+              "start_value": value_start,
+              "end_value": value_end,
+              "evolution_percentage": evolution,
+              "period": f"{start_year}-{end_year}"
+          }
 
-        return evolutions
+      return evolutions
