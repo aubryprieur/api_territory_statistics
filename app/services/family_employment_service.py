@@ -1,71 +1,54 @@
-import pandas as pd
-from pathlib import Path
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_
+from typing import Dict, List, Optional
+from app.database import SessionLocal
+from app.models import FamilyEmployment, GeoCode
 
 class FamilyEmploymentService:
     def __init__(self):
+        self.db = SessionLocal()
+
         # Dictionnaire des libellés TF12
         self.tf12_labels = {
-            11: "Famille monoparentale - Homme actif ayant un emploi",
-            12: "Famille monoparentale - Homme sans emploi",
-            21: "Famille monoparentale - Femme active ayant un emploi",
-            22: "Famille monoparentale - Femme sans emploi",
-            41: "Couple avec enfant(s) - Deux parents actifs ayant un emploi",
-            42: "Couple avec enfant(s) - Homme actif ayant un emploi, conjoint sans emploi",
-            43: "Couple avec enfant(s) - Femme active ayant un emploi, conjoint sans emploi",
-            44: "Couple avec enfant(s) - Aucun parent actif ayant un emploi"
+            "11": "Famille monoparentale - Homme actif ayant un emploi",
+            "12": "Famille monoparentale - Homme sans emploi",
+            "21": "Famille monoparentale - Femme active ayant un emploi",
+            "22": "Famille monoparentale - Femme sans emploi",
+            "41": "Couple avec enfant(s) - Deux parents actifs ayant un emploi",
+            "42": "Couple avec enfant(s) - Homme actif ayant un emploi, conjoint sans emploi",
+            "43": "Couple avec enfant(s) - Femme active ayant un emploi, conjoint sans emploi",
+            "44": "Couple avec enfant(s) - Aucun parent actif ayant un emploi"
         }
 
-        # Chargement du fichier de géographie
+    def close(self):
+        """Ferme la connexion à la base de données"""
+        self.db.close()
+
+    def get_available_years(self):
+        """Récupère les années disponibles dans la base de données"""
         try:
-            self.geo_df = pd.read_csv(
-                Path("data/geography/COG_au_01-01-2024.csv"),
-                delimiter=";",
-                encoding="utf-8",
-                dtype={"CODGEO": str, "DEP": str, "REG": str, "EPCI": str},
-                usecols=["CODGEO", "DEP", "REG", "EPCI", "LIBGEO"]
-            )
+            years = self.db.query(FamilyEmployment.year).distinct().order_by(FamilyEmployment.year).all()
+            return [year[0] for year in years]
         except Exception as e:
-            print(f"Erreur lors du chargement des données géographiques: {str(e)}")
-            self.geo_df = pd.DataFrame()
+            print(f"Erreur lors de la récupération des années disponibles: {str(e)}")
+            return [2021]  # Valeur par défaut en cas d'erreur
+        finally:
+            self.close()
 
-        # Charger les données pour chaque année
-        self.dfs = {}
-        for year in range(2021, 2022):  # Ajustez simplement cette plage pour ajouter des années
-            try:
-                self.dfs[year] = pd.read_csv(
-                    Path(f"data/families/family_employment/TD_FAM6v2_{year}.csv"),
-                    delimiter=";",
-                    encoding="utf-8",
-                    dtype={"CODGEO": str}
-                )
-                print(f"Données {year} chargées - Colonnes:", self.dfs[year].columns.tolist())
-                print(f"Valeurs uniques TF12 pour {year}:", self.dfs[year]["TF12"].unique())
-            except Exception as e:
-                print(f"Erreur lors du chargement des données {year}: {str(e)}")
-                self.dfs[year] = pd.DataFrame()
-
-    def _calculate_distribution(self, data, age_group=0):
-        """Calcule la répartition des TF12 pour AGEFOR5 spécifié (0 = moins de 3 ans, 3 = 3-5 ans)"""
+    def _calculate_distribution(self, data, age_group="0"):
+        """Calcule la répartition des TF12 pour un groupe d'âge spécifié"""
         try:
-            print(f"\nDonnées avant filtrage pour AGEFOR5 = {age_group}:")
-            print("Nombre de lignes:", len(data))
-            print("Valeurs uniques AGEFOR5:", data["AGEFOR5"].unique())
-            print("Valeurs uniques TF12:", data["TF12"].unique())
-
-            # Filtrer pour AGEFOR5 spécifié
-            filtered_data = data[data["AGEFOR5"] == age_group]
-            print(f"\nAprès filtrage AGEFOR5 = {age_group}:")
-            print("Nombre de lignes filtrées:", len(filtered_data))
-
             # Calculer le total
-            total = filtered_data["NB"].sum()
-            print("Total NB:", total)
+            total = sum(row.number for row in data)
 
             # Calculer les pourcentages pour chaque TF12
             distributions = {}
             if total > 0:
-                for tf12 in sorted(filtered_data["TF12"].unique()):
-                    count = filtered_data[filtered_data["TF12"] == tf12]["NB"].sum()
+                # Récupérer tous les TF12 uniques
+                unique_tf12 = sorted({row.tf12 for row in data})
+
+                for tf12 in unique_tf12:
+                    count = sum(row.number for row in data if row.tf12 == tf12)
                     percentage = (count / total * 100) if total > 0 else 0
 
                     key = self.tf12_labels.get(tf12, f"Type {tf12}")
@@ -74,12 +57,11 @@ class FamilyEmploymentService:
                         "count": float(count),
                         "percentage": round(float(percentage), 1)
                     }
-                    print(f"TF12 {tf12} - {key}: count = {count}, percentage = {percentage}%")
 
             return {
                 "total_count": float(total),
                 "distributions": distributions,
-                "age_group": "0-2 ans" if age_group == 0 else "3-5 ans"
+                "age_group": "0-2 ans" if age_group == "0" else "3-5 ans"
             }
         except Exception as e:
             print(f"Erreur dans le calcul de la distribution: {str(e)}")
@@ -88,16 +70,20 @@ class FamilyEmploymentService:
             return {
                 "total_count": 0,
                 "distributions": {},
-                "age_group": "0-2 ans" if age_group == 0 else "3-5 ans"
+                "age_group": "0-2 ans" if age_group == "0" else "3-5 ans"
             }
 
-    def get_commune_distribution(self, code: str, age_group=0):
+    def get_commune_distribution(self, code: str, age_group="0", year=None):
         """Récupère la distribution pour une commune"""
         try:
-            print(f"\nRecherche pour la commune {code}")
-            geo_info = self.geo_df[self.geo_df['CODGEO'] == str(code)]
-            if geo_info.empty:
-                print("Commune non trouvée dans le fichier COG")
+            # Récupérer l'année la plus récente si non spécifiée
+            if year is None:
+                available_years = self.get_available_years()
+                year = available_years[-1] if available_years else 2021
+
+            # Vérifier si la commune existe
+            geo_info = self.db.query(GeoCode).filter(GeoCode.codgeo == str(code)).first()
+            if not geo_info:
                 return {
                     "territory_type": "commune",
                     "code": code,
@@ -105,21 +91,24 @@ class FamilyEmploymentService:
                     "data": {}
                 }
 
-            print("Commune trouvée dans COG:", geo_info.iloc[0].to_dict())
             results = {}
-            for year in self.dfs:
-                df_year = self.dfs[year]
-                print(f"\nRecherche des données pour {year}")
-                commune_data = df_year[df_year["CODGEO"] == str(code)]
-                print(f"Nombre de lignes trouvées pour la commune: {len(commune_data)}")
-                if not commune_data.empty:
-                    print("Exemple de ligne:", commune_data.iloc[0].to_dict())
+
+            # Récupérer les données pour l'année spécifiée
+            commune_data = self.db.query(FamilyEmployment).filter(
+                FamilyEmployment.geo_code == str(code),
+                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.year == year
+            ).all()
+
+            if commune_data:
                 results[year] = self._calculate_distribution(commune_data, age_group)
+            else:
+                print(f"Aucune donnée trouvée pour la commune {code}, année {year}, groupe d'âge {age_group}")
 
             return {
                 "territory_type": "commune",
                 "code": code,
-                "name": geo_info.iloc[0]['LIBGEO'],
+                "name": geo_info.libgeo,
                 "data": results
             }
         except Exception as e:
@@ -132,11 +121,19 @@ class FamilyEmploymentService:
                 "name": "Erreur",
                 "data": {}
             }
+        finally:
+            self.close()
 
-    def get_epci_distribution(self, epci: str, age_group=0):
+    def get_epci_distribution(self, epci: str, age_group="0", year=None):
         """Récupère la distribution pour un EPCI"""
         try:
-            communes = self.geo_df[self.geo_df['EPCI'] == str(epci)]['CODGEO'].tolist()
+            # Récupérer l'année la plus récente si non spécifiée
+            if year is None:
+                available_years = self.get_available_years()
+                year = available_years[-1] if available_years else 2021
+
+            # Récupérer les communes de l'EPCI
+            communes = self.db.query(GeoCode.codgeo).filter(GeoCode.epci == str(epci)).all()
             if not communes:
                 return {
                     "territory_type": "epci",
@@ -145,16 +142,26 @@ class FamilyEmploymentService:
                     "data": {}
                 }
 
+            commune_codes = [c[0] for c in communes]
             results = {}
-            for year in self.dfs:
-                df_year = self.dfs[year]
-                epci_data = df_year[df_year["CODGEO"].isin(communes)]
+
+            # Récupérer les données de la base
+            epci_data = self.db.query(FamilyEmployment).filter(
+                FamilyEmployment.geo_code.in_(commune_codes),
+                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.year == year
+            ).all()
+
+            if epci_data:
                 results[year] = self._calculate_distribution(epci_data, age_group)
+
+            # Obtenir le nom de l'EPCI
+            epci_name = self.db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
 
             return {
                 "territory_type": "epci",
                 "code": epci,
-                "name": f"EPCI {epci}",
+                "name": epci_name[0] if epci_name else f"EPCI {epci}",
                 "data": results
             }
         except Exception as e:
@@ -165,11 +172,19 @@ class FamilyEmploymentService:
                 "name": "Erreur",
                 "data": {}
             }
+        finally:
+            self.close()
 
-    def get_department_distribution(self, dep: str, age_group=0):
+    def get_department_distribution(self, dep: str, age_group="0", year=None):
         """Récupère la distribution pour un département"""
         try:
-            communes = self.geo_df[self.geo_df['DEP'] == str(dep)]['CODGEO'].tolist()
+            # Récupérer l'année la plus récente si non spécifiée
+            if year is None:
+                available_years = self.get_available_years()
+                year = available_years[-1] if available_years else 2021
+
+            # Récupérer les communes du département
+            communes = self.db.query(GeoCode.codgeo).filter(GeoCode.dep == str(dep)).all()
             if not communes:
                 return {
                     "territory_type": "department",
@@ -178,10 +193,17 @@ class FamilyEmploymentService:
                     "data": {}
                 }
 
+            commune_codes = [c[0] for c in communes]
             results = {}
-            for year in self.dfs:
-                df_year = self.dfs[year]
-                dep_data = df_year[df_year["CODGEO"].isin(communes)]
+
+            # Récupérer les données de la base
+            dep_data = self.db.query(FamilyEmployment).filter(
+                FamilyEmployment.geo_code.in_(commune_codes),
+                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.year == year
+            ).all()
+
+            if dep_data:
                 results[year] = self._calculate_distribution(dep_data, age_group)
 
             return {
@@ -198,11 +220,19 @@ class FamilyEmploymentService:
                 "name": "Erreur",
                 "data": {}
             }
+        finally:
+            self.close()
 
-    def get_region_distribution(self, reg: str, age_group=0):
+    def get_region_distribution(self, reg: str, age_group="0", year=None):
         """Récupère la distribution pour une région"""
         try:
-            communes = self.geo_df[self.geo_df['REG'] == str(reg)]['CODGEO'].tolist()
+            # Récupérer l'année la plus récente si non spécifiée
+            if year is None:
+                available_years = self.get_available_years()
+                year = available_years[-1] if available_years else 2021
+
+            # Récupérer les communes de la région
+            communes = self.db.query(GeoCode.codgeo).filter(GeoCode.reg == str(reg)).all()
             if not communes:
                 return {
                     "territory_type": "region",
@@ -211,10 +241,17 @@ class FamilyEmploymentService:
                     "data": {}
                 }
 
+            commune_codes = [c[0] for c in communes]
             results = {}
-            for year in self.dfs:
-                df_year = self.dfs[year]
-                reg_data = df_year[df_year["CODGEO"].isin(communes)]
+
+            # Récupérer les données de la base
+            reg_data = self.db.query(FamilyEmployment).filter(
+                FamilyEmployment.geo_code.in_(commune_codes),
+                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.year == year
+            ).all()
+
+            if reg_data:
                 results[year] = self._calculate_distribution(reg_data, age_group)
 
             return {
@@ -231,14 +268,27 @@ class FamilyEmploymentService:
                 "name": "Erreur",
                 "data": {}
             }
+        finally:
+            self.close()
 
-    def get_france_distribution(self, age_group=0):
-        """Récupère la distribution pour la France entière en agrégeant directement les données"""
+    def get_france_distribution(self, age_group="0", year=None):
+        """Récupère la distribution pour la France entière"""
         try:
+            # Récupérer l'année la plus récente si non spécifiée
+            if year is None:
+                available_years = self.get_available_years()
+                year = available_years[-1] if available_years else 2021
+
             results = {}
-            for year in self.dfs:
-                # On utilise directement tout le dataframe sans filtrage géographique
-                results[year] = self._calculate_distribution(self.dfs[year], age_group)
+
+            # Récupérer toutes les données nationales pour l'année et le groupe d'âge spécifiés
+            france_data = self.db.query(FamilyEmployment).filter(
+                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.year == year
+            ).all()
+
+            if france_data:
+                results[year] = self._calculate_distribution(france_data, age_group)
 
             return {
                 "territory_type": "country",
@@ -254,3 +304,5 @@ class FamilyEmploymentService:
                 "name": "France",
                 "data": {}
             }
+        finally:
+            self.close()

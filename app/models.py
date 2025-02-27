@@ -140,3 +140,21 @@ class Population(Base):
         # Index composite pour accélérer les recherches fréquentes
         Index('ix_populations_codgeo_sexe_aged100', 'codgeo', 'sexe', 'aged100'),
     )
+
+class FamilyEmployment(Base):
+    __tablename__ = "family_employment"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geo_code = Column(String(10), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    age_group = Column(String(5), nullable=False, index=True)  # "0" pour 0-2 ans, "3" pour 3-5 ans
+    tf12 = Column(String(5), nullable=False, index=True)  # Type de famille et situation d'emploi en tant que code
+    number = Column(Float, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        # Index composite pour accélérer les requêtes fréquentes
+        Index('ix_family_employment_geo_code_year_age_group_tf12',
+              'geo_code', 'year', 'age_group', 'tf12'),
+    )

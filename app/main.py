@@ -1007,7 +1007,7 @@ async def get_commune_family_employment_under3(code: str):
 
    - **code**: Code INSEE de la commune
    """
-   return family_employment_service.get_commune_distribution(code, age_group=0)
+   return family_employment_service.get_commune_distribution(code, age_group="0")
 
 @app.get("/families/employment/under3/epci/{epci}",
    response_model=FamilyEmploymentResponse,
@@ -1032,7 +1032,7 @@ async def get_epci_family_employment_under3(epci: str):
 
    - **epci**: Code de l'EPCI
    """
-   return family_employment_service.get_epci_distribution(epci, age_group=0)
+   return family_employment_service.get_epci_distribution(epci, age_group="0")
 
 @app.get("/families/employment/under3/department/{dep}",
    response_model=FamilyEmploymentResponse,
@@ -1057,7 +1057,7 @@ async def get_department_family_employment_under3(dep: str):
 
    - **dep**: Code du département
    """
-   return family_employment_service.get_department_distribution(dep, age_group=0)
+   return family_employment_service.get_department_distribution(dep, age_group="0")
 
 @app.get("/families/employment/under3/region/{reg}",
    response_model=FamilyEmploymentResponse,
@@ -1082,7 +1082,7 @@ async def get_region_family_employment_under3(reg: str):
 
    - **reg**: Code de la région
    """
-   return family_employment_service.get_region_distribution(reg, age_group=0)
+   return family_employment_service.get_region_distribution(reg, age_group="0")
 
 @app.get("/families/employment/under3/france",
    response_model=FamilyEmploymentResponse,
@@ -1105,7 +1105,7 @@ async def get_france_family_employment_under3():
    """
    Obtient la répartition des situations d'emploi au niveau national
    """
-   return family_employment_service.get_france_distribution(age_group=0)
+   return family_employment_service.get_france_distribution(age_group="0")
 
 # Routes pour les 3-5 ans
 @app.get("/families/employment/3to5/commune/{code}",
@@ -1135,7 +1135,7 @@ async def get_commune_family_employment_3to5(code: str):
 
    - **code**: Code INSEE de la commune
    """
-   return family_employment_service.get_commune_distribution(code, age_group=3)
+   return family_employment_service.get_commune_distribution(code, age_group="3")
 
 @app.get("/families/employment/3to5/epci/{epci}",
    response_model=FamilyEmploymentResponse,
@@ -1164,7 +1164,7 @@ async def get_epci_family_employment_3to5(epci: str):
 
    - **epci**: Code de l'EPCI
    """
-   return family_employment_service.get_epci_distribution(epci, age_group=3)
+   return family_employment_service.get_epci_distribution(epci, age_group="3")
 
 @app.get("/families/employment/3to5/department/{dep}",
    response_model=FamilyEmploymentResponse,
@@ -1193,7 +1193,7 @@ async def get_department_family_employment_3to5(dep: str):
 
    - **dep**: Code du département
    """
-   return family_employment_service.get_department_distribution(dep, age_group=3)
+   return family_employment_service.get_department_distribution(dep, age_group="3")
 
 @app.get("/families/employment/3to5/region/{reg}",
    response_model=FamilyEmploymentResponse,
@@ -1222,7 +1222,7 @@ async def get_region_family_employment_3to5(reg: str):
 
    - **reg**: Code de la région
    """
-   return family_employment_service.get_region_distribution(reg, age_group=3)
+   return family_employment_service.get_region_distribution(reg, age_group="3")
 
 @app.get("/families/employment/3to5/france",
    response_model=FamilyEmploymentResponse,
@@ -1249,7 +1249,7 @@ async def get_france_family_employment_3to5():
    """
    Obtient la répartition des situations d'emploi au niveau national
    """
-   return family_employment_service.get_france_distribution(age_group=3)
+   return family_employment_service.get_france_distribution(age_group="3")
 
 @app.get("/families/{level}/{code}",
    summary="Obtenir l'évolution de la composition des familles par niveau géographique",
