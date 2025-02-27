@@ -1,289 +1,405 @@
-import pandas as pd
-from pathlib import Path
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, or_, desc
+from typing import Dict, Optional, List, Any
+from app.database import SessionLocal
+from app.models import Childcare
 
 class ChildcareService:
     def __init__(self):
-        self.dfs = {}
-        self.alternative_dfs = {}  # Renommé de historical_dfs à alternative_dfs
+        self.db = SessionLocal()
 
-        # Charger les données parquet actuelles
-        try:
-            self.dfs['commune'] = pd.read_parquet(Path("data/childcare/commune/current/txcouv_pe_com_2017_2022.parquet"))
-            self.dfs['epci'] = pd.read_parquet(Path("data/childcare/epci/txcouv_pe_epci_2017_2022.parquet"))
-            self.dfs['department'] = pd.read_parquet(Path("data/childcare/department/txcouv_pe_dep_2017_2022.parquet"))
-            self.dfs['region'] = pd.read_parquet(Path("data/childcare/region/txcouv_pe_reg_2017_2022.parquet"))
-            self.dfs['france'] = pd.read_parquet(Path("data/childcare/france/txcouv_pe_nat_2017_2022.parquet"))
-
-            # Charger les données alternatives CSV
-            for year in [2020, 2021]:
-                csv_path = Path(f"data/childcare/commune/alternative/TAUXCOUV{year}.csv")
-                if csv_path.exists():
-                    self.alternative_dfs[year] = pd.read_csv(
-                        csv_path,
-                        delimiter=";",
-                        encoding="utf-8",
-                        low_memory=False
-                    )
-        except Exception as e:
-            print(f"Erreur lors du chargement des fichiers: {str(e)}")
-
-    def get_coverage_from_alternative(self, commune: str, year: int):
-        """Récupère les données de couverture depuis les fichiers CSV alternatifs."""
-        try:
-            if year not in self.alternative_dfs:
-                return None
-
-            df = self.alternative_dfs[year]
-            data = df[df['NUM_COM'] == str(commune)].copy()
-
-            if data.empty:
-                return None
-
-            row = data.iloc[0]
-            return {
-                year: {
-                    "commune_name": row['NOM_COM'],
-                    "coverage_rates": {
-                        "commune": float(row['tauxcouv_com']),
-                        "epci": float(row['tauxcouv_epci']),
-                        "department": float(row['tauxcouv_dep']),
-                        "region": float(row['tauxcouv_reg']),
-                        "france": float(row['tauxcouv_fe'])
-                    }
-                }
-            }
-        except Exception as e:
-            print(f"Erreur lors de la lecture des données alternatives: {str(e)}")
-            return None
+    def close(self):
+        """Ferme la connexion à la base de données"""
+        self.db.close()
 
     def get_coverage_by_commune(self, commune: str, start_year: int = None, end_year: int = None):
+        """Récupère les données de couverture pour une commune depuis la base de données"""
         try:
-            # Essayer d'abord avec les données parquet actuelles
-            df = self.dfs['commune']
-            data = df[df['numcom'] == str(commune)].copy()
+            # Construire la requête de base
+            query = self.db.query(Childcare).filter(
+                Childcare.territory_type == 'commune',
+                Childcare.territory_code == str(commune)
+            ).order_by(Childcare.year.desc())  # Tri par année décroissante pour avoir les plus récentes d'abord
+
+            # Filtrer par année si spécifié
+            if start_year and end_year:
+                query = query.filter(
+                    Childcare.year >= start_year,
+                    Childcare.year <= end_year
+                )
+
+            # Exécuter la requête
+            results = query.all()
+
+            if not results:
+                return {"error": "Commune non trouvée dans les données"}
+
+            # Formater les résultats
             result = {}
-            data_source = "current"
-
-            # Si aucune donnée trouvée dans parquet, chercher dans les données alternatives
-            if data.empty:
-                for year in self.alternative_dfs.keys():
-                    if (not start_year or year >= start_year) and (not end_year or year <= end_year):
-                        alternative_data = self.get_coverage_from_alternative(commune, year)
-                        if alternative_data:
-                            result.update(alternative_data)
-                            data_source = "alternative"
-
-                if not result:
-                    return {"error": "Commune non trouvée dans les données actuelles et alternatives"}
-
-            else:
-                if start_year and end_year:
-                    data = data[(data['annee'] >= start_year) & (data['annee'] <= end_year)]
-
-                for _, row in data.iterrows():
-                    year = int(row['annee'])
-                    result[year] = {
-                        "commune_name": row['nomcom'],
-                        "epci": {
-                            "code": row['numepci'],
-                            "name": row['nomepci']
-                        },
-                        "department": {
-                            "code": row['numdep'],
-                            "name": row['nomdep']
-                        },
-                        "coverage_rates": {
-                            "eaje_psu": float(row['txcouv_psu_col_com']),
-                            "eaje_hors_psu": float(row['txcouv_hors_psu_col_com']),
-                            "eaje_total": float(row['txcouv_eaje_com']),
-                            "preschool": float(row['txcouv_prescol_com']),
-                            "childminder": float(row['txcouv_am_ind_com']),
-                            "home_care": float(row['txcouv_gad_ind_com']),
-                            "individual_total": float(row['txcouv_ind_com']),
-                            "global": float(row['txcouv_com'])
-                        }
+            for record in results:
+                year = record.year
+                result[year] = {
+                    "commune_name": record.territory_name,
+                    "epci": {
+                        "code": record.parent_code,
+                        "name": record.parent_name
+                    },
+                    "department": {
+                        "code": None,  # Nous n'avons pas cette information directement
+                        "name": None
+                    },
+                    "coverage_rates": {
+                        "eaje_psu": record.eaje_psu if record.eaje_psu is not None else 0.0,
+                        "eaje_hors_psu": record.eaje_hors_psu if record.eaje_hors_psu is not None else 0.0,
+                        "eaje_total": record.eaje_total if record.eaje_total is not None else 0.0,
+                        "preschool": record.preschool if record.preschool is not None else 0.0,
+                        "childminder": record.childminder if record.childminder is not None else 0.0,
+                        "home_care": record.home_care if record.home_care is not None else 0.0,
+                        "individual_total": record.individual_total if record.individual_total is not None else 0.0,
+                        "global": record.global_rate if record.global_rate is not None else 0.0
                     }
+                }
 
             return {
                 "commune": commune,
                 "coverage_data": result,
-                "data_source": data_source
+                "data_source": "database"
             }
+
         except Exception as e:
+            print(f"Erreur dans get_coverage_by_commune: {str(e)}")
             return {"error": str(e)}
+        finally:
+            self.close()
 
     def get_coverage_by_epci(self, epci: str, start_year: int = None, end_year: int = None):
-        """Récupère les données de couverture pour un EPCI"""
+        """Récupère les données de couverture pour un EPCI depuis la base de données"""
         try:
-            if 'epci' not in self.dfs or self.dfs['epci'].empty:
-                return {"error": "Données EPCI non disponibles"}
+            # Construire la requête de base
+            query = self.db.query(Childcare).filter(
+                Childcare.territory_type == 'epci',
+                Childcare.territory_code == str(epci)
+            ).order_by(Childcare.year.desc())
 
-            df = self.dfs['epci']
-            data = df[df['numepci'] == str(epci)]
+            # Filtrer par année si spécifié
+            if start_year and end_year:
+                query = query.filter(
+                    Childcare.year >= start_year,
+                    Childcare.year <= end_year
+                )
 
-            if data.empty:
+            # Exécuter la requête
+            results = query.all()
+
+            if not results:
                 return {"error": f"EPCI {epci} non trouvé"}
 
-            if start_year and end_year:
-                data = data[(data['annee'] >= start_year) & (data['annee'] <= end_year)]
-
+            # Formater les résultats
             result = {}
-
-            for _, row in data.iterrows():
-                year = int(row['annee'])
+            for record in results:
+                year = record.year
                 result[year] = {
-                    "territory_name": row['nomepci'],
+                    "territory_name": record.territory_name,
                     "department": {
-                        "code": row['numdep'],
-                        "name": row['nomdep']
+                        "code": record.parent_code,
+                        "name": record.parent_name
                     },
                     "coverage_rates": {
-                        "eaje_psu": float(row['txcouv_psu_col_epci']),
-                        "eaje_hors_psu": float(row['txcouv_hors_psu_col_epci']),
-                        "eaje_total": float(row['txcouv_eaje_epci']),
-                        "preschool": float(row['txcouv_prescol_epci']),
-                        "childminder": float(row['txcouv_am_ind_epci']),
-                        "home_care": float(row['txcouv_gad_ind_epci']),
-                        "individual_total": float(row['txcouv_ind_epci']),
-                        "global": float(row['txcouv_epci'])
+                        "eaje_psu": record.eaje_psu if record.eaje_psu is not None else 0.0,
+                        "eaje_hors_psu": record.eaje_hors_psu if record.eaje_hors_psu is not None else 0.0,
+                        "eaje_total": record.eaje_total if record.eaje_total is not None else 0.0,
+                        "preschool": record.preschool if record.preschool is not None else 0.0,
+                        "childminder": record.childminder if record.childminder is not None else 0.0,
+                        "home_care": record.home_care if record.home_care is not None else 0.0,
+                        "individual_total": record.individual_total if record.individual_total is not None else 0.0,
+                        "global": record.global_rate if record.global_rate is not None else 0.0
                     }
                 }
 
             return {
+                "epci": epci,
                 "coverage_data": result,
-                "data_source": "current"
+                "data_source": "database"
             }
 
         except Exception as e:
             print(f"Erreur dans get_coverage_by_epci: {str(e)}")
             return {"error": str(e)}
+        finally:
+            self.close()
 
     def get_coverage_by_department(self, dep: str, start_year: int = None, end_year: int = None):
-        """Récupère les données de couverture pour un département"""
+        """Récupère les données de couverture pour un département depuis la base de données"""
         try:
-            if 'department' not in self.dfs or self.dfs['department'].empty:
-                return {"error": "Données départementales non disponibles"}
+            # Construire la requête de base
+            query = self.db.query(Childcare).filter(
+                Childcare.territory_type == 'department',
+                Childcare.territory_code == str(dep)
+            ).order_by(Childcare.year.desc())
 
-            df = self.dfs['department']
-            data = df[df['numdep'] == str(dep)]
+            # Filtrer par année si spécifié
+            if start_year and end_year:
+                query = query.filter(
+                    Childcare.year >= start_year,
+                    Childcare.year <= end_year
+                )
 
-            if data.empty:
+            # Exécuter la requête
+            results = query.all()
+
+            if not results:
                 return {"error": f"Département {dep} non trouvé"}
 
-            if start_year and end_year:
-                data = data[(data['annee'] >= start_year) & (data['annee'] <= end_year)]
-
+            # Formater les résultats
             result = {}
-
-            for _, row in data.iterrows():
-                year = int(row['annee'])
+            for record in results:
+                year = record.year
                 result[year] = {
-                    "territory_name": row['nomdep'],
+                    "territory_name": record.territory_name,
                     "region": {
-                        "code": row['numregi'],
-                        "name": row['nomregi']
+                        "code": record.parent_code,
+                        "name": record.parent_name
                     },
                     "coverage_rates": {
-                        "eaje_psu": float(row['txcouv_psu_col_dep']),
-                        "eaje_hors_psu": float(row['txcouv_hors_psu_col_dep']),
-                        "eaje_total": float(row['txcouv_eaje_dep']),
-                        "preschool": float(row['txcouv_prescol_dep']),
-                        "childminder": float(row['txcouv_am_ind_dep']),
-                        "home_care": float(row['txcouv_gad_ind_dep']),
-                        "individual_total": float(row['txcouv_ind_dep']),
-                        "global": float(row['txcouv_dep'])
+                        "eaje_psu": record.eaje_psu if record.eaje_psu is not None else 0.0,
+                        "eaje_hors_psu": record.eaje_hors_psu if record.eaje_hors_psu is not None else 0.0,
+                        "eaje_total": record.eaje_total if record.eaje_total is not None else 0.0,
+                        "preschool": record.preschool if record.preschool is not None else 0.0,
+                        "childminder": record.childminder if record.childminder is not None else 0.0,
+                        "home_care": record.home_care if record.home_care is not None else 0.0,
+                        "individual_total": record.individual_total if record.individual_total is not None else 0.0,
+                        "global": record.global_rate if record.global_rate is not None else 0.0
                     }
                 }
 
             return {
+                "department": dep,
                 "coverage_data": result,
-                "data_source": "current"
+                "data_source": "database"
             }
 
         except Exception as e:
             print(f"Erreur dans get_coverage_by_department: {str(e)}")
             return {"error": str(e)}
+        finally:
+            self.close()
 
     def get_coverage_by_region(self, reg: str, start_year: int = None, end_year: int = None):
-        """Récupère les données de couverture pour une région"""
+        """Récupère les données de couverture pour une région depuis la base de données"""
         try:
-            if 'region' not in self.dfs or self.dfs['region'].empty:
-                return {"error": "Données régionales non disponibles"}
+            # Construire la requête de base
+            query = self.db.query(Childcare).filter(
+                Childcare.territory_type == 'region',
+                Childcare.territory_code == str(reg)
+            ).order_by(Childcare.year.desc())
 
-            df = self.dfs['region']
-            data = df[df['numregi'] == str(reg)]  # Changed from 'reg' to 'numregi'
+            # Filtrer par année si spécifié
+            if start_year and end_year:
+                query = query.filter(
+                    Childcare.year >= start_year,
+                    Childcare.year <= end_year
+                )
 
-            if data.empty:
+            # Exécuter la requête
+            results = query.all()
+
+            if not results:
                 return {"error": f"Région {reg} non trouvée"}
 
-            if start_year and end_year:
-                data = data[(data['annee'] >= start_year) & (data['annee'] <= end_year)]
-
+            # Formater les résultats
             result = {}
-
-            for _, row in data.iterrows():
-                year = int(row['annee'])
+            for record in results:
+                year = record.year
                 result[year] = {
-                    "territory_name": row['nomregi'],  # Changed from 'nomreg' to 'nomregi'
+                    "territory_name": record.territory_name,
                     "coverage_rates": {
-                        "eaje_psu": float(row['txcouv_psu_col_reg']),  # Changed from 'txcouv_psu_reg'
-                        "eaje_hors_psu": float(row['txcouv_hors_psu_col_reg']),
-                        "eaje_total": float(row['txcouv_eaje_reg']),
-                        "preschool": float(row['txcouv_prescol_reg']),
-                        "childminder": float(row['txcouv_am_ind_reg']),  # Changed from 'txcouv_am_reg'
-                        "home_care": float(row['txcouv_gad_ind_reg']),  # Changed from 'txcouv_gad_reg'
-                        "individual_total": float(row['txcouv_ind_reg']),
-                        "global": float(row['txcouv_reg'])
+                        "eaje_psu": record.eaje_psu if record.eaje_psu is not None else 0.0,
+                        "eaje_hors_psu": record.eaje_hors_psu if record.eaje_hors_psu is not None else 0.0,
+                        "eaje_total": record.eaje_total if record.eaje_total is not None else 0.0,
+                        "preschool": record.preschool if record.preschool is not None else 0.0,
+                        "childminder": record.childminder if record.childminder is not None else 0.0,
+                        "home_care": record.home_care if record.home_care is not None else 0.0,
+                        "individual_total": record.individual_total if record.individual_total is not None else 0.0,
+                        "global": record.global_rate if record.global_rate is not None else 0.0
                     }
                 }
 
             return {
+                "region": reg,
                 "coverage_data": result,
-                "data_source": "current"
+                "data_source": "database"
             }
 
         except Exception as e:
             print(f"Erreur dans get_coverage_by_region: {str(e)}")
             return {"error": str(e)}
-
+        finally:
+            self.close()
 
     def get_coverage_france(self, start_year: int = None, end_year: int = None):
-        """Récupère les données de couverture pour la France entière"""
+        """Récupère les données de couverture pour la France entière depuis la base de données"""
         try:
-            # Vérifier que nous avons les données pour la France
-            if 'france' not in self.dfs or self.dfs['france'].empty:
+            # Construire la requête de base
+            query = self.db.query(Childcare).filter(
+                Childcare.territory_type == 'france'
+            ).order_by(Childcare.year.desc())
+
+            # Filtrer par année si spécifié
+            if start_year and end_year:
+                query = query.filter(
+                    Childcare.year >= start_year,
+                    Childcare.year <= end_year
+                )
+
+            # Exécuter la requête
+            results = query.all()
+
+            if not results:
                 return {"error": "Données nationales non disponibles"}
 
-            df = self.dfs['france']
-
-            # Filtrer sur les années si spécifiées
-            if start_year and end_year:
-                df = df[(df['annee'] >= start_year) & (df['annee'] <= end_year)]
-
+            # Formater les résultats
             result = {}
-
-            # Traiter chaque année
-            for _, row in df.iterrows():
-                year = int(row['annee'])
+            for record in results:
+                year = record.year
                 result[year] = {
-                    "territory_name": row['national'],
+                    "territory_name": record.territory_name or "France entière",
                     "coverage_rates": {
-                        "eaje_psu": float(row['txcouv_psu_nat']),
-                        "eaje_hors_psu": float(row['txcouv_hors_psu_col_nat']),
-                        "eaje_total": float(row['txcouv_eaje_nat']),
-                        "preschool": float(row['txcouv_prescol_nat']),
-                        "childminder": float(row['txcouv_am_nat']),
-                        "home_care": float(row['txcouv_gad_nat']),
-                        "individual_total": float(row['txcouv_ind_nat']),
-                        "global": float(row['txcouv_nat'])
+                        "eaje_psu": record.eaje_psu if record.eaje_psu is not None else 0.0,
+                        "eaje_hors_psu": record.eaje_hors_psu if record.eaje_hors_psu is not None else 0.0,
+                        "eaje_total": record.eaje_total if record.eaje_total is not None else 0.0,
+                        "preschool": record.preschool if record.preschool is not None else 0.0,
+                        "childminder": record.childminder if record.childminder is not None else 0.0,
+                        "home_care": record.home_care if record.home_care is not None else 0.0,
+                        "individual_total": record.individual_total if record.individual_total is not None else 0.0,
+                        "global": record.global_rate if record.global_rate is not None else 0.0
                     }
                 }
 
             return {
                 "coverage_data": result,
-                "data_source": "current"
+                "data_source": "database"
             }
 
         except Exception as e:
             print(f"Erreur dans get_coverage_france: {str(e)}")
             return {"error": str(e)}
+        finally:
+            self.close()
+
+    def get_evolution_by_territory_type(self, territory_type: str, start_year: int, end_year: int):
+        """
+        Calcule l'évolution des taux de couverture entre deux années pour tous les territoires d'un type donné
+        Utile pour les analyses comparatives
+        """
+        try:
+            # Vérifier les années
+            if not start_year or not end_year or start_year >= end_year:
+                return {"error": "Années invalides pour le calcul d'évolution"}
+
+            # Requête pour récupérer les données de l'année de début
+            start_query = self.db.query(
+                Childcare.territory_code,
+                Childcare.territory_name,
+                Childcare.global_rate.label('start_rate')
+            ).filter(
+                Childcare.territory_type == territory_type,
+                Childcare.year == start_year
+            ).subquery()
+
+            # Requête pour récupérer les données de l'année de fin
+            end_query = self.db.query(
+                Childcare.territory_code,
+                Childcare.territory_name,
+                Childcare.global_rate.label('end_rate')
+            ).filter(
+                Childcare.territory_type == territory_type,
+                Childcare.year == end_year
+            ).subquery()
+
+            # Joindre les deux requêtes pour calculer l'évolution
+            evolution_data = self.db.query(
+                start_query.c.territory_code,
+                start_query.c.territory_name,
+                start_query.c.start_rate,
+                end_query.c.end_rate,
+                ((end_query.c.end_rate - start_query.c.start_rate) / start_query.c.start_rate * 100).label('evolution_percent')
+            ).join(
+                end_query,
+                start_query.c.territory_code == end_query.c.territory_code
+            ).order_by(desc('evolution_percent')).all()
+
+            # Formater les résultats
+            results = []
+            for item in evolution_data:
+                if item.start_rate is not None and item.end_rate is not None:
+                    results.append({
+                        "territory_code": item.territory_code,
+                        "territory_name": item.territory_name,
+                        "start_year": start_year,
+                        "end_year": end_year,
+                        "start_rate": round(item.start_rate, 1),
+                        "end_rate": round(item.end_rate, 1),
+                        "evolution_percent": round(item.evolution_percent, 1) if item.evolution_percent is not None else None
+                    })
+
+            return {
+                "territory_type": territory_type,
+                "period": f"{start_year}-{end_year}",
+                "evolution_data": results
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_evolution_by_territory_type: {str(e)}")
+            return {"error": str(e)}
+        finally:
+            self.close()
+
+    def get_comparative_data(self, territory_codes: List[str], territory_type: str, year: int = None):
+        """
+        Récupère des données comparatives pour plusieurs territoires du même type
+        Utile pour les tableaux de bord de comparaison
+        """
+        try:
+            # Si aucune année spécifiée, prendre la plus récente disponible
+            if year is None:
+                latest_year = self.db.query(func.max(Childcare.year)).filter(
+                    Childcare.territory_type == territory_type
+                ).scalar()
+                year = latest_year if latest_year else 2021
+
+            # Requête pour récupérer les données
+            results = self.db.query(Childcare).filter(
+                Childcare.territory_type == territory_type,
+                Childcare.territory_code.in_(territory_codes),
+                Childcare.year == year
+            ).all()
+
+            # Formater les résultats
+            comparative_data = {}
+            for record in results:
+                comparative_data[record.territory_code] = {
+                    "name": record.territory_name,
+                    "year": record.year,
+                    "coverage_rates": {
+                        "eaje_psu": record.eaje_psu if record.eaje_psu is not None else 0.0,
+                        "eaje_hors_psu": record.eaje_hors_psu if record.eaje_hors_psu is not None else 0.0,
+                        "eaje_total": record.eaje_total if record.eaje_total is not None else 0.0,
+                        "preschool": record.preschool if record.preschool is not None else 0.0,
+                        "childminder": record.childminder if record.childminder is not None else 0.0,
+                        "home_care": record.home_care if record.home_care is not None else 0.0,
+                        "individual_total": record.individual_total if record.individual_total is not None else 0.0,
+                        "global": record.global_rate if record.global_rate is not None else 0.0
+                    }
+                }
+
+            return {
+                "territory_type": territory_type,
+                "year": year,
+                "territories": comparative_data
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_comparative_data: {str(e)}")
+            return {"error": str(e)}
+        finally:
+            self.close()

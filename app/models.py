@@ -158,3 +158,54 @@ class FamilyEmployment(Base):
         Index('ix_family_employment_geo_code_year_age_group_tf12',
               'geo_code', 'year', 'age_group', 'tf12'),
     )
+
+class Childcare(Base):
+    __tablename__ = "childcare"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # Informations du territoire
+    territory_type = Column(String(10), nullable=False, index=True)  # 'commune', 'epci', 'department', 'region', 'france'
+    territory_code = Column(String(10), nullable=False, index=True)  # Code du territoire (numcom, numepci, numdep, numregi, 'FR')
+    territory_name = Column(String, nullable=True)  # Nom du territoire
+
+    # Année de référence
+    year = Column(Integer, nullable=False, index=True)
+
+    # Relations hiérarchiques
+    parent_type = Column(String(10), nullable=True)  # Type du territoire parent
+    parent_code = Column(String(10), nullable=True)  # Code du territoire parent
+    parent_name = Column(String, nullable=True)  # Nom du territoire parent
+
+    # Zone d'emploi (spécifique à certains fichiers)
+    employment_zone_code = Column(String(10), nullable=True)  # Code de la zone d'emploi (NUMZEMPL)
+    employment_zone_name = Column(String, nullable=True)  # Nom de la zone d'emploi (NOMZEMPL)
+
+    # Taux de couverture par type d'accueil
+    # 1. Accueil collectif
+    eaje_psu = Column(Float, nullable=True)  # Accueil collectif PSU
+    eaje_hors_psu = Column(Float, nullable=True)  # Accueil collectif hors PSU
+    eaje_total = Column(Float, nullable=True)  # Total accueil collectif (EAJE)
+
+    # 2. Préscolarisation
+    preschool = Column(Float, nullable=True)  # Préscolarisation
+
+    # 3. Accueil individuel
+    childminder = Column(Float, nullable=True)  # Assistantes maternelles
+    home_care = Column(Float, nullable=True)  # Garde à domicile
+    individual_total = Column(Float, nullable=True)  # Total accueil individuel
+
+    # 4. Taux global
+    global_rate = Column(Float, nullable=True)  # Couverture globale
+
+    # Source des données
+    data_source = Column(String(50), nullable=True)  # 'csv_2020', 'csv_2021', 'parquet', etc.
+
+    # Métadonnées
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        # Index composites pour optimiser les requêtes
+        Index('ix_childcare_territory_type_code_year', 'territory_type', 'territory_code', 'year'),
+        Index('ix_childcare_parent_type_code', 'parent_type', 'parent_code'),
+    )
