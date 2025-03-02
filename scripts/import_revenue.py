@@ -1,15 +1,21 @@
+import sys
+import os
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import text
 from pathlib import Path
 import logging
+import traceback
+
+# Ajouter le répertoire racine du projet au chemin d'importation
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Configuration du logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configuration de la base de données
-DATABASE_URL = "postgresql://postgres:5456CopaS@localhost:5432/myapi_db"
-engine = create_engine(DATABASE_URL)
+# Import des modules app
+from app.database import engine, SessionLocal
+from app.models import Revenue
 
 def clean_float(val):
     """Nettoie les valeurs float, remplace NaN par None"""
@@ -27,14 +33,11 @@ def clean_geo_code(code):
     """Nettoie les codes géographiques (supprime .0, etc.)"""
     if pd.isna(code):
         return None
-
     # Convertir en string
     code_str = str(code)
-
     # Supprimer le .0 à la fin si présent
     if code_str.endswith('.0'):
         code_str = code_str[:-2]
-
     return code_str
 
 def clean_database():
@@ -42,7 +45,7 @@ def clean_database():
     try:
         with engine.connect() as conn:
             logger.info("🗑️ Nettoyage de la table revenues...")
-            conn.execute("TRUNCATE TABLE revenues RESTART IDENTITY CASCADE")
+            conn.execute(text("TRUNCATE TABLE revenues RESTART IDENTITY CASCADE"))
             logger.info("✅ Table nettoyée avec succès")
     except Exception as e:
         logger.error(f"❌ Erreur lors du nettoyage de la table : {str(e)}")
@@ -70,10 +73,7 @@ def import_data_for_level(level, years):
         year_suffix = str(year)[2:]
 
         # Construire le chemin du fichier avec le suffixe correct
-        if level == 'france':
-            file_path = Path(f"data/revenues/{level}/cc_filosofi_{year}_{file_suffix}.csv")
-        else:
-            file_path = Path(f"data/revenues/{level}/cc_filosofi_{year}_{file_suffix}.csv")
+        file_path = Path(f"data/revenues/{level}/cc_filosofi_{year}_{file_suffix}.csv")
 
         if not file_path.exists():
             logger.warning(f"⚠️ Fichier non trouvé: {file_path}")
@@ -119,19 +119,29 @@ def import_data_for_level(level, years):
                 records.append(record)
 
             # Insérer les données en base
-            with engine.connect() as conn:
-                for record in records:
-                    conn.execute("""
-                        INSERT INTO revenues
-                        (geo_type, geo_code, year, median_revenue, poverty_rate)
-                        VALUES
-                        (%(geo_type)s, %(geo_code)s, %(year)s, %(median_revenue)s, %(poverty_rate)s)
-                    """, record)
+            session = SessionLocal()
+            try:
+                # Utiliser bulk_insert_mappings pour une meilleure performance
+                if records:
+                    # Insérer par lots pour les grands volumes de données
+                    batch_size = 5000
+                    for i in range(0, len(records), batch_size):
+                        batch = records[i:i+batch_size]
+                        session.bulk_insert_mappings(Revenue, batch)
+                        session.commit()
+                        logger.info(f"  - {min(i+batch_size, len(records))}/{len(records)} enregistrements traités")
 
-            logger.info(f"✅ Importé {len(records)} enregistrements pour {level}, année {year}")
+                logger.info(f"✅ Importé {len(records)} enregistrements pour {level}, année {year}")
+            except Exception as e:
+                session.rollback()
+                logger.error(f"❌ Erreur lors de l'importation des données {level} pour {year}: {str(e)}")
+                logger.error(traceback.format_exc())
+            finally:
+                session.close()
 
         except Exception as e:
-            logger.error(f"❌ Erreur lors de l'importation des données {level} pour {year}: {str(e)}")
+            logger.error(f"❌ Erreur lors du traitement du fichier {level} pour {year}: {str(e)}")
+            logger.error(traceback.format_exc())
 
 def import_revenue_data():
     """Fonction principale d'importation des données de revenus"""
@@ -153,6 +163,9 @@ def import_revenue_data():
 
     except Exception as e:
         logger.error(f"❌ Erreur générale lors de l'importation: {str(e)}")
+        logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
+    logger.info("🚀 Démarrage de l'import des données de revenus")
     import_revenue_data()
+    logger.info("🏁 Import terminé")

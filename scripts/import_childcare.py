@@ -1,11 +1,5 @@
-#!/usr/bin/env python
-"""
-Script pour importer les données de garde d'enfants depuis différentes sources
-(CSV et Parquet) dans la base de données PostgreSQL.
-"""
 import pandas as pd
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session
+from sqlalchemy import text
 from pathlib import Path
 import logging
 import sys
@@ -14,7 +8,7 @@ import os
 # Ajouter le répertoire parent au chemin d'import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import du modèle SQLAlchemy
+# Import des modules de base de données - La fonction load_dotenv() est déjà appelée par app.database
 from app.models import Childcare
 from app.database import SessionLocal, Base, engine
 

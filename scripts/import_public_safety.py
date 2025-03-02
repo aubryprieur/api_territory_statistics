@@ -1,16 +1,22 @@
+import sys
+import os
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import text
 from pathlib import Path
 import logging
 import numpy as np
+import traceback
+
+# Ajouter le répertoire racine du projet au chemin d'importation
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Configuration du logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configuration de la base de données
-DATABASE_URL = "postgresql://postgres:5456CopaS@localhost:5432/myapi_db"
-engine = create_engine(DATABASE_URL)
+# Import des modules app
+from app.database import engine, SessionLocal
+from app.models import PublicSafety
 
 def clean_float(val):
     """Nettoie les valeurs float, remplace NaN par 0"""
@@ -23,7 +29,7 @@ def clean_database():
     try:
         with engine.connect() as conn:
             logger.info("🗑️ Nettoyage de la table public_safety...")
-            conn.execute("TRUNCATE TABLE public_safety RESTART IDENTITY")
+            conn.execute(text("TRUNCATE TABLE public_safety RESTART IDENTITY"))
             logger.info("✅ Table nettoyée avec succès")
     except Exception as e:
         logger.error(f"❌ Erreur lors du nettoyage de la table : {str(e)}")
@@ -40,28 +46,35 @@ def import_commune_data():
             if pd.isna(row['CODGEO_2023']) or pd.isna(row['annee']) or pd.isna(row['classe']):
                 continue
 
-            records.append((
-                'commune',
-                str(row['CODGEO_2023']),
-                int(row['annee']),
-                str(row['classe']),
-                clean_float(row['tauxpourmille'])
-            ))
+            records.append({
+                'territory_type': 'commune',
+                'territory_code': str(row['CODGEO_2023']),
+                'year': int(row['annee']),
+                'indicator_class': str(row['classe']),
+                'rate': clean_float(row['tauxpourmille'])
+            })
 
-        # Import en base avec la syntaxe correcte
-        with engine.connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO public_safety
-                (territory_type, territory_code, year, indicator_class, rate)
-                VALUES (%s, %s, %s, %s, %s)
-                """,
-                records
-            )
+        # Import en base avec SQLAlchemy ORM
+        session = SessionLocal()
+        try:
+            # Utiliser bulk_insert_mappings pour insérer efficacement par lots
+            for i in range(0, len(records), 5000):
+                batch = records[i:i+5000]
+                session.bulk_insert_mappings(PublicSafety, batch)
+                session.commit()
+                logger.info(f"🔄 Progression: {min(i+5000, len(records))}/{len(records)} enregistrements communaux insérés")
 
-        logger.info(f"✅ Imported {len(records)} commune records")
+            logger.info(f"✅ Imported {len(records)} commune records")
+        except Exception as e:
+            session.rollback()
+            logger.error(f"❌ Error importing commune data: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
+        finally:
+            session.close()
     except Exception as e:
         logger.error(f"❌ Error importing commune data: {str(e)}")
+        logger.error(traceback.format_exc())
         raise
 
 def import_department_data():
@@ -78,27 +91,30 @@ def import_department_data():
             if pd.isna(row['Code.département']) or pd.isna(row['annee']) or pd.isna(row['classe']):
                 continue
 
-            records.append((
-                'department',
-                str(row['Code.département']),
-                int(row['annee']),
-                str(row['classe']),
-                clean_float(row['tauxpourmille'])
-            ))
+            records.append({
+                'territory_type': 'department',
+                'territory_code': str(row['Code.département']),
+                'year': int(row['annee']),
+                'indicator_class': str(row['classe']),
+                'rate': clean_float(row['tauxpourmille'])
+            })
 
-        with engine.connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO public_safety
-                (territory_type, territory_code, year, indicator_class, rate)
-                VALUES (%s, %s, %s, %s, %s)
-                """,
-                records
-            )
-
-        logger.info(f"✅ Imported {len(records)} department records")
+        # Import en base avec SQLAlchemy ORM
+        session = SessionLocal()
+        try:
+            session.bulk_insert_mappings(PublicSafety, records)
+            session.commit()
+            logger.info(f"✅ Imported {len(records)} department records")
+        except Exception as e:
+            session.rollback()
+            logger.error(f"❌ Error importing department data: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
+        finally:
+            session.close()
     except Exception as e:
         logger.error(f"❌ Error importing department data: {str(e)}")
+        logger.error(traceback.format_exc())
         raise
 
 def import_region_data():
@@ -118,27 +134,30 @@ def import_region_data():
             # Nettoyer le code région (enlever le .0)
             region_code = str(row['Code.région']).replace('.0', '')
 
-            records.append((
-                'region',
-                region_code,
-                int(row['annee']),
-                str(row['classe']),
-                clean_float(row['tauxpourmille'])
-            ))
+            records.append({
+                'territory_type': 'region',
+                'territory_code': region_code,
+                'year': int(row['annee']),
+                'indicator_class': str(row['classe']),
+                'rate': clean_float(row['tauxpourmille'])
+            })
 
-        with engine.connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO public_safety
-                (territory_type, territory_code, year, indicator_class, rate)
-                VALUES (%s, %s, %s, %s, %s)
-                """,
-                records
-            )
-
-        logger.info(f"✅ Imported {len(records)} region records")
+        # Import en base avec SQLAlchemy ORM
+        session = SessionLocal()
+        try:
+            session.bulk_insert_mappings(PublicSafety, records)
+            session.commit()
+            logger.info(f"✅ Imported {len(records)} region records")
+        except Exception as e:
+            session.rollback()
+            logger.error(f"❌ Error importing region data: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
+        finally:
+            session.close()
     except Exception as e:
         logger.error(f"❌ Error importing region data: {str(e)}")
+        logger.error(traceback.format_exc())
         raise
 
 def main():
@@ -168,6 +187,9 @@ def main():
 
     except Exception as e:
         logger.error(f"❌ Global error during import: {str(e)}")
+        logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
+    logger.info("🚀 Démarrage de l'import des données de sécurité publique")
     main()
+    logger.info("🏁 Import terminé")

@@ -1,15 +1,21 @@
+import sys
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import text
 from pathlib import Path
 import logging
+import os
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configuration de la base de données
-DATABASE_URL = "postgresql://postgres:5456CopaS@localhost:5432/myapi_db"
-engine = create_engine(DATABASE_URL)
+# Ajouter le dossier 'app' au chemin d'importation
+sys.path.append("app")
+
+# Importer les objets de base de données depuis app.database
+# (load_dotenv est déjà appelé à l'intérieur de app.database)
+from app.database import SessionLocal, engine
+from app.models import Employment
 
 def clean_float(val):
     """Nettoie les valeurs float, remplace NaN par None"""

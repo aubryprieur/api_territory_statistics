@@ -8,7 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Récupérer l'URL de la base de données depuis les variables d'environnement
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:5456CopaS@localhost:5432/myapi_db")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("La variable d'environnement DATABASE_URL n'est pas définie")
 
 # Correction pour Heroku PostgreSQL (qui utilise postgres:// au lieu de postgresql://)
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):

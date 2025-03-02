@@ -1,11 +1,17 @@
 import sys
 import pandas as pd
 from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine
-from app.models import Birth
+from dotenv import load_dotenv
+import os
+
+# Charger les variables d'environnement avant d'importer les modules qui en dépendent
+load_dotenv()
 
 # Ajouter le dossier 'app' au chemin d'importation
 sys.path.append("app")
+
+from app.database import SessionLocal, engine
+from app.models import Birth
 
 def import_csv_to_db():
     print("📥 Chargement des données depuis le fichier CSV...")

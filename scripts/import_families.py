@@ -1,7 +1,17 @@
+import sys
 import os
 import pandas as pd
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import exists
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Configuration du logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Import des modules app (load_dotenv est déjà appelé par app.database)
 from app.database import SessionLocal
 from app.models import Family
 

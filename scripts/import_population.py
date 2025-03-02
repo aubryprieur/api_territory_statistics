@@ -1,25 +1,21 @@
+import sys
+import os
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import text
 from pathlib import Path
 import logging
-import os
-from dotenv import load_dotenv
+import traceback
 
-# Charger les variables d'environnement depuis .env
-load_dotenv()
+# Ajouter le répertoire racine du projet au chemin d'importation
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Configuration du logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configuration de la base de données
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:5456CopaS@localhost:5432/myapi_db")
-
-# Correction pour Heroku PostgreSQL
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-engine = create_engine(DATABASE_URL)
+# Import des modules app
+from app.database import engine, SessionLocal
+from app.models import Population
 
 def clean_database():
     """Nettoie la table populations avant l'import"""

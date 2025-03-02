@@ -17,8 +17,11 @@ logger = logging.getLogger("alembic.runtime.migration")
 # Récupérer l'URL depuis les variables d'environnement ou l'utiliser depuis alembic.ini
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
+if not DATABASE_URL:
+    raise ValueError("La variable d'environnement DATABASE_URL n'est pas définie")
+
 # Correction pour Heroku PostgreSQL
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Remplacer dynamiquement la chaîne de connexion si DATABASE_URL est défini

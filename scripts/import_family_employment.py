@@ -1,12 +1,10 @@
 import os
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import text
 from pathlib import Path
 import logging
 import sys
-
-# Ajouter le répertoire parent pour l'import des modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import traceback
 
 # Configuration du logging
 logging.basicConfig(
@@ -15,9 +13,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Configuration de la base de données
-DATABASE_URL = "postgresql://postgres:5456CopaS@localhost:5432/myapi_db"
-engine = create_engine(DATABASE_URL)
+# Ajouter le répertoire parent au chemin d'importation
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import des objets depuis app.database
+from app.database import SessionLocal, engine
+from app.models import FamilyEmployment
 
 def clean_database():
     """Nettoie la table family_employment avant l'import"""
