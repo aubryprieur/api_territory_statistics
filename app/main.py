@@ -34,9 +34,11 @@ from app.security import (
     get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
 )
 
-auth_router = APIRouter()
+# Créer l'application SANS dépendance globale
+app = FastAPI(title="API Population")
 
-@auth_router.post("/token", response_model=Token)
+# L'endpoint /token directement sur l'app (non protégé)
+@app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -50,15 +52,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
-# Créer l'application principale avec authentification globale
-app = FastAPI(
-    title="API Population",
-    dependencies=[Depends(get_current_user)]
-)
-
-# Inclure le router d'authentification
-app.include_router(auth_router)
 
 # Monter les fichiers statiques
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -76,12 +69,15 @@ employment_service = EmploymentService()
 schooling_service = SchoolingService()
 family_employment_service = FamilyEmploymentService()
 
+# Créer un router protégé pour tous les autres endpoints
+protected_router = APIRouter(dependencies=[Depends(get_current_user)])
 
-@app.get("/")
+# Tous les endpoints existants, mais maintenant sur le router protégé
+@protected_router.get("/")
 async def root():
     return {"message": "API Population 2021"}
 
-@app.get("/population/{code}",
+@protected_router.get("/population/{code}",
     response_model=List[Population],
     summary="Obtenir la structure de la population d'une commune",
     description="Récupère la répartition détaillée de la population d'une commune par sexe et par âge (de 0 à 100 ans)",
@@ -105,7 +101,7 @@ async def get_population_by_code(code: str):
         raise HTTPException(status_code=404, detail="Code non trouvé")
     return data
 
-@app.get("/population/children/commune/{code}",
+@protected_router.get("/population/children/commune/{code}",
     response_model=PopulationChildrenRate,
     summary="Obtenir les données des enfants de 0-5 ans pour une commune",
     description="Récupère les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour une commune",
@@ -118,7 +114,7 @@ async def get_commune_children(code: str):
     """
     return population_service.get_population_and_children_rate(code)
 
-@app.get("/population/children/epci/{epci}",
+@protected_router.get("/population/children/epci/{epci}",
     response_model=PopulationChildrenEPCI,
     summary="Obtenir les données des enfants de 0-5 ans pour un EPCI",
     description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour toutes les communes d'un EPCI",
@@ -131,7 +127,7 @@ async def get_epci_children(epci: str):
     """
     return population_service.aggregate_children_by_epci(epci, geocode_service)
 
-@app.get("/population/children/department/{dep}",
+@protected_router.get("/population/children/department/{dep}",
     response_model=PopulationChildrenDepartment,
     summary="Obtenir les données des enfants de 0-5 ans pour un département",
     description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour toutes les communes d'un département",
@@ -144,7 +140,7 @@ async def get_department_children(dep: str):
     """
     return population_service.aggregate_children_by_department(dep, geocode_service)
 
-@app.get("/population/children/region/{reg}",
+@protected_router.get("/population/children/region/{reg}",
     response_model=PopulationChildrenRegion,
     summary="Obtenir les données des enfants de 0-5 ans pour une région",
     description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour toutes les communes d'une région",
@@ -157,7 +153,7 @@ async def get_region_children(reg: str):
     """
     return population_service.aggregate_children_by_region(reg, geocode_service)
 
-@app.get("/population/children/france",
+@protected_router.get("/population/children/france",
     response_model=PopulationChildrenFrance,
     summary="Obtenir les données des enfants de 0-5 ans pour la France entière",
     description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour l'ensemble de la France",
@@ -168,7 +164,7 @@ async def get_france_children():
     """
     return population_service.aggregate_children_france(geocode_service)
 
-@app.get("/historical/{code}",
+@protected_router.get("/historical/{code}",
     response_model=List[HistoricalData],
     summary="Obtenir l'historique de population d'une commune depuis 1968",
     description="""Récupère les données historiques de population d'une commune pour les recensements de :
@@ -203,19 +199,19 @@ async def get_historical_by_code(code: str):
     return historical_service.get_by_code(code)
 
 
-@app.get("/geocodes/{code}")
+@protected_router.get("/geocodes/{code}")
 async def get_geocode(code: str):
    return geocode_service.get_by_code(code)
 
-@app.get("/geocodes/region/{reg}")
+@protected_router.get("/geocodes/region/{reg}")
 async def get_by_region(reg: str):
    return geocode_service.get_by_region(reg)
 
-@app.get("/geocodes/department/{dep}")
+@protected_router.get("/geocodes/department/{dep}")
 async def get_by_department(dep: str):
    return geocode_service.get_by_department(dep)
 
-@app.get("/births/{code}", response_model=List[BirthSchema],
+@protected_router.get("/births/{code}", response_model=List[BirthSchema],
     summary="Obtenir les naissances par commune",
     description="Récupère les données historiques des naissances pour une commune spécifique",
     response_description="Les données de naissance annuelles pour la commune")
@@ -227,7 +223,7 @@ async def get_births_by_code(code: str):
     """
     return birth_service.get_by_code(code)
 
-@app.get("/geocodes/epci/{epci}/births",
+@protected_router.get("/geocodes/epci/{epci}/births",
     summary="Obtenir les naissances agrégées par EPCI",
     description="Récupère et agrège les données de naissance pour toutes les communes d'un EPCI",
     response_description="Les données de naissance agrégées incluant le nombre total de naissances, le nombre de communes et l'évolution par année")
@@ -239,7 +235,7 @@ async def get_epci_births(epci: str):
     """
     return geocode_service.aggregate_births_by_epci(epci, birth_service)
 
-@app.get("/geocodes/department/{dep}/births",
+@protected_router.get("/geocodes/department/{dep}/births",
     summary="Obtenir les naissances agrégées par département",
     description="Récupère et agrège les données de naissance pour toutes les communes d'un département",
     response_description="Les données de naissance agrégées incluant le nombre total de naissances, le nombre de communes et l'évolution par année")
@@ -251,7 +247,7 @@ async def get_department_births(dep: str):
     """
     return geocode_service.aggregate_births_by_department(dep, birth_service)
 
-@app.get("/geocodes/region/{reg}/births",
+@protected_router.get("/geocodes/region/{reg}/births",
     summary="Obtenir les naissances agrégées par région",
     description="Récupère et agrège les données de naissance pour toutes les communes d'une région",
     response_description="Les données de naissance agrégées incluant le nombre total de naissances, le nombre de communes, le nombre de départements et l'évolution par année")
@@ -263,7 +259,7 @@ async def get_region_births(reg: str):
     """
     return geocode_service.aggregate_births_by_region(reg, birth_service)
 
-@app.get("/geocodes/france/births",
+@protected_router.get("/geocodes/france/births",
     summary="Obtenir les naissances agrégées pour la France entière",
     description="Récupère et agrège les données de naissance pour toutes les communes de France",
     response_description="Les données de naissance agrégées incluant le nombre total de naissances, le nombre de communes, le nombre de départements, le nombre de régions et l'évolution par année")
@@ -273,7 +269,7 @@ async def get_france_births():
     """
     return geocode_service.aggregate_births_france(birth_service)
 
-@app.get("/revenues/median/commune/{code}",
+@protected_router.get("/revenues/median/commune/{code}",
     summary="Obtenir les revenus médians d'une commune",
     description="Récupère l'historique des revenus médians et des taux de pauvreté d'une commune depuis 2017",
     response_description="Les revenus médians et taux de pauvreté par année pour la commune")
@@ -289,7 +285,7 @@ async def get_commune_median_revenues(code: str):
     """
     return revenue_service.get_median_revenues(code)
 
-@app.get("/revenues/median/epci/{code}",
+@protected_router.get("/revenues/median/epci/{code}",
     summary="Obtenir les revenus médians d'un EPCI",
     description="Récupère l'historique des revenus médians et des taux de pauvreté d'un EPCI depuis 2017",
     response_description="Les revenus médians et taux de pauvreté par année pour l'EPCI")
@@ -305,7 +301,7 @@ async def get_epci_median_revenues(code: str):
     """
     return revenue_service.get_median_revenues_epci(code)
 
-@app.get("/revenues/median/department/{code}",
+@protected_router.get("/revenues/median/department/{code}",
     summary="Obtenir les revenus médians d'un département",
     description="Récupère l'historique des revenus médians et des taux de pauvreté d'un département depuis 2017",
     response_description="Les revenus médians et taux de pauvreté par année pour le département")
@@ -321,7 +317,7 @@ async def get_department_median_revenues(code: str):
     """
     return revenue_service.get_median_revenues_department(code)
 
-@app.get("/revenues/median/region/{code}",
+@protected_router.get("/revenues/median/region/{code}",
     summary="Obtenir les revenus médians d'une région",
     description="Récupère l'historique des revenus médians et des taux de pauvreté d'une région depuis 2017",
     response_description="Les revenus médians et taux de pauvreté par année pour la région")
@@ -337,7 +333,7 @@ async def get_region_median_revenues(code: str):
     """
     return revenue_service.get_median_revenues_region(code)
 
-@app.get("/revenues/median/france",
+@protected_router.get("/revenues/median/france",
     summary="Obtenir les revenus médians de la France",
     description="Récupère l'historique des revenus médians et des taux de pauvreté au niveau national depuis 2017",
     response_description="Les revenus médians et taux de pauvreté par année pour la France entière")
@@ -351,7 +347,7 @@ async def get_france_median_revenues():
     """
     return revenue_service.get_median_revenues_france()
 
-@app.get("/childcare/commune/{code}",
+@protected_router.get("/childcare/commune/{code}",
     response_model=dict,
     summary="Obtenir les taux de couverture des modes d'accueil pour une commune",
     description="""Récupère les taux de couverture des différents modes d'accueil pour une commune depuis 2017.
@@ -380,7 +376,7 @@ async def get_commune_childcare(
     """
     return childcare_service.get_coverage_by_commune(code, start_year, end_year)
 
-@app.get("/childcare/epci/{epci}",
+@protected_router.get("/childcare/epci/{epci}",
     response_model=dict,
     summary="Obtenir les taux de couverture des modes d'accueil pour un EPCI",
     description="""Récupère les taux de couverture des différents modes d'accueil pour un EPCI (Établissement Public de Coopération Intercommunale) depuis 2017.
@@ -411,7 +407,7 @@ async def get_epci_childcare(
     """
     return childcare_service.get_coverage_by_epci(epci, start_year, end_year)
 
-@app.get("/childcare/department/{dep}",
+@protected_router.get("/childcare/department/{dep}",
     response_model=dict,
     summary="Obtenir les taux de couverture des modes d'accueil pour un département",
     description="""Récupère les taux de couverture des différents modes d'accueil pour un département depuis 2017.
@@ -442,7 +438,7 @@ async def get_department_childcare(
     """
     return childcare_service.get_coverage_by_department(dep, start_year, end_year)
 
-@app.get("/childcare/region/{reg}",
+@protected_router.get("/childcare/region/{reg}",
     response_model=dict,
     summary="Obtenir les taux de couverture des modes d'accueil pour une région",
     description="""Récupère les taux de couverture des différents modes d'accueil pour une région depuis 2017.
@@ -471,7 +467,7 @@ async def get_region_childcare(
     """
     return childcare_service.get_coverage_by_region(reg, start_year, end_year)
 
-@app.get("/childcare/france",
+@protected_router.get("/childcare/france",
     response_model=dict,
     summary="Obtenir les taux de couverture des modes d'accueil pour la France",
     description="""Récupère les taux de couverture des différents modes d'accueil au niveau national depuis 2017.
@@ -498,7 +494,7 @@ async def get_france_childcare(
     """
     return childcare_service.get_coverage_france(start_year, end_year)
 
-@app.get("/families/commune/{code}",
+@protected_router.get("/families/commune/{code}",
     summary="Obtenir les statistiques des familles pour une commune",
     description="""Récupère l'évolution de la composition des familles pour une commune depuis 2010.
 
@@ -523,7 +519,7 @@ async def get_commune_families(
     """
     return family_service.get_families_by_commune(code, start_year, end_year)
 
-@app.get("/families/epci/{epci}",
+@protected_router.get("/families/epci/{epci}",
     summary="Obtenir les statistiques des familles pour un EPCI",
     description="""Récupère l'évolution de la composition des familles pour un EPCI depuis 2010.
 
@@ -548,7 +544,7 @@ async def get_epci_families(
     """
     return family_service.get_families_by_epci(epci, start_year, end_year)
 
-@app.get("/families/department/{dep}",
+@protected_router.get("/families/department/{dep}",
     summary="Obtenir les statistiques des familles pour un département",
     description="""Récupère l'évolution de la composition des familles pour un département depuis 2010.
 
@@ -573,7 +569,7 @@ async def get_department_families(
     """
     return family_service.get_families_by_department(dep, start_year, end_year)
 
-@app.get("/families/region/{reg}",
+@protected_router.get("/families/region/{reg}",
     summary="Obtenir les statistiques des familles pour une région",
     description="""Récupère l'évolution de la composition des familles pour une région depuis 2010.
 
@@ -598,7 +594,7 @@ async def get_region_families(
     """
     return family_service.get_families_by_region(reg, start_year, end_year)
 
-@app.get("/families/france",
+@protected_router.get("/families/france",
     summary="Obtenir les statistiques des familles pour la France entière",
     description="""Récupère l'évolution de la composition des familles au niveau national depuis 2010.
 
@@ -623,7 +619,7 @@ async def get_france_families(
     """
     return family_service.get_families_france(start_year, end_year)
 
-@app.get("/public-safety/commune/{code}",
+@protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
    summary="Obtenir les indicateurs de sécurité d'une commune",
    description="""Récupère les indicateurs de sécurité publique pour une commune et ses territoires parents (département et région).
@@ -649,7 +645,7 @@ async def get_commune_public_safety(code: str):
    """
    return public_safety_service.get_by_commune(code)
 
-@app.get("/public-safety/department/{dep}",
+@protected_router.get("/public-safety/department/{dep}",
     response_model=PublicSafetyResponse,
     summary="Obtenir les indicateurs de sécurité d'un département",
     description="""Récupère les indicateurs de sécurité publique pour un département et sa région parente.
@@ -670,7 +666,7 @@ async def get_department_public_safety(dep: str):
     """
     return public_safety_service.get_by_department(dep)
 
-@app.get("/public-safety/region/{reg}",
+@protected_router.get("/public-safety/region/{reg}",
     response_model=PublicSafetyResponse,
     summary="Obtenir les indicateurs de sécurité d'une région",
     description="""Récupère les indicateurs de sécurité publique pour une région.
@@ -689,7 +685,7 @@ async def get_region_public_safety(reg: str):
     """
     return public_safety_service.get_by_region(reg)
 
-@app.get("/employment/rates/commune/{code}",
+@protected_router.get("/employment/rates/commune/{code}",
     response_model=EmploymentResponse,
     summary="Obtenir les taux d'emploi des femmes pour une commune",
     description="""Récupère les indicateurs d'emploi des femmes pour une commune en 2021.
@@ -708,7 +704,7 @@ async def get_commune_employment_rates(code: str):
     """
     return employment_service.get_commune_rates(code)
 
-@app.get("/employment/rates/epci/{epci}",
+@protected_router.get("/employment/rates/epci/{epci}",
     response_model=EmploymentResponse,
     summary="Obtenir les taux d'emploi des femmes pour un EPCI",
     description="""Récupère les indicateurs d'emploi des femmes agrégés pour un EPCI (Établissement Public de Coopération Intercommunale) en 2021.
@@ -727,7 +723,7 @@ async def get_epci_employment_rates(epci: str):
     """
     return employment_service.get_epci_rates(epci)
 
-@app.get("/employment/rates/department/{dep}",
+@protected_router.get("/employment/rates/department/{dep}",
     response_model=EmploymentResponse,
     summary="Obtenir les taux d'emploi des femmes pour un département",
     description="""Récupère les indicateurs d'emploi des femmes agrégés pour un département en 2021.
@@ -746,7 +742,7 @@ async def get_department_employment_rates(dep: str):
     """
     return employment_service.get_department_rates(dep)
 
-@app.get("/employment/rates/region/{reg}",
+@protected_router.get("/employment/rates/region/{reg}",
     response_model=EmploymentResponse,
     summary="Obtenir les taux d'emploi des femmes pour une région",
     description="""Récupère les indicateurs d'emploi des femmes agrégés pour une région en 2021.
@@ -765,7 +761,7 @@ async def get_region_employment_rates(reg: str):
     """
     return employment_service.get_region_rates(reg)
 
-@app.get("/employment/rates/france",
+@protected_router.get("/employment/rates/france",
     response_model=EmploymentResponse,
     summary="Obtenir les taux d'emploi des femmes pour la France",
     description="""Récupère les indicateurs d'emploi des femmes au niveau national en 2021.
@@ -782,7 +778,7 @@ async def get_france_employment_rates():
     """
     return employment_service.get_france_rates()
 
-@app.get("/education/schooling/commune/{code}",
+@protected_router.get("/education/schooling/commune/{code}",
    response_model=SchoolingResponse,
    summary="Obtenir les taux de scolarisation pour une commune",
    description="""Récupère l'évolution des taux de scolarisation par tranche d'âge pour une commune sur la période 2017-2021.
@@ -805,7 +801,7 @@ async def get_commune_schooling(code: str):
    """
    return schooling_service.get_commune_schooling(code)
 
-@app.get("/education/schooling/epci/{epci}",
+@protected_router.get("/education/schooling/epci/{epci}",
    response_model=SchoolingResponse,
    summary="Obtenir les taux de scolarisation pour un EPCI",
    description="""Récupère l'évolution des taux de scolarisation par tranche d'âge agrégés pour un EPCI (Établissement Public de Coopération Intercommunale) sur la période 2017-2021.
@@ -828,7 +824,7 @@ async def get_epci_schooling(epci: str):
    """
    return schooling_service.get_epci_schooling(epci)
 
-@app.get("/education/schooling/department/{dep}",
+@protected_router.get("/education/schooling/department/{dep}",
    response_model=SchoolingResponse,
    summary="Obtenir les taux de scolarisation pour un département",
    description="""Récupère l'évolution des taux de scolarisation par tranche d'âge agrégés pour un département sur la période 2017-2021.
@@ -851,7 +847,7 @@ async def get_department_schooling(dep: str):
    """
    return schooling_service.get_department_schooling(dep)
 
-@app.get("/education/schooling/region/{reg}",
+@protected_router.get("/education/schooling/region/{reg}",
    response_model=SchoolingResponse,
    summary="Obtenir les taux de scolarisation pour une région",
    description="""Récupère l'évolution des taux de scolarisation par tranche d'âge agrégés pour une région sur la période 2017-2021.
@@ -874,7 +870,7 @@ async def get_region_schooling(reg: str):
    """
    return schooling_service.get_region_schooling(reg)
 
-@app.get("/education/schooling/france",
+@protected_router.get("/education/schooling/france",
    response_model=SchoolingResponse,
    summary="Obtenir les taux de scolarisation pour la France",
    description="""Récupère l'évolution des taux de scolarisation par tranche d'âge au niveau national sur la période 2017-2021.
@@ -896,7 +892,7 @@ async def get_france_schooling():
    return schooling_service.get_france_schooling()
 
 # Routes pour les 0-2 ans
-@app.get("/families/employment/under3/commune/{code}",
+@protected_router.get("/families/employment/under3/commune/{code}",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour une commune",
    description="""Récupère la distribution des situations d'emploi des familles ayant des enfants de moins de 3 ans pour une commune en 2021.
@@ -921,7 +917,7 @@ async def get_commune_family_employment_under3(code: str):
    """
    return family_employment_service.get_commune_distribution(code, age_group="0")
 
-@app.get("/families/employment/under3/epci/{epci}",
+@protected_router.get("/families/employment/under3/epci/{epci}",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour un EPCI",
    description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de moins de 3 ans pour un EPCI (Établissement Public de Coopération Intercommunale) en 2021.
@@ -946,7 +942,7 @@ async def get_epci_family_employment_under3(epci: str):
    """
    return family_employment_service.get_epci_distribution(epci, age_group="0")
 
-@app.get("/families/employment/under3/department/{dep}",
+@protected_router.get("/families/employment/under3/department/{dep}",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour un département",
    description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de moins de 3 ans pour un département en 2021.
@@ -971,7 +967,7 @@ async def get_department_family_employment_under3(dep: str):
    """
    return family_employment_service.get_department_distribution(dep, age_group="0")
 
-@app.get("/families/employment/under3/region/{reg}",
+@protected_router.get("/families/employment/under3/region/{reg}",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour une région",
    description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de moins de 3 ans pour une région en 2021.
@@ -996,7 +992,7 @@ async def get_region_family_employment_under3(reg: str):
    """
    return family_employment_service.get_region_distribution(reg, age_group="0")
 
-@app.get("/families/employment/under3/france",
+@protected_router.get("/families/employment/under3/france",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de moins de 3 ans pour la France",
    description="""Récupère la distribution nationale des situations d'emploi des familles ayant des enfants de moins de 3 ans en 2021.
@@ -1020,7 +1016,7 @@ async def get_france_family_employment_under3():
    return family_employment_service.get_france_distribution(age_group="0")
 
 # Routes pour les 3-5 ans
-@app.get("/families/employment/3to5/commune/{code}",
+@protected_router.get("/families/employment/3to5/commune/{code}",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour une commune",
    description="""Récupère la distribution des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour une commune en 2021.
@@ -1049,7 +1045,7 @@ async def get_commune_family_employment_3to5(code: str):
    """
    return family_employment_service.get_commune_distribution(code, age_group="3")
 
-@app.get("/families/employment/3to5/epci/{epci}",
+@protected_router.get("/families/employment/3to5/epci/{epci}",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour un EPCI",
    description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour un EPCI (Établissement Public de Coopération Intercommunale) en 2021.
@@ -1078,7 +1074,7 @@ async def get_epci_family_employment_3to5(epci: str):
    """
    return family_employment_service.get_epci_distribution(epci, age_group="3")
 
-@app.get("/families/employment/3to5/department/{dep}",
+@protected_router.get("/families/employment/3to5/department/{dep}",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour un département",
    description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour un département en 2021.
@@ -1107,7 +1103,7 @@ async def get_department_family_employment_3to5(dep: str):
    """
    return family_employment_service.get_department_distribution(dep, age_group="3")
 
-@app.get("/families/employment/3to5/region/{reg}",
+@protected_router.get("/families/employment/3to5/region/{reg}",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour une région",
    description="""Récupère la distribution agrégée des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour une région en 2021.
@@ -1136,7 +1132,7 @@ async def get_region_family_employment_3to5(reg: str):
    """
    return family_employment_service.get_region_distribution(reg, age_group="3")
 
-@app.get("/families/employment/3to5/france",
+@protected_router.get("/families/employment/3to5/france",
    response_model=FamilyEmploymentResponse,
    summary="Obtenir la répartition des situations d'emploi des familles avec enfants de 3 à 5 ans pour la France",
    description="""Récupère la distribution nationale des situations d'emploi des familles ayant des enfants de 3 à 5 ans en 2021.
@@ -1163,7 +1159,7 @@ async def get_france_family_employment_3to5():
    """
    return family_employment_service.get_france_distribution(age_group="3")
 
-@app.get("/families/{level}/{code}",
+@protected_router.get("/families/{level}/{code}",
    summary="Obtenir l'évolution de la composition des familles par niveau géographique",
    description="""Récupère l'évolution historique de la composition des familles depuis 2010 pour le niveau géographique choisi.
 
@@ -1208,3 +1204,6 @@ async def get_families(
        return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
    else:
        raise HTTPException(status_code=404, detail=f"Level {level} not found")
+
+# Inclure le router protégé dans l'app
+app.include_router(protected_router)
