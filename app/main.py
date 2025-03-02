@@ -1,3 +1,5 @@
+import os
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from fastapi import FastAPI, HTTPException, Depends, status, APIRouter
 from fastapi.staticfiles import StaticFiles
@@ -37,6 +39,26 @@ from app.security import (
 # Créer l'application SANS dépendance globale
 app = FastAPI(title="API Population")
 
+# Configurer CORS
+# Déterminer l'environnement
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+
+# Configuration CORS basée sur l'environnement
+if DEBUG:
+    # En mode développement, autoriser tous les domaines
+    origins = ["*"]
+else:
+    # En production, autoriser uniquement des domaines spécifiques
+    origins_str = os.environ.get("CORS_ORIGINS", "https://votre-domaine.com")
+    origins = [origin.strip() for origin in origins_str.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"] if not DEBUG else ["*"],
+    allow_headers=["Authorization", "Content-Type"] if not DEBUG else ["*"],
+)
 # L'endpoint /token directement sur l'app (non protégé)
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
