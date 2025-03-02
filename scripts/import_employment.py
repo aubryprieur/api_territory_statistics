@@ -1,19 +1,18 @@
 import sys
+import os
 import pandas as pd
 from sqlalchemy import text
 from pathlib import Path
 import logging
-import os
 
 # Configuration du logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Ajouter le dossier 'app' au chemin d'importation
-sys.path.append("app")
+# Ajouter le répertoire racine du projet au chemin d'importation
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importer les objets de base de données depuis app.database
-# (load_dotenv est déjà appelé à l'intérieur de app.database)
 from app.database import SessionLocal, engine
 from app.models import Employment
 
@@ -28,7 +27,7 @@ def clean_database():
     try:
         with engine.connect() as conn:
             logger.info("🗑️ Nettoyage de la table employment...")
-            conn.execute("TRUNCATE TABLE employment RESTART IDENTITY CASCADE")
+            conn.execute(text("TRUNCATE TABLE employment RESTART IDENTITY CASCADE"))
             logger.info("✅ Table nettoyée avec succès")
     except Exception as e:
         logger.error(f"❌ Erreur lors du nettoyage de la table : {str(e)}")
