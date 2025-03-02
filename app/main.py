@@ -1,6 +1,10 @@
 from typing import List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status, APIRouter
 from fastapi.staticfiles import StaticFiles
+from datetime import timedelta
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
 from .services.population_service import PopulationService
 from .services.historical_service import HistoricalService
 from .services.birth_service import BirthService
@@ -12,7 +16,9 @@ from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
 from .services.schooling_service import SchoolingService
 from .services.family_employment_service import FamilyEmploymentService
+
 from app.models import Birth  # Uniquement le modèle SQLAlchemy
+
 from app.schemas import BirthSchema, FamilySchema
 from app.schemas import (
     Population, HistoricalData, PopulationChildrenRate, PopulationChildrenEPCI,
@@ -22,9 +28,42 @@ from app.schemas import (
     FamilyEmploymentResponse, FamilyEmploymentDistribution
 )
 
+from app.database import get_db
+from app.security import (
+    Token, User, authenticate_user, create_access_token,
+    get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
+)
 
-app = FastAPI(title="API Population")
+auth_router = APIRouter()
+
+@auth_router.post("/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# Créer l'application principale avec authentification globale
+app = FastAPI(
+    title="API Population",
+    dependencies=[Depends(get_current_user)]
+)
+
+# Inclure le router d'authentification
+app.include_router(auth_router)
+
+# Monter les fichiers statiques
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Initialiser les services
 population_service = PopulationService()
 historical_service = HistoricalService()
 birth_service = BirthService()
