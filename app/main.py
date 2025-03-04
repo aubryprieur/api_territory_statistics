@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
 from .services.population_service import PopulationService
 from .services.historical_service import HistoricalService
@@ -35,6 +36,9 @@ from app.security import (
     Token, User, authenticate_user, create_access_token,
     get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
 )
+
+# Charger les variables d'environnement en premier
+load_dotenv(verbose=True)
 
 # Créer l'application SANS dépendance globale
 app = FastAPI(title="API Population")

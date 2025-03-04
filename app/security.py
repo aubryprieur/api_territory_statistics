@@ -18,6 +18,13 @@ load_dotenv()
 
 # Utiliser la variable d'environnement avec une valeur par défaut
 SECRET_KEY = os.environ.get("SECRET_KEY")
+
+# Ajout du code de débogage ICI, après la définition de SECRET_KEY
+if SECRET_KEY:
+    print(f"✅ SECRET_KEY chargée avec succès (premiers caractères: {SECRET_KEY[:5]}...)")
+else:
+    print("❌ ERREUR: SECRET_KEY non trouvée dans les variables d'environnement")
+
 ALGORITHM = os.environ.get("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
