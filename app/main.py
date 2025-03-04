@@ -61,9 +61,6 @@ from slowapi.errors import RateLimitExceeded
 # Charger les variables d'environnement en premier
 load_dotenv(verbose=True)
 
-# Définir le limiteur de débit
-limiter = Limiter(key_func=get_remote_address)
-
 # Créer l'application SANS dépendance globale
 app = FastAPI(title="API Population")
 
