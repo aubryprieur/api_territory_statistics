@@ -1,6 +1,29 @@
-fastapi
-uvicorn[standard]
-pandas
-pydantic
-python-dotenv
-slowapi
+# Framework et serveur
+fastapi>=0.95.0
+uvicorn[standard]>=0.21.0
+
+# Traitement de données
+pandas>=1.5.0
+
+# Validation des données
+pydantic>=1.10.0
+
+# Base de données
+sqlalchemy>=1.4.0
+alembic>=1.8.0
+psycopg2-binary>=2.9.0  # Driver PostgreSQL
+
+# Variables d'environnement
+python-dotenv>=1.0.0
+
+# Rate limiting
+slowapi>=0.1.7
+redis>=5.0.0
+limits>=2.8.0
+
+# Authentification
+python-jose[cryptography]>=3.3.0  # Pour JWT
+passlib[bcrypt]>=1.7.4  # Pour le hachage des mots de passe
+
+# Middleware
+starlette>=0.26.0
