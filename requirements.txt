@@ -27,3 +27,5 @@ passlib[bcrypt]>=1.7.4  # Pour le hachage des mots de passe
 
 # Middleware
 starlette>=0.26.0
+
+python-multipart>=0.0.5
