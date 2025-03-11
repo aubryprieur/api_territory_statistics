@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 import redis
+from fastapi.responses import JSONResponse
 
 # 2. Imports pour le rate limiting (avant utilisation)
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -63,15 +64,16 @@ if not DEBUG:
         import redis
         from limits.storage import RedisStorage
 
-        redis_client = redis.Redis(
-            host=os.environ.get("REDIS_HOST", "localhost"),
-            port=int(os.environ.get("REDIS_PORT", "6379")),
-            db=int(os.environ.get("REDIS_DB", "0")),
-            password=os.environ.get("REDIS_PASSWORD", None)
-        )
-        storage = RedisStorage("redis://localhost:6379/0")  # Utiliser l'URI au lieu de l'objet
-        limiter = Limiter(key_func=get_remote_address, storage_uri=f"redis://{os.environ.get('REDIS_HOST', 'localhost')}:{os.environ.get('REDIS_PORT', '6379')}/{os.environ.get('REDIS_DB', '0')}")
-        print("Mode production: utilisation de Redis pour le rate limiting")
+        # Utiliser l'URL Redis fournie par Heroku
+        redis_url = os.environ.get("REDIS_URL")
+
+        if redis_url:
+            # Utiliser directement l'URL Redis fournie par Heroku
+            limiter = Limiter(key_func=get_remote_address, storage_uri=redis_url)
+            print(f"Mode production: utilisation de Redis pour le rate limiting avec URL: {redis_url[:20]}...")
+        else:
+            raise ValueError("REDIS_URL non définie")
+
     except Exception as e:
         print(f"⚠️ Erreur Redis: {e}")
         print("⚠️ Fallback sur le stockage en mémoire pour le rate limiting")
@@ -86,7 +88,14 @@ app = FastAPI(title="API Population")
 
 # 9. Ajouter le gestionnaire d'erreur pour le rate limiting
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # Commentez ou supprimez cette ligne
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": "Rate limit exceeded"},
+    )
 
 # 10. Configurer CORS
 if DEBUG:
