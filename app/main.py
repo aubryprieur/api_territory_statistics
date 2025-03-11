@@ -63,14 +63,20 @@ if not DEBUG:
     try:
         import redis
         from limits.storage import RedisStorage
+        import ssl
 
         # Utiliser l'URL Redis fournie par Heroku
         redis_url = os.environ.get("REDIS_URL")
 
         if redis_url:
-            # Utiliser directement l'URL Redis fournie par Heroku
-            limiter = Limiter(key_func=get_remote_address, storage_uri=redis_url)
-            print(f"Mode production: utilisation de Redis pour le rate limiting avec URL: {redis_url[:20]}...")
+            # Désactiver la vérification SSL pour Redis
+            from urllib.parse import urlparse
+            parsed_url = urlparse(redis_url)
+
+            # Utiliser directement le stockage en mémoire au lieu de Redis
+            # pour éviter les problèmes de certificats SSL
+            print(f"⚠️ Mode production: fallback sur le stockage en mémoire pour le rate limiting (problème SSL Redis)")
+            limiter = Limiter(key_func=get_remote_address)
         else:
             raise ValueError("REDIS_URL non définie")
 
