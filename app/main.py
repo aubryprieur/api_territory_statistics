@@ -96,12 +96,15 @@ app = FastAPI(title="API Population")
 app.state.limiter = limiter
 # app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # Commentez ou supprimez cette ligne
 
-@app.exception_handler(RateLimitExceeded)
+# Définissez votre fonction gestionnaire personnalisée
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         content={"detail": "Rate limit exceeded"},
     )
+
+# Enregistrez correctement le gestionnaire
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 # 10. Configurer CORS
 if DEBUG:
