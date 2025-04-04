@@ -24,6 +24,15 @@ class FamilyEmploymentService:
         """Ferme la connexion à la base de données"""
         self.db.close()
 
+    def _adjust_age_group_format(self, age_group):
+        """Ajuste le format du groupe d'âge pour qu'il corresponde au format de la base de données"""
+        # Convertir "0" en "00" et "3" en "03"
+        if age_group == "0":
+            return "00"
+        elif age_group == "3":
+            return "03"
+        return age_group
+
     def get_available_years(self):
         """Récupère les années disponibles dans la base de données"""
         try:
@@ -61,7 +70,7 @@ class FamilyEmploymentService:
             return {
                 "total_count": float(total),
                 "distributions": distributions,
-                "age_group": "0-2 ans" if age_group == "0" else "3-5 ans"
+                "age_group": "0-2 ans" if age_group in ["0", "00"] else "3-5 ans"
             }
         except Exception as e:
             print(f"Erreur dans le calcul de la distribution: {str(e)}")
@@ -70,7 +79,7 @@ class FamilyEmploymentService:
             return {
                 "total_count": 0,
                 "distributions": {},
-                "age_group": "0-2 ans" if age_group == "0" else "3-5 ans"
+                "age_group": "0-2 ans" if age_group in ["0", "00"] else "3-5 ans"
             }
 
     def get_commune_distribution(self, code: str, age_group="0", year=None):
@@ -93,17 +102,23 @@ class FamilyEmploymentService:
 
             results = {}
 
+            # Ajuster le format du groupe d'âge
+            formatted_age_group = self._adjust_age_group_format(age_group)
+
+            print(f"Recherche des données pour commune {code}, année {year}, groupe d'âge {formatted_age_group}")
+
             # Récupérer les données pour l'année spécifiée
             commune_data = self.db.query(FamilyEmployment).filter(
                 FamilyEmployment.geo_code == str(code),
-                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.age_group == formatted_age_group,
                 FamilyEmployment.year == year
             ).all()
 
             if commune_data:
                 results[year] = self._calculate_distribution(commune_data, age_group)
+                print(f"Données trouvées : {len(commune_data)} enregistrements")
             else:
-                print(f"Aucune donnée trouvée pour la commune {code}, année {year}, groupe d'âge {age_group}")
+                print(f"Aucune donnée trouvée pour la commune {code}, année {year}, groupe d'âge {formatted_age_group}")
 
             return {
                 "territory_type": "commune",
@@ -145,10 +160,13 @@ class FamilyEmploymentService:
             commune_codes = [c[0] for c in communes]
             results = {}
 
+            # Ajuster le format du groupe d'âge
+            formatted_age_group = self._adjust_age_group_format(age_group)
+
             # Récupérer les données de la base
             epci_data = self.db.query(FamilyEmployment).filter(
                 FamilyEmployment.geo_code.in_(commune_codes),
-                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.age_group == formatted_age_group,
                 FamilyEmployment.year == year
             ).all()
 
@@ -196,10 +214,13 @@ class FamilyEmploymentService:
             commune_codes = [c[0] for c in communes]
             results = {}
 
+            # Ajuster le format du groupe d'âge
+            formatted_age_group = self._adjust_age_group_format(age_group)
+
             # Récupérer les données de la base
             dep_data = self.db.query(FamilyEmployment).filter(
                 FamilyEmployment.geo_code.in_(commune_codes),
-                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.age_group == formatted_age_group,
                 FamilyEmployment.year == year
             ).all()
 
@@ -244,10 +265,13 @@ class FamilyEmploymentService:
             commune_codes = [c[0] for c in communes]
             results = {}
 
+            # Ajuster le format du groupe d'âge
+            formatted_age_group = self._adjust_age_group_format(age_group)
+
             # Récupérer les données de la base
             reg_data = self.db.query(FamilyEmployment).filter(
                 FamilyEmployment.geo_code.in_(commune_codes),
-                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.age_group == formatted_age_group,
                 FamilyEmployment.year == year
             ).all()
 
@@ -281,9 +305,12 @@ class FamilyEmploymentService:
 
             results = {}
 
+            # Ajuster le format du groupe d'âge
+            formatted_age_group = self._adjust_age_group_format(age_group)
+
             # Récupérer toutes les données nationales pour l'année et le groupe d'âge spécifiés
             france_data = self.db.query(FamilyEmployment).filter(
-                FamilyEmployment.age_group == age_group,
+                FamilyEmployment.age_group == formatted_age_group,
                 FamilyEmployment.year == year
             ).all()
 
