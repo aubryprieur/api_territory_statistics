@@ -307,3 +307,46 @@ class PopulationService:
             }
         finally:
             self.close()
+
+    def get_children_by_epci_communes(self, epci: str, geocode_service):
+        """Récupère les statistiques des enfants pour toutes les communes d'un EPCI"""
+        try:
+            # Obtenir les communes de l'EPCI
+            communes = self.db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
+
+            if not communes:
+                return {
+                    "epci": epci,
+                    "epci_name": "",
+                    "communes_count": 0,
+                    "communes": []
+                }
+
+            # Récupérer les données pour chaque commune
+            communes_data = []
+            for code, name in communes:
+                commune_data = self.get_population_and_children_rate(code)
+                commune_data["code"] = code
+                commune_data["name"] = name
+                communes_data.append(commune_data)
+
+            # Obtenir le nom de l'EPCI
+            epci_info = self.db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
+
+            return {
+                "epci": epci,
+                "epci_name": epci_name,
+                "communes_count": len(communes),
+                "communes": communes_data
+            }
+        except Exception as e:
+            print(f"Erreur lors de la récupération des données des communes pour l'EPCI {epci}: {str(e)}")
+            return {
+                "epci": epci,
+                "epci_name": "",
+                "communes_count": 0,
+                "communes": []
+            }
+        finally:
+            self.close()
