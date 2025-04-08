@@ -235,3 +235,16 @@ class FamilyEmploymentResponse(BaseModel):
     code: str
     name: str
     data: Dict[int, FamilyEmploymentDistribution]
+
+class CommuneChildcareRate(BaseModel):
+    code: str
+    name: str
+    global_coverage_rate: float
+
+class EPCICommunesChildcareResponse(BaseModel):
+    epci: str
+    epci_name: str
+    year: int
+    average_coverage_rate: float
+    communes_count: int
+    communes: List[CommuneChildcareRate]

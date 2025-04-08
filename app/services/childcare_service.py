@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc
 from typing import Dict, Optional, List, Any
 from app.database import SessionLocal
-from app.models import Childcare
+from app.models import Childcare, GeoCode
 
 class ChildcareService:
     def __init__(self):
@@ -403,3 +403,83 @@ class ChildcareService:
             return {"error": str(e)}
         finally:
             self.close()
+
+    def get_communes_coverage_by_epci(self, epci: str, year: int = None):
+        """Récupère les taux de couverture pour toutes les communes d'un EPCI"""
+        try:
+            # Établir une connexion à la base de données
+            db = SessionLocal()
+
+            # Récupérer l'année la plus récente si non spécifiée
+            if year is None:
+                year = db.query(func.max(Childcare.year)).filter(
+                    Childcare.territory_type == 'commune'
+                ).scalar() or 2021
+
+            # Récupérer toutes les communes de l'EPCI
+            communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(
+                GeoCode.epci == str(epci)
+            ).all()
+
+            if not communes:
+                return {
+                    "epci": epci,
+                    "epci_name": "",
+                    "year": year,
+                    "communes_count": 0,
+                    "communes": []
+                }
+
+            # Récupérer le nom de l'EPCI
+            epci_info = db.query(GeoCode.libepci).filter(
+                GeoCode.epci == str(epci)
+            ).first()
+            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
+
+            # Récupérer les données pour chaque commune
+            communes_data = []
+            for code, name in communes:
+                commune_coverage = db.query(Childcare).filter(
+                    Childcare.territory_type == 'commune',
+                    Childcare.territory_code == code,
+                    Childcare.year == year
+                ).first()
+
+                coverage_rate = None
+                if commune_coverage:
+                    coverage_rate = commune_coverage.global_rate
+
+                communes_data.append({
+                    "code": code,
+                    "name": name,
+                    "global_coverage_rate": coverage_rate if coverage_rate is not None else 0.0
+                })
+
+            # Calculer la moyenne pour l'EPCI
+            valid_rates = [c["global_coverage_rate"] for c in communes_data if c["global_coverage_rate"] is not None]
+            average_rate = sum(valid_rates) / len(valid_rates) if valid_rates else 0.0
+
+            # Trier les communes par taux de couverture décroissant
+            communes_data.sort(key=lambda x: x["global_coverage_rate"] or 0, reverse=True)
+
+            return {
+                "epci": epci,
+                "epci_name": epci_name,
+                "year": year,
+                "average_coverage_rate": round(average_rate, 1),
+                "communes_count": len(communes),
+                "communes": communes_data
+            }
+
+        except Exception as e:
+            print(f"Erreur dans get_communes_coverage_by_epci: {str(e)}")
+            return {
+                "epci": epci,
+                "epci_name": "",
+                "year": year,
+                "average_coverage_rate": 0.0,
+                "communes_count": 0,
+                "communes": []
+            }
+        finally:
+            db.close()
