@@ -207,6 +207,20 @@ async def get_commune_children(request: Request, code: str):
     """
     return population_service.get_population_and_children_rate(code)
 
+@protected_router.get("/population/children/epci/{epci}",
+    response_model=PopulationChildrenEPCI,
+    summary="Obtenir les données des enfants de 0-5 ans pour un EPCI",
+    description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour toutes les communes d'un EPCI",
+    response_description="Les données démographiques incluant la population totale de l'EPCI, le nombre d'enfants par tranche d'âge, leurs taux et le nombre de communes")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_children(request: Request, epci: str):
+    """
+    Agrège les statistiques des enfants pour un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    return population_service.aggregate_children_by_epci(epci, geocode_service)
+
 @protected_router.get("/population/children/department/{dep}",
     response_model=PopulationChildrenDepartment,
     summary="Obtenir les données des enfants de 0-5 ans pour un département",

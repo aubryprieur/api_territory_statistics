@@ -27,19 +27,6 @@ DEFAULT_RATE = "60/minute"
 # Créer une instance du limiter
 limiter = Limiter(key_func=get_remote_address)
 
-@router.get("/population/children/{epci}",
-    summary="Obtenir les données des enfants de 0-5 ans pour un EPCI",
-    description="Agrège les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour toutes les communes d'un EPCI",
-    response_description="Les données démographiques incluant la population totale de l'EPCI, le nombre d'enfants par tranche d'âge, leurs taux et le nombre de communes")
-@limiter.limit(DEFAULT_RATE)
-async def get_epci_children(request: Request, epci: str):
-    """
-    Agrège les statistiques des enfants pour un EPCI :
-
-    - **epci**: Code de l'EPCI
-    """
-    return population_service.aggregate_children_by_epci(epci, geocode_service)
-
 @router.get("/population/children/{epci}/communes",
     summary="Obtenir les données des enfants de 0-5 ans pour toutes les communes d'un EPCI",
     description="Récupère les statistiques sur les enfants de moins de 3 ans et de 3 à 5 ans pour chaque commune appartenant à l'EPCI spécifié",
