@@ -248,3 +248,16 @@ class EPCICommunesChildcareResponse(BaseModel):
     average_coverage_rate: float
     communes_count: int
     communes: List[CommuneChildcareRate]
+
+class CommuneRevenueData(BaseModel):
+    code: str
+    name: str
+    median_revenues: Dict[int, Optional[float]]
+    poverty_rates: Dict[int, Optional[float]]
+
+class EPCICommunesRevenueResponse(BaseModel):
+    epci: str
+    epci_name: str
+    communes_count: int
+    latest_year: Optional[int] = None
+    communes: List[CommuneRevenueData]

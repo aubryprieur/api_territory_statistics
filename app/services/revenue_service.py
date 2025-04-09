@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Dict, Optional, List
 from app.database import SessionLocal
-from app.models import Revenue
+from app.models import Revenue, GeoCode
 
 class RevenueService:
     def __init__(self):
@@ -150,6 +150,76 @@ class RevenueService:
             return {
                 "median_revenues": {},
                 "poverty_rates": {}
+            }
+        finally:
+            self.close()
+
+    def get_communes_revenues_by_epci(self, epci: str):
+        """Récupère les revenus médians pour toutes les communes d'un EPCI"""
+        try:
+            # Récupérer les codes des communes de l'EPCI
+            communes = self.db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
+
+            if not communes:
+                return {
+                    "epci": epci,
+                    "epci_name": "",
+                    "communes_count": 0,
+                    "communes": []
+                }
+
+            # Récupérer le nom de l'EPCI
+            epci_info = self.db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
+
+            # Récupérer les données pour chaque commune
+            communes_data = []
+
+            for commune_code, commune_name in communes:
+                # Récupérer les données de revenus pour cette commune
+                commune_data = self.db.query(Revenue).filter(
+                    Revenue.geo_type == 'commune',
+                    Revenue.geo_code == commune_code
+                ).order_by(Revenue.year).all()
+
+                median_revenues = {}
+                poverty_rates = {}
+
+                for record in commune_data:
+                    median_revenues[record.year] = record.median_revenue
+                    poverty_rates[record.year] = record.poverty_rate
+
+                communes_data.append({
+                    "code": commune_code,
+                    "name": commune_name,
+                    "median_revenues": median_revenues,
+                    "poverty_rates": poverty_rates
+                })
+
+            # Trier par revenu médian de l'année la plus récente (si disponible)
+            latest_year = max([max(c["median_revenues"].keys()) for c in communes_data if c["median_revenues"]], default=None)
+
+            if latest_year:
+                communes_data.sort(
+                    key=lambda x: x["median_revenues"].get(latest_year, 0) or 0,
+                    reverse=True
+                )
+
+            return {
+                "epci": epci,
+                "epci_name": epci_name,
+                "communes_count": len(communes),
+                "latest_year": latest_year,
+                "communes": communes_data
+            }
+
+        except Exception as e:
+            print(f"Erreur lors de la récupération des revenus pour l'EPCI {epci}: {str(e)}")
+            return {
+                "epci": epci,
+                "epci_name": "",
+                "communes_count": 0,
+                "communes": []
             }
         finally:
             self.close()

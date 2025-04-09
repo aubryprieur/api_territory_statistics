@@ -4,11 +4,13 @@ from app.security import get_current_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.schemas import EPCICommunesChildcareResponse, CommuneChildcareRate
+from app.schemas import EPCICommunesRevenueResponse, CommuneRevenueData
 
 # Importer vos services
 from app.services.population_service import PopulationService
 from app.services.geocode_service import GeoCodeService
 from app.services.childcare_service import ChildcareService
+from app.services.revenue_service import RevenueService
 
 # Créer un routeur
 router = APIRouter(
@@ -59,3 +61,21 @@ async def get_epci_communes_childcare(
     # Création d'une instance du service
     service = ChildcareService()
     return service.get_communes_coverage_by_epci(epci, year)
+
+@router.get("/revenues/{epci}/communes",
+    summary="Obtenir les revenus médians et taux de pauvreté pour toutes les communes d'un EPCI",
+    description="Récupère les revenus médians et taux de pauvreté pour chaque commune appartenant à l'EPCI spécifié. Ces données permettent de comparer les niveaux de revenus entre les communes d'un même territoire intercommunal.",
+    response_description="Liste des communes avec leurs revenus médians et taux de pauvreté, triée par revenu médian décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_communes_revenues(
+    request: Request,
+    epci: str
+):
+    """
+    Récupère les données de revenus pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = RevenueService()
+    return service.get_communes_revenues_by_epci(epci)
