@@ -299,3 +299,28 @@ class EPCICoupleWithChildrenResponse(BaseModel):
     total_couples_with_children: float
     epci_couples_with_children_percentage: float
     communes: List[CommuneFamilyData]
+
+class CommuneSingleParentData(BaseModel):
+    code: str
+    name: str
+    total_households: float
+    single_parent_families: float
+    single_fathers: float
+    single_mothers: float
+    single_parent_percentage: float
+    single_father_percentage: float  # Ajout du pourcentage de pères seuls
+    single_mother_percentage: float
+
+class EPCISingleParentResponse(BaseModel):
+    epci: str
+    epci_name: str
+    year: int
+    communes_count: int
+    total_households: float
+    total_single_parent_families: float
+    total_single_fathers: float
+    total_single_mothers: float
+    epci_single_parent_percentage: float
+    epci_single_father_percentage: float  # Ajout du pourcentage de pères seuls au niveau EPCI
+    epci_single_mother_percentage: float
+    communes: List[CommuneSingleParentData]

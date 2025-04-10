@@ -312,3 +312,135 @@ class FamilyService:
             }
         finally:
             db.close()
+
+    def get_single_parent_families_by_epci(self, epci: str):
+        """Récupère les statistiques des familles monoparentales pour toutes les communes d'un EPCI"""
+        try:
+            # Établir une connexion à la base de données
+            db = SessionLocal()
+
+            # Récupérer les communes de l'EPCI
+            communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
+
+            if not communes:
+                return {
+                    "epci": epci,
+                    "epci_name": "",
+                    "year": 2021,  # Valeur par défaut
+                    "communes_count": 0,
+                    "total_households": 0.0,
+                    "total_single_parent_families": 0.0,
+                    "total_single_fathers": 0.0,
+                    "total_single_mothers": 0.0,
+                    "epci_single_parent_percentage": 0.0,
+                    "epci_single_father_percentage": 0.0,
+                    "epci_single_mother_percentage": 0.0,
+                    "communes": []
+                }
+
+            # Récupérer le nom de l'EPCI
+            epci_info = db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
+
+            # Récupérer l'année la plus récente disponible
+            latest_year = db.query(func.max(Family.year)).scalar() or 2021
+
+            # Récupérer les données pour chaque commune
+            communes_data = []
+            total_households = 0
+            total_single_parent_families = 0
+            total_single_fathers = 0
+            total_single_mothers = 0
+
+            for code, name in communes:
+                # Récupérer les données familiales pour cette commune et l'année la plus récente
+                commune_data = db.query(Family).filter(
+                    Family.geo_code == code,
+                    Family.year == latest_year
+                ).first()
+
+                if commune_data:
+                    # Récupérer les valeurs en sécurisant les None
+                    commune_households = self._safe_float(commune_data.total_households)
+                    commune_single_parent = self._safe_float(commune_data.single_parent_families)
+                    commune_single_fathers = self._safe_float(commune_data.single_fathers)
+                    commune_single_mothers = self._safe_float(commune_data.single_mothers)
+
+                    # Calculer les pourcentages
+                    total_percentage = (commune_single_parent / commune_households * 100) if commune_households > 0 else 0
+                    fathers_percentage = (commune_single_fathers / commune_single_parent * 100) if commune_single_parent > 0 else 0
+                    mothers_percentage = (commune_single_mothers / commune_single_parent * 100) if commune_single_parent > 0 else 0
+
+                    communes_data.append({
+                        "code": code,
+                        "name": name,
+                        "total_households": commune_households,
+                        "single_parent_families": commune_single_parent,
+                        "single_fathers": commune_single_fathers,
+                        "single_mothers": commune_single_mothers,
+                        "single_parent_percentage": round(total_percentage, 2),
+                        "single_father_percentage": round(fathers_percentage, 2),
+                        "single_mother_percentage": round(mothers_percentage, 2)
+                    })
+
+                    # Additionner pour le calcul de la moyenne EPCI
+                    total_households += commune_households
+                    total_single_parent_families += commune_single_parent
+                    total_single_fathers += commune_single_fathers
+                    total_single_mothers += commune_single_mothers
+                else:
+                    communes_data.append({
+                        "code": code,
+                        "name": name,
+                        "total_households": 0.0,
+                        "single_parent_families": 0.0,
+                        "single_fathers": 0.0,
+                        "single_mothers": 0.0,
+                        "single_parent_percentage": 0.0,
+                        "single_father_percentage": 0.0,
+                        "single_mother_percentage": 0.0
+                    })
+
+            # Calculer les moyennes pour l'EPCI
+            epci_single_parent_percentage = (total_single_parent_families / total_households * 100) if total_households > 0 else 0
+            epci_single_father_percentage = (total_single_fathers / total_single_parent_families * 100) if total_single_parent_families > 0 else 0
+            epci_single_mother_percentage = (total_single_mothers / total_single_parent_families * 100) if total_single_parent_families > 0 else 0
+
+            # Trier par pourcentage de familles monoparentales décroissant
+            communes_data.sort(key=lambda x: x["single_parent_percentage"], reverse=True)
+
+            return {
+                "epci": epci,
+                "epci_name": epci_name,
+                "year": latest_year,
+                "communes_count": len(communes),
+                "total_households": total_households,
+                "total_single_parent_families": total_single_parent_families,
+                "total_single_fathers": total_single_fathers,
+                "total_single_mothers": total_single_mothers,
+                "epci_single_parent_percentage": round(epci_single_parent_percentage, 2),
+                "epci_single_father_percentage": round(epci_single_father_percentage, 2),
+                "epci_single_mother_percentage": round(epci_single_mother_percentage, 2),
+                "communes": communes_data
+            }
+        except Exception as e:
+            print(f"Erreur lors de la récupération des données des familles monoparentales pour l'EPCI {epci}: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            # Retourner une structure valide avec des valeurs par défaut
+            return {
+                "epci": epci,
+                "epci_name": "",
+                "year": 2021,
+                "communes_count": 0,
+                "total_households": 0.0,
+                "total_single_parent_families": 0.0,
+                "total_single_fathers": 0.0,
+                "total_single_mothers": 0.0,
+                "epci_single_parent_percentage": 0.0,
+                "epci_single_father_percentage": 0.0,
+                "epci_single_mother_percentage": 0.0,
+                "communes": []
+            }
+        finally:
+            db.close()

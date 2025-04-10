@@ -7,6 +7,7 @@ from app.schemas import EPCICommunesChildcareResponse, CommuneChildcareRate
 from app.schemas import EPCICommunesRevenueResponse, CommuneRevenueData
 from app.schemas import EPCICommunesSchoolingResponse, CommuneSchoolingRate
 from app.schemas import EPCICoupleWithChildrenResponse, CommuneFamilyData
+from app.schemas import EPCISingleParentResponse, CommuneSingleParentData
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -14,6 +15,7 @@ from app.services.geocode_service import GeoCodeService
 from app.services.childcare_service import ChildcareService
 from app.services.revenue_service import RevenueService
 from app.services.schooling_service import SchoolingService
+from app.services.family_service import FamilyService
 from app.services.family_service import FamilyService
 
 # Créer un routeur
@@ -136,3 +138,34 @@ async def get_epci_couples_with_children(
     # Création d'une instance du service
     service = FamilyService()
     return service.get_couples_with_children_by_epci(epci)
+
+@router.get("/families/single-parent/{epci}",
+    response_model=EPCISingleParentResponse,
+    summary="Obtenir les statistiques des familles monoparentales pour toutes les communes d'un EPCI",
+    description="""Récupère les statistiques des familles monoparentales pour chaque commune appartenant à l'EPCI spécifié.
+
+    Les données incluent pour chaque commune :
+    - Le nombre total de ménages
+    - Le nombre de familles monoparentales
+    - Le nombre de pères seuls
+    - Le nombre de mères seules
+    - Le pourcentage de familles monoparentales par rapport au total des ménages
+    - Le pourcentage de pères seuls parmi les familles monoparentales
+    - Le pourcentage de mères seules parmi les familles monoparentales
+
+    Ces données permettent d'analyser la structure familiale des communes d'un même territoire intercommunal
+    et d'identifier les zones avec une concentration plus élevée de familles monoparentales.""",
+    response_description="Liste des communes avec leurs statistiques de familles monoparentales, triée par pourcentage décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_single_parent_families(
+    request: Request,
+    epci: str
+):
+    """
+    Récupère les statistiques des familles monoparentales pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = FamilyService()
+    return service.get_single_parent_families_by_epci(epci)
