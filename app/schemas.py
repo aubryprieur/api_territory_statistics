@@ -282,3 +282,20 @@ class EPCICommunesSchoolingResponse(BaseModel):
     average_schooling_rate_2y: float
     average_schooling_rate_3_5y: float
     communes: List[CommuneSchoolingRate]
+
+class CommuneFamilyData(BaseModel):
+    code: str
+    name: str
+    total_households: float
+    couples_with_children: float
+    couples_with_children_percentage: float
+
+class EPCICoupleWithChildrenResponse(BaseModel):
+    epci: str
+    epci_name: str
+    year: int
+    communes_count: int
+    total_households: float
+    total_couples_with_children: float
+    epci_couples_with_children_percentage: float
+    communes: List[CommuneFamilyData]

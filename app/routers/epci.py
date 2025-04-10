@@ -6,6 +6,7 @@ from slowapi.util import get_remote_address
 from app.schemas import EPCICommunesChildcareResponse, CommuneChildcareRate
 from app.schemas import EPCICommunesRevenueResponse, CommuneRevenueData
 from app.schemas import EPCICommunesSchoolingResponse, CommuneSchoolingRate
+from app.schemas import EPCICoupleWithChildrenResponse, CommuneFamilyData
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -13,6 +14,7 @@ from app.services.geocode_service import GeoCodeService
 from app.services.childcare_service import ChildcareService
 from app.services.revenue_service import RevenueService
 from app.services.schooling_service import SchoolingService
+from app.services.family_service import FamilyService
 
 # Créer un routeur
 router = APIRouter(
@@ -108,3 +110,29 @@ async def get_epci_communes_schooling(
         data["communes"].sort(key=lambda x: x["schooling_rate_3_5y"], reverse=True)
 
     return data
+
+@router.get("/families/couples-with-children/{epci}",
+    response_model=EPCICoupleWithChildrenResponse,
+    summary="Obtenir les statistiques des couples avec enfants pour toutes les communes d'un EPCI",
+    description="""Récupère les statistiques des couples avec enfants pour chaque commune appartenant à l'EPCI spécifié.
+
+    Les données incluent pour chaque commune :
+    - Le nombre total de ménages
+    - Le nombre de couples avec enfants
+    - Le pourcentage de couples avec enfants par rapport au total des ménages
+
+    Ces données permettent d'analyser la structure familiale des communes d'un même territoire intercommunal.""",
+    response_description="Liste des communes avec leurs statistiques de couples avec enfants, triée par pourcentage décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_couples_with_children(
+    request: Request,
+    epci: str
+):
+    """
+    Récupère les statistiques des couples avec enfants pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = FamilyService()
+    return service.get_couples_with_children_by_epci(epci)
