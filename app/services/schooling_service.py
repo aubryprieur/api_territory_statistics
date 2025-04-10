@@ -233,3 +233,104 @@ class SchoolingService:
               }
           finally:
               self.close()
+
+    def get_communes_schooling_by_epci(self, epci: str):
+      """Récupère les taux de scolarisation pour toutes les communes d'un EPCI"""
+      try:
+          # Récupérer les communes de l'EPCI
+          communes = self.db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
+
+          if not communes:
+              return {
+                  "epci": epci,
+                  "epci_name": "",
+                  "communes_count": 0,
+                  "communes": []
+              }
+
+          # Récupérer le nom de l'EPCI
+          epci_info = self.db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+          epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
+
+          # Récupérer les données pour chaque commune
+          communes_data = []
+          latest_year = 2021  # Année par défaut, à ajuster selon les données disponibles
+
+          for code, name in communes:
+              # Récupérer les données de scolarisation pour cette commune
+              commune_data = self.get_commune_schooling(code)
+
+              # Extraire les données de la dernière année disponible
+              if commune_data and "data" in commune_data and commune_data["data"]:
+                  years = sorted(commune_data["data"].keys())
+                  if years:
+                      latest_year = years[-1]  # Dernière année disponible
+                      year_data = commune_data["data"][latest_year]
+                      communes_data.append({
+                          "code": code,
+                          "name": name,
+                          # Données pour les enfants de 2 ans
+                          "schooling_rate_2y": year_data.get("schooling_rate_2y", 0),
+                          "total_children_2y": year_data.get("total_children_2y", 0),
+                          "schooled_children_2y": year_data.get("schooled_children_2y", 0),
+                          # Données pour les enfants de 3 à 5 ans
+                          "schooling_rate_3_5y": year_data.get("schooling_rate_3_5y", 0),
+                          "total_children_3_5y": year_data.get("total_children_3_5y", 0),
+                          "schooled_children_3_5y": year_data.get("schooled_children_3_5y", 0)
+                      })
+                  else:
+                      communes_data.append({
+                          "code": code,
+                          "name": name,
+                          "schooling_rate_2y": 0,
+                          "total_children_2y": 0,
+                          "schooled_children_2y": 0,
+                          "schooling_rate_3_5y": 0,
+                          "total_children_3_5y": 0,
+                          "schooled_children_3_5y": 0
+                      })
+              else:
+                  communes_data.append({
+                      "code": code,
+                      "name": name,
+                      "schooling_rate_2y": 0,
+                      "total_children_2y": 0,
+                      "schooled_children_2y": 0,
+                      "schooling_rate_3_5y": 0,
+                      "total_children_3_5y": 0,
+                      "schooled_children_3_5y": 0
+                  })
+
+          # Trier par taux de scolarisation des 2 ans décroissant
+          communes_data.sort(key=lambda x: x["schooling_rate_2y"], reverse=True)
+
+          # Calculer les moyennes EPCI
+          total_children_2y = sum(commune["total_children_2y"] for commune in communes_data)
+          schooled_children_2y = sum(commune["schooled_children_2y"] for commune in communes_data)
+          avg_schooling_rate_2y = (schooled_children_2y / total_children_2y * 100) if total_children_2y > 0 else 0
+
+          total_children_3_5y = sum(commune["total_children_3_5y"] for commune in communes_data)
+          schooled_children_3_5y = sum(commune["schooled_children_3_5y"] for commune in communes_data)
+          avg_schooling_rate_3_5y = (schooled_children_3_5y / total_children_3_5y * 100) if total_children_3_5y > 0 else 0
+
+          return {
+              "epci": epci,
+              "epci_name": epci_name,
+              "year": latest_year,
+              "communes_count": len(communes),
+              "average_schooling_rate_2y": round(avg_schooling_rate_2y, 1),
+              "average_schooling_rate_3_5y": round(avg_schooling_rate_3_5y, 1),
+              "communes": communes_data
+          }
+      except Exception as e:
+          print(f"Erreur lors de la récupération des données de scolarisation pour l'EPCI {epci}: {str(e)}")
+          import traceback
+          print(traceback.format_exc())
+          return {
+              "epci": epci,
+              "epci_name": "",
+              "communes_count": 0,
+              "communes": []
+          }
+      finally:
+          self.close()

@@ -5,12 +5,14 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.schemas import EPCICommunesChildcareResponse, CommuneChildcareRate
 from app.schemas import EPCICommunesRevenueResponse, CommuneRevenueData
+from app.schemas import EPCICommunesSchoolingResponse, CommuneSchoolingRate
 
 # Importer vos services
 from app.services.population_service import PopulationService
 from app.services.geocode_service import GeoCodeService
 from app.services.childcare_service import ChildcareService
 from app.services.revenue_service import RevenueService
+from app.services.schooling_service import SchoolingService
 
 # Créer un routeur
 router = APIRouter(
@@ -79,3 +81,30 @@ async def get_epci_communes_revenues(
     # Création d'une instance du service
     service = RevenueService()
     return service.get_communes_revenues_by_epci(epci)
+
+@router.get("/education/schooling/{epci}/communes",
+    response_model=EPCICommunesSchoolingResponse,
+    summary="Obtenir les taux de scolarisation des enfants de 2 ans et de 3 à 5 ans pour toutes les communes d'un EPCI",
+    description="""Récupère les taux de scolarisation des enfants de 2 ans et de 3 à 5 ans pour chaque commune appartenant à l'EPCI spécifié.""",
+    response_description="Liste des communes avec leurs taux de scolarisation par tranche d'âge")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_communes_schooling(
+    request: Request,
+    epci: str,
+    sort_by: str = Query("2y", description="Critère de tri ('2y' pour trier par taux à 2 ans, '3_5y' pour trier par taux à 3-5 ans)")
+):
+    """
+    Récupère les taux de scolarisation des enfants par tranche d'âge pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    - **sort_by**: Critère de tri ('2y' ou '3_5y')
+    """
+    # Création d'une instance du service
+    service = SchoolingService()
+    data = service.get_communes_schooling_by_epci(epci)
+
+    # Trier selon le critère choisi
+    if sort_by == "3_5y" and "communes" in data:
+        data["communes"].sort(key=lambda x: x["schooling_rate_3_5y"], reverse=True)
+
+    return data

@@ -261,3 +261,24 @@ class EPCICommunesRevenueResponse(BaseModel):
     communes_count: int
     latest_year: Optional[int] = None
     communes: List[CommuneRevenueData]
+
+class CommuneSchoolingRate(BaseModel):
+    code: str
+    name: str
+    # Données pour les enfants de 2 ans
+    schooling_rate_2y: float
+    total_children_2y: float
+    schooled_children_2y: float
+    # Données pour les enfants de 3 à 5 ans
+    schooling_rate_3_5y: float
+    total_children_3_5y: float
+    schooled_children_3_5y: float
+
+class EPCICommunesSchoolingResponse(BaseModel):
+    epci: str
+    epci_name: str
+    year: int
+    communes_count: int
+    average_schooling_rate_2y: float
+    average_schooling_rate_3_5y: float
+    communes: List[CommuneSchoolingRate]
