@@ -324,3 +324,28 @@ class EPCISingleParentResponse(BaseModel):
     epci_single_father_percentage: float  # Ajout du pourcentage de pères seuls au niveau EPCI
     epci_single_mother_percentage: float
     communes: List[CommuneSingleParentData]
+
+class CommuneLargeFamilyData(BaseModel):
+    code: str
+    name: str
+    total_households: float
+    large_families: float
+    families_3_children: float
+    families_4_plus_children: float
+    large_families_percentage: float
+    families_3_children_percentage: float
+    families_4_plus_percentage: float
+
+class EPCILargeFamiliesResponse(BaseModel):
+    epci: str
+    epci_name: str
+    year: int
+    communes_count: int
+    total_households: float
+    total_large_families: float
+    total_families_3_children: float
+    total_families_4_plus_children: float
+    epci_large_families_percentage: float
+    epci_families_3_children_percentage: float
+    epci_families_4_plus_percentage: float
+    communes: List[CommuneLargeFamilyData]

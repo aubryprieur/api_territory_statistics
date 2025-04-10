@@ -444,3 +444,135 @@ class FamilyService:
             }
         finally:
             db.close()
+
+    def get_large_families_by_epci(self, epci: str):
+        """Récupère les statistiques des familles nombreuses pour toutes les communes d'un EPCI"""
+        try:
+            # Établir une connexion à la base de données
+            db = SessionLocal()
+
+            # Récupérer les communes de l'EPCI
+            communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
+
+            if not communes:
+                return {
+                    "epci": epci,
+                    "epci_name": "",
+                    "year": 2021,  # Valeur par défaut
+                    "communes_count": 0,
+                    "total_households": 0.0,
+                    "total_large_families": 0.0,
+                    "total_families_3_children": 0.0,
+                    "total_families_4_plus_children": 0.0,
+                    "epci_large_families_percentage": 0.0,
+                    "communes": []
+                }
+
+            # Récupérer le nom de l'EPCI
+            epci_info = db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
+
+            # Récupérer l'année la plus récente disponible
+            latest_year = db.query(func.max(Family.year)).scalar() or 2021
+
+            # Récupérer les données pour chaque commune
+            communes_data = []
+            total_households = 0
+            total_large_families = 0
+            total_families_3_children = 0
+            total_families_4_plus_children = 0
+
+            for code, name in communes:
+                # Récupérer les données familiales pour cette commune et l'année la plus récente
+                commune_data = db.query(Family).filter(
+                    Family.geo_code == code,
+                    Family.year == latest_year
+                ).first()
+
+                if commune_data:
+                    # Récupérer les valeurs en sécurisant les None
+                    commune_households = self._safe_float(commune_data.total_households)
+                    commune_3_children = self._safe_float(commune_data.children_under_24_three_siblings)
+                    commune_4_plus_children = self._safe_float(commune_data.children_under_24_four_or_more_siblings)
+
+                    # Calculer le total des familles nombreuses (3 enfants ou plus)
+                    commune_large_families = commune_3_children + commune_4_plus_children
+
+                    # Calculer les pourcentages
+                    large_families_percentage = (commune_large_families / commune_households * 100) if commune_households > 0 else 0
+                    families_3_children_percentage = (commune_3_children / commune_households * 100) if commune_households > 0 else 0
+                    families_4_plus_percentage = (commune_4_plus_children / commune_households * 100) if commune_households > 0 else 0
+
+                    communes_data.append({
+                        "code": code,
+                        "name": name,
+                        "total_households": commune_households,
+                        "large_families": commune_large_families,
+                        "families_3_children": commune_3_children,
+                        "families_4_plus_children": commune_4_plus_children,
+                        "large_families_percentage": round(large_families_percentage, 2),
+                        "families_3_children_percentage": round(families_3_children_percentage, 2),
+                        "families_4_plus_percentage": round(families_4_plus_percentage, 2)
+                    })
+
+                    # Additionner pour le calcul de la moyenne EPCI
+                    total_households += commune_households
+                    total_large_families += commune_large_families
+                    total_families_3_children += commune_3_children
+                    total_families_4_plus_children += commune_4_plus_children
+                else:
+                    communes_data.append({
+                        "code": code,
+                        "name": name,
+                        "total_households": 0.0,
+                        "large_families": 0.0,
+                        "families_3_children": 0.0,
+                        "families_4_plus_children": 0.0,
+                        "large_families_percentage": 0.0,
+                        "families_3_children_percentage": 0.0,
+                        "families_4_plus_percentage": 0.0
+                    })
+
+            # Calculer les moyennes pour l'EPCI
+            epci_large_families_percentage = (total_large_families / total_households * 100) if total_households > 0 else 0
+            epci_families_3_children_percentage = (total_families_3_children / total_households * 100) if total_households > 0 else 0
+            epci_families_4_plus_percentage = (total_families_4_plus_children / total_households * 100) if total_households > 0 else 0
+
+            # Trier par pourcentage de familles nombreuses décroissant
+            communes_data.sort(key=lambda x: x["large_families_percentage"], reverse=True)
+
+            return {
+                "epci": epci,
+                "epci_name": epci_name,
+                "year": latest_year,
+                "communes_count": len(communes),
+                "total_households": total_households,
+                "total_large_families": total_large_families,
+                "total_families_3_children": total_families_3_children,
+                "total_families_4_plus_children": total_families_4_plus_children,
+                "epci_large_families_percentage": round(epci_large_families_percentage, 2),
+                "epci_families_3_children_percentage": round(epci_families_3_children_percentage, 2),
+                "epci_families_4_plus_percentage": round(epci_families_4_plus_percentage, 2),
+                "communes": communes_data
+            }
+        except Exception as e:
+            print(f"Erreur lors de la récupération des données des familles nombreuses pour l'EPCI {epci}: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            # Retourner une structure valide avec des valeurs par défaut
+            return {
+                "epci": epci,
+                "epci_name": "",
+                "year": 2021,
+                "communes_count": 0,
+                "total_households": 0.0,
+                "total_large_families": 0.0,
+                "total_families_3_children": 0.0,
+                "total_families_4_plus_children": 0.0,
+                "epci_large_families_percentage": 0.0,
+                "epci_families_3_children_percentage": 0.0,
+                "epci_families_4_plus_percentage": 0.0,
+                "communes": []
+            }
+        finally:
+            db.close()

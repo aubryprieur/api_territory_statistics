@@ -3,11 +3,14 @@ from typing import List, Dict
 from app.security import get_current_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+
+# Importer vos schémas
 from app.schemas import EPCICommunesChildcareResponse, CommuneChildcareRate
 from app.schemas import EPCICommunesRevenueResponse, CommuneRevenueData
 from app.schemas import EPCICommunesSchoolingResponse, CommuneSchoolingRate
 from app.schemas import EPCICoupleWithChildrenResponse, CommuneFamilyData
 from app.schemas import EPCISingleParentResponse, CommuneSingleParentData
+from app.schemas import EPCILargeFamiliesResponse, CommuneLargeFamilyData
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -15,7 +18,6 @@ from app.services.geocode_service import GeoCodeService
 from app.services.childcare_service import ChildcareService
 from app.services.revenue_service import RevenueService
 from app.services.schooling_service import SchoolingService
-from app.services.family_service import FamilyService
 from app.services.family_service import FamilyService
 
 # Créer un routeur
@@ -169,3 +171,34 @@ async def get_epci_single_parent_families(
     # Création d'une instance du service
     service = FamilyService()
     return service.get_single_parent_families_by_epci(epci)
+
+@router.get("/families/large-families/{epci}",
+    response_model=EPCILargeFamiliesResponse,
+    summary="Obtenir les statistiques des familles nombreuses pour toutes les communes d'un EPCI",
+    description="""Récupère les statistiques des familles nombreuses pour chaque commune appartenant à l'EPCI spécifié.
+
+    Les données incluent pour chaque commune :
+    - Le nombre total de ménages
+    - Le nombre de familles nombreuses (3 enfants ou plus)
+    - Le nombre de familles avec 3 enfants
+    - Le nombre de familles avec 4 enfants ou plus
+    - Le pourcentage de familles nombreuses par rapport au total des ménages
+    - Le pourcentage de familles avec 3 enfants par rapport au total des ménages
+    - Le pourcentage de familles avec 4 enfants ou plus par rapport au total des ménages
+
+    Ces données permettent d'analyser la répartition des familles nombreuses sur un territoire intercommunal
+    et d'identifier les zones nécessitant potentiellement plus d'infrastructures adaptées aux grandes familles.""",
+    response_description="Liste des communes avec leurs statistiques de familles nombreuses, triée par pourcentage décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_large_families(
+    request: Request,
+    epci: str
+):
+    """
+    Récupère les statistiques des familles nombreuses pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = FamilyService()
+    return service.get_large_families_by_epci(epci)
