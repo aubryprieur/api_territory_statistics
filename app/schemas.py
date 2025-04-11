@@ -393,3 +393,22 @@ class EPCICommunesEmploymentResponse(BaseModel):
     epci_part_time_rate_25_54: float
     epci_part_time_rate_15_64: float
     communes: List[CommuneEmploymentRates]
+
+class YearlyViolenceData(BaseModel):
+    year: int
+    rate: float
+
+class CommuneDomesticViolenceData(BaseModel):
+    code: str
+    name: str
+    population: float
+    average_rate: float
+    yearly_data: List[YearlyViolenceData]
+
+class EPCIDomesticViolenceResponse(BaseModel):
+    epci: str
+    epci_name: str
+    communes_count: int
+    total_population: float
+    epci_average_rate: float
+    communes: List[CommuneDomesticViolenceData]

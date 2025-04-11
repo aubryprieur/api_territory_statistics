@@ -4,7 +4,7 @@ from app.security import get_current_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-# Importer vos schémas
+# Importer les schémas
 from app.schemas import EPCICommunesChildcareResponse, CommuneChildcareRate
 from app.schemas import EPCICommunesRevenueResponse, CommuneRevenueData
 from app.schemas import EPCICommunesSchoolingResponse, CommuneSchoolingRate
@@ -13,6 +13,7 @@ from app.schemas import EPCISingleParentResponse, CommuneSingleParentData
 from app.schemas import EPCILargeFamiliesResponse, CommuneLargeFamilyData
 from app.schemas import EPCIFamilyEmploymentResponse, CommuneFamilyEmploymentData
 from app.schemas import EPCICommunesEmploymentResponse, CommuneEmploymentRates
+from app.schemas import EPCIDomesticViolenceResponse, CommuneDomesticViolenceData
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -23,6 +24,7 @@ from app.services.schooling_service import SchoolingService
 from app.services.family_service import FamilyService
 from app.services.family_employment_service import FamilyEmploymentService
 from app.services.employment_service import EmploymentService
+from app.services.public_safety_service import PublicSafetyService
 
 # Créer un routeur
 router = APIRouter(
@@ -293,3 +295,27 @@ async def get_epci_communes_women_employment(request: Request, epci: str):
     # Création d'une instance du service
     service = EmploymentService()
     return service.get_communes_rates_by_epci(epci)
+
+@router.get("/public-safety/domestic-violence/{epci}",
+    response_model=EPCIDomesticViolenceResponse,
+    summary="Obtenir les statistiques de violences intrafamiliales pour toutes les communes d'un EPCI",
+    description="""Récupère les taux de violences intrafamiliales pour chaque commune appartenant à l'EPCI spécifié.
+
+Les données incluent pour chaque commune :
+- La population
+- Le taux moyen de violences intrafamiliales pour 1000 habitants
+- Les données détaillées par année disponible
+
+Ces statistiques permettent d'identifier les disparités territoriales en matière de
+violences intrafamiliales et de cibler les actions préventives et d'accompagnement.""",
+    response_description="Liste des communes avec leurs statistiques de violences intrafamiliales, triée par taux moyen décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_domestic_violence(request: Request, epci: str):
+    """
+    Récupère les statistiques de violences intrafamiliales pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = PublicSafetyService()
+    return service.get_domestic_violence_by_epci(epci)
