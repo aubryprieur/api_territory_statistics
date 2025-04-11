@@ -372,3 +372,24 @@ class EPCIFamilyEmploymentResponse(BaseModel):
     epci_dual_active_rate: float
     epci_single_parent_active_rate: float
     communes: List[CommuneFamilyEmploymentData]
+
+class CommuneEmploymentRates(BaseModel):
+    code: str
+    name: str
+    women_15_64: float
+    women_active_15_64: float
+    women_employed_15_64: float
+    activity_rate: float
+    employment_rate: float
+    part_time_rate_25_54: float
+    part_time_rate_15_64: float
+
+class EPCICommunesEmploymentResponse(BaseModel):
+    epci: str
+    epci_name: str
+    communes_count: int
+    epci_activity_rate: float
+    epci_employment_rate: float
+    epci_part_time_rate_25_54: float
+    epci_part_time_rate_15_64: float
+    communes: List[CommuneEmploymentRates]

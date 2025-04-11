@@ -254,3 +254,120 @@ class EmploymentService:
             }
         finally:
             self.close()
+
+    def get_communes_rates_by_epci(self, epci: str):
+        """Récupère les taux d'emploi des femmes pour toutes les communes d'un EPCI"""
+        try:
+            # Récupérer les communes de l'EPCI
+            communes = self.db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
+
+            if not communes:
+                return {
+                    "epci": epci,
+                    "epci_name": "",
+                    "communes_count": 0,
+                    "communes": []
+                }
+
+            # Récupérer le nom de l'EPCI
+            epci_info = self.db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
+
+            # Récupérer les données pour chaque commune
+            communes_data = []
+
+            # Variables pour calculer les moyennes EPCI
+            total_women_15_64 = 0
+            total_women_active_15_64 = 0
+            total_women_employed_15_64 = 0
+            total_women_employees_25_54 = 0
+            total_women_part_time_25_54 = 0
+            total_women_employees_15_64 = 0
+            total_women_part_time_15_64 = 0
+
+            for code, name in communes:
+                # Récupérer les données d'emploi pour cette commune
+                commune_data = self.db.query(Employment).filter(
+                    Employment.geo_code == code
+                ).first()
+
+                if commune_data:
+                    # Calculer les taux
+                    women_15_64 = commune_data.women_15_64 or 0
+                    women_active_15_64 = commune_data.women_active_15_64 or 0
+                    women_employed_15_64 = commune_data.women_employed_15_64 or 0
+                    women_employees_25_54 = commune_data.women_employees_25_54 or 0
+                    women_part_time_25_54 = commune_data.women_part_time_25_54 or 0
+                    women_employees_15_64 = commune_data.women_employees_15_64 or 0
+                    women_part_time_15_64 = commune_data.women_part_time_15_64 or 0
+
+                    # Calculer les taux
+                    activity_rate = (women_active_15_64 / women_15_64 * 100) if women_15_64 > 0 else 0
+                    employment_rate = (women_employed_15_64 / women_15_64 * 100) if women_15_64 > 0 else 0
+                    part_time_rate_25_54 = (women_part_time_25_54 / women_employees_25_54 * 100) if women_employees_25_54 > 0 else 0
+                    part_time_rate_15_64 = (women_part_time_15_64 / women_employees_15_64 * 100) if women_employees_15_64 > 0 else 0
+
+                    communes_data.append({
+                        "code": code,
+                        "name": name,
+                        "women_15_64": women_15_64,
+                        "women_active_15_64": women_active_15_64,
+                        "women_employed_15_64": women_employed_15_64,
+                        "activity_rate": round(activity_rate, 2),
+                        "employment_rate": round(employment_rate, 2),
+                        "part_time_rate_25_54": round(part_time_rate_25_54, 2),
+                        "part_time_rate_15_64": round(part_time_rate_15_64, 2)
+                    })
+
+                    # Ajouter aux totaux EPCI
+                    total_women_15_64 += women_15_64
+                    total_women_active_15_64 += women_active_15_64
+                    total_women_employed_15_64 += women_employed_15_64
+                    total_women_employees_25_54 += women_employees_25_54
+                    total_women_part_time_25_54 += women_part_time_25_54
+                    total_women_employees_15_64 += women_employees_15_64
+                    total_women_part_time_15_64 += women_part_time_15_64
+                else:
+                    communes_data.append({
+                        "code": code,
+                        "name": name,
+                        "women_15_64": 0,
+                        "women_active_15_64": 0,
+                        "women_employed_15_64": 0,
+                        "activity_rate": 0,
+                        "employment_rate": 0,
+                        "part_time_rate_25_54": 0,
+                        "part_time_rate_15_64": 0
+                    })
+
+            # Calculer les taux EPCI
+            epci_activity_rate = (total_women_active_15_64 / total_women_15_64 * 100) if total_women_15_64 > 0 else 0
+            epci_employment_rate = (total_women_employed_15_64 / total_women_15_64 * 100) if total_women_15_64 > 0 else 0
+            epci_part_time_rate_25_54 = (total_women_part_time_25_54 / total_women_employees_25_54 * 100) if total_women_employees_25_54 > 0 else 0
+            epci_part_time_rate_15_64 = (total_women_part_time_15_64 / total_women_employees_15_64 * 100) if total_women_employees_15_64 > 0 else 0
+
+            # Trier par taux d'emploi décroissant
+            communes_data.sort(key=lambda x: x["employment_rate"], reverse=True)
+
+            return {
+                "epci": epci,
+                "epci_name": epci_name,
+                "communes_count": len(communes),
+                "epci_activity_rate": round(epci_activity_rate, 2),
+                "epci_employment_rate": round(epci_employment_rate, 2),
+                "epci_part_time_rate_25_54": round(epci_part_time_rate_25_54, 2),
+                "epci_part_time_rate_15_64": round(epci_part_time_rate_15_64, 2),
+                "communes": communes_data
+            }
+        except Exception as e:
+            print(f"Erreur lors de la récupération des taux d'emploi pour l'EPCI {epci}: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return {
+                "epci": epci,
+                "epci_name": "",
+                "communes_count": 0,
+                "communes": []
+            }
+        finally:
+            self.close()

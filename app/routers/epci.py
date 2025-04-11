@@ -12,6 +12,7 @@ from app.schemas import EPCICoupleWithChildrenResponse, CommuneFamilyData
 from app.schemas import EPCISingleParentResponse, CommuneSingleParentData
 from app.schemas import EPCILargeFamiliesResponse, CommuneLargeFamilyData
 from app.schemas import EPCIFamilyEmploymentResponse, CommuneFamilyEmploymentData
+from app.schemas import EPCICommunesEmploymentResponse, CommuneEmploymentRates
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -21,6 +22,7 @@ from app.services.revenue_service import RevenueService
 from app.services.schooling_service import SchoolingService
 from app.services.family_service import FamilyService
 from app.services.family_employment_service import FamilyEmploymentService
+from app.services.employment_service import EmploymentService
 
 # Créer un routeur
 router = APIRouter(
@@ -266,3 +268,28 @@ async def get_epci_communes_family_employment_3to5(
     # Création d'une instance du service
     service = FamilyEmploymentService()
     return service.get_communes_distribution_by_epci(epci, age_group="3", year=year)
+
+@router.get("/employment/women/{epci}/communes",
+    response_model=EPCICommunesEmploymentResponse,
+    summary="Obtenir les taux d'emploi des femmes pour toutes les communes d'un EPCI",
+    description="""Récupère les statistiques d'emploi des femmes pour chaque commune appartenant à l'EPCI spécifié.
+
+Les données incluent pour chaque commune :
+- Le taux d'activité des femmes de 15-64 ans (femmes actives / population totale)
+- Le taux d'emploi des femmes de 15-64 ans (femmes ayant un emploi / population totale)
+- Le taux de temps partiel des femmes de 25-54 ans
+- Le taux de temps partiel des femmes de 15-64 ans
+
+Ces données permettent d'analyser les disparités territoriales en matière d'emploi féminin et
+d'identifier les zones où les besoins en services de garde d'enfants peuvent être plus importants.""",
+    response_description="Liste des communes avec leurs statistiques d'emploi des femmes, triée par taux d'emploi décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_communes_women_employment(request: Request, epci: str):
+    """
+    Récupère les statistiques d'emploi des femmes pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = EmploymentService()
+    return service.get_communes_rates_by_epci(epci)
