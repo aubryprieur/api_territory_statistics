@@ -11,6 +11,7 @@ from app.schemas import EPCICommunesSchoolingResponse, CommuneSchoolingRate
 from app.schemas import EPCICoupleWithChildrenResponse, CommuneFamilyData
 from app.schemas import EPCISingleParentResponse, CommuneSingleParentData
 from app.schemas import EPCILargeFamiliesResponse, CommuneLargeFamilyData
+from app.schemas import EPCIFamilyEmploymentResponse, CommuneFamilyEmploymentData
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -19,6 +20,7 @@ from app.services.childcare_service import ChildcareService
 from app.services.revenue_service import RevenueService
 from app.services.schooling_service import SchoolingService
 from app.services.family_service import FamilyService
+from app.services.family_employment_service import FamilyEmploymentService
 
 # Créer un routeur
 router = APIRouter(
@@ -202,3 +204,65 @@ async def get_epci_large_families(
     # Création d'une instance du service
     service = FamilyService()
     return service.get_large_families_by_epci(epci)
+
+@router.get("/families/employment/under3/{epci}/communes",
+    response_model=EPCIFamilyEmploymentResponse,
+    summary="Obtenir les statistiques d'emploi des familles avec enfants de moins de 3 ans pour toutes les communes d'un EPCI",
+    description="""Récupère la répartition des situations d'emploi des familles ayant des enfants de moins de 3 ans pour chaque commune de l'EPCI.
+
+Les données incluent pour chaque commune :
+- Le nombre total de familles avec enfants de moins de 3 ans
+- Le nombre de couples avec les deux parents actifs ayant un emploi
+- Le pourcentage de couples avec les deux parents actifs
+- Le nombre de familles monoparentales avec le parent actif
+- Le pourcentage de familles monoparentales avec le parent actif
+- La distribution détaillée des différentes configurations familiales
+
+Ces données permettent d'identifier les besoins en services de garde d'enfants et les disparités territoriales.""",
+    response_description="Liste des communes avec leurs statistiques d'emploi des familles, triée par taux de double activité décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_communes_family_employment_under3(
+    request: Request,
+    epci: str,
+    year: int = Query(None, description="Année des données (si non spécifiée, l'année la plus récente disponible est utilisée)")
+):
+    """
+    Récupère les statistiques d'emploi des familles avec enfants de moins de 3 ans pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    - **year**: Année des données (optionnel)
+    """
+    # Création d'une instance du service
+    service = FamilyEmploymentService()
+    return service.get_communes_distribution_by_epci(epci, age_group="0", year=year)
+
+@router.get("/families/employment/3to5/{epci}/communes",
+    response_model=EPCIFamilyEmploymentResponse,
+    summary="Obtenir les statistiques d'emploi des familles avec enfants de 3 à 5 ans pour toutes les communes d'un EPCI",
+    description="""Récupère la répartition des situations d'emploi des familles ayant des enfants de 3 à 5 ans pour chaque commune de l'EPCI.
+
+Les données incluent pour chaque commune :
+- Le nombre total de familles avec enfants de 3 à 5 ans
+- Le nombre de couples avec les deux parents actifs ayant un emploi
+- Le pourcentage de couples avec les deux parents actifs
+- Le nombre de familles monoparentales avec le parent actif
+- Le pourcentage de familles monoparentales avec le parent actif
+- La distribution détaillée des différentes configurations familiales
+
+Ces statistiques sont particulièrement utiles pour l'analyse des besoins en services périscolaires.""",
+    response_description="Liste des communes avec leurs statistiques d'emploi des familles, triée par taux de double activité décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_communes_family_employment_3to5(
+    request: Request,
+    epci: str,
+    year: int = Query(None, description="Année des données (si non spécifiée, l'année la plus récente disponible est utilisée)")
+):
+    """
+    Récupère les statistiques d'emploi des familles avec enfants de 3 à 5 ans pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    - **year**: Année des données (optionnel)
+    """
+    # Création d'une instance du service
+    service = FamilyEmploymentService()
+    return service.get_communes_distribution_by_epci(epci, age_group="3", year=year)

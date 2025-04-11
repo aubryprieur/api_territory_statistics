@@ -333,3 +333,125 @@ class FamilyEmploymentService:
             }
         finally:
             self.close()
+
+    def get_communes_distribution_by_epci(self, epci: str, age_group="0", year=None):
+        """Récupère la distribution pour toutes les communes d'un EPCI"""
+        try:
+            # Établir une connexion à la base de données
+            db = SessionLocal()
+
+            # Récupérer l'année la plus récente si non spécifiée
+            if year is None:
+                available_years = self.get_available_years()
+                year = available_years[-1] if available_years else 2021
+
+            # Récupérer les communes de l'EPCI
+            communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
+            if not communes:
+                return {
+                    "epci": epci,
+                    "epci_name": "",
+                    "year": year,
+                    "communes_count": 0,
+                    "communes": []
+                }
+
+            # Récupérer le nom de l'EPCI
+            epci_info = db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
+
+            # Ajuster le format du groupe d'âge
+            formatted_age_group = self._adjust_age_group_format(age_group)
+
+            # Récupérer les données pour chaque commune
+            communes_data = []
+            total_families = 0
+            total_dual_active = 0
+            total_single_parent_active = 0
+
+            for code, name in communes:
+                # Récupérer les données pour cette commune
+                commune_data = db.query(FamilyEmployment).filter(
+                    FamilyEmployment.geo_code == code,
+                    FamilyEmployment.age_group == formatted_age_group,
+                    FamilyEmployment.year == year
+                ).all()
+
+                if commune_data:
+                    # Calculer la distribution
+                    distribution = self._calculate_distribution(commune_data, age_group)
+
+                    # Extraire les valeurs pertinentes
+                    total_count = distribution["total_count"]
+                    distributions = distribution["distributions"]
+
+                    # Calculer les taux d'emploi spécifiques
+                    dual_active_count = distributions.get("Couple avec enfant(s) - Deux parents actifs ayant un emploi", {}).get("count", 0)
+                    dual_active_rate = (dual_active_count / total_count * 100) if total_count > 0 else 0
+
+                    single_parent_active_count = (
+                        distributions.get("Famille monoparentale - Homme actif ayant un emploi", {}).get("count", 0) +
+                        distributions.get("Famille monoparentale - Femme active ayant un emploi", {}).get("count", 0)
+                    )
+                    single_parent_active_rate = (single_parent_active_count / total_count * 100) if total_count > 0 else 0
+
+                    communes_data.append({
+                        "code": code,
+                        "name": name,
+                        "total_families": total_count,
+                        "dual_active_count": dual_active_count,
+                        "dual_active_rate": round(dual_active_rate, 1),
+                        "single_parent_active_count": single_parent_active_count,
+                        "single_parent_active_rate": round(single_parent_active_rate, 1),
+                        "distributions": distributions
+                    })
+
+                    # Ajouter aux totaux EPCI
+                    total_families += total_count
+                    total_dual_active += dual_active_count
+                    total_single_parent_active += single_parent_active_count
+                else:
+                    communes_data.append({
+                        "code": code,
+                        "name": name,
+                        "total_families": 0,
+                        "dual_active_count": 0,
+                        "dual_active_rate": 0,
+                        "single_parent_active_count": 0,
+                        "single_parent_active_rate": 0,
+                        "distributions": {}
+                    })
+
+            # Calculer les taux EPCI
+            epci_dual_active_rate = (total_dual_active / total_families * 100) if total_families > 0 else 0
+            epci_single_parent_active_rate = (total_single_parent_active / total_families * 100) if total_families > 0 else 0
+
+            # Trier par taux de double emploi décroissant
+            communes_data.sort(key=lambda x: x["dual_active_rate"], reverse=True)
+
+            return {
+                "epci": epci,
+                "epci_name": epci_name,
+                "year": year,
+                "age_group": "0-2 ans" if age_group in ["0", "00"] else "3-5 ans",
+                "communes_count": len(communes),
+                "total_families": total_families,
+                "total_dual_active": total_dual_active,
+                "total_single_parent_active": total_single_parent_active,
+                "epci_dual_active_rate": round(epci_dual_active_rate, 1),
+                "epci_single_parent_active_rate": round(epci_single_parent_active_rate, 1),
+                "communes": communes_data
+            }
+        except Exception as e:
+            print(f"Erreur lors de la récupération des données d'emploi des familles pour l'EPCI {epci}: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return {
+                "epci": epci,
+                "epci_name": "",
+                "year": year,
+                "communes_count": 0,
+                "communes": []
+            }
+        finally:
+            db.close()

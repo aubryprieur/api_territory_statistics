@@ -349,3 +349,26 @@ class EPCILargeFamiliesResponse(BaseModel):
     epci_families_3_children_percentage: float
     epci_families_4_plus_percentage: float
     communes: List[CommuneLargeFamilyData]
+
+class CommuneFamilyEmploymentData(BaseModel):
+    code: str
+    name: str
+    total_families: float
+    dual_active_count: float
+    dual_active_rate: float
+    single_parent_active_count: float
+    single_parent_active_rate: float
+    distributions: Dict[str, FamilyTypeDistribution]
+
+class EPCIFamilyEmploymentResponse(BaseModel):
+    epci: str
+    epci_name: str
+    year: int
+    age_group: str
+    communes_count: int
+    total_families: float
+    total_dual_active: float
+    total_single_parent_active: float
+    epci_dual_active_rate: float
+    epci_single_parent_active_rate: float
+    communes: List[CommuneFamilyEmploymentData]
