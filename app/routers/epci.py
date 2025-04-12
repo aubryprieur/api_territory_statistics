@@ -14,6 +14,7 @@ from app.schemas import EPCILargeFamiliesResponse, CommuneLargeFamilyData
 from app.schemas import EPCIFamilyEmploymentResponse, CommuneFamilyEmploymentData
 from app.schemas import EPCICommunesEmploymentResponse, CommuneEmploymentRates
 from app.schemas import EPCIDomesticViolenceResponse, CommuneDomesticViolenceData
+from app.schemas import EPCIPopulationResponse, AgePopulationData, GenderRatio, CommunePopulationInfo
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -319,3 +320,30 @@ async def get_epci_domestic_violence(request: Request, epci: str):
     # Création d'une instance du service
     service = PublicSafetyService()
     return service.get_domestic_violence_by_epci(epci)
+
+@router.get("/population/{epci}",
+    response_model=EPCIPopulationResponse,
+    summary="Obtenir la pyramide des âges d'un EPCI",
+    description="""Récupère la structure complète de la population d'un EPCI en agrégeant les données
+des communes membres. Les données sont différenciées par sexe et par âge (de 0 à 100 ans).
+
+La réponse inclut :
+- La population totale de l'EPCI
+- Le nombre d'hommes et de femmes
+- La répartition par sexe (pourcentages)
+- La distribution détaillée par âge et par sexe
+- La liste des communes de l'EPCI avec leur population
+
+Cette vue agrégée permet d'analyser la structure démographique d'un territoire intercommunal
+et de comparer le poids démographique de chaque commune constituante.""",
+    response_description="Structure démographique complète de l'EPCI avec pyramide des âges détaillée")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_population(request: Request, epci: str):
+    """
+    Obtient la pyramide des âges pour un EPCI en agrégeant les données des communes membres :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = PopulationService()
+    return service.get_epci_population(epci)

@@ -412,3 +412,29 @@ class EPCIDomesticViolenceResponse(BaseModel):
     total_population: float
     epci_average_rate: float
     communes: List[CommuneDomesticViolenceData]
+
+class CommunePopulationInfo(BaseModel):
+    code: str
+    name: str
+    population: float
+
+class AgePopulationData(BaseModel):
+    age: int
+    total: float
+    men: float
+    women: float
+
+class GenderRatio(BaseModel):
+    men_percentage: float
+    women_percentage: float
+
+class EPCIPopulationResponse(BaseModel):
+    epci: str
+    epci_name: str
+    communes_count: int
+    total_population: float
+    men_count: float
+    women_count: float
+    gender_ratio: GenderRatio
+    population_by_age: List[AgePopulationData]
+    communes: List[CommunePopulationInfo]
