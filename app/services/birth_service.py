@@ -128,6 +128,7 @@ class BirthService:
                 "total_births": total_epci_births,
                 "years_available": years_available,
                 "highest_births_commune": highest_births_commune,
+                "epci_births_by_year": epci_births_by_year,  # Ajout des naissances par année pour l'EPCI
                 "communes": communes_data
             }
         except Exception as e:

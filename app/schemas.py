@@ -469,4 +469,5 @@ class EPCICommunesBirthsResponse(BaseModel):
     total_births: float
     years_available: List[int]
     highest_births_commune: Optional[str] = None
+    epci_births_by_year: Dict[int, float]  # Nouveau champ pour les naissances par année au niveau EPCI
     communes: List[CommuneBirthData]
