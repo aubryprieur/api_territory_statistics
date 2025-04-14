@@ -15,6 +15,7 @@ from app.schemas import EPCIFamilyEmploymentResponse, CommuneFamilyEmploymentDat
 from app.schemas import EPCICommunesEmploymentResponse, CommuneEmploymentRates
 from app.schemas import EPCIDomesticViolenceResponse, CommuneDomesticViolenceData
 from app.schemas import EPCIPopulationResponse, AgePopulationData, GenderRatio, CommunePopulationInfo
+from app.schemas import EPCIHistoricalPopulationResponse
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -26,6 +27,7 @@ from app.services.family_service import FamilyService
 from app.services.family_employment_service import FamilyEmploymentService
 from app.services.employment_service import EmploymentService
 from app.services.public_safety_service import PublicSafetyService
+from app.services.historical_service import HistoricalService
 
 # Créer un routeur
 router = APIRouter(
@@ -37,6 +39,7 @@ router = APIRouter(
 # Créer des instances de vos services
 population_service = PopulationService()
 geocode_service = GeoCodeService()
+historical_service = HistoricalService()
 
 # Définir les limites de taux
 DEFAULT_RATE = "60/minute"
@@ -347,3 +350,25 @@ async def get_epci_population(request: Request, epci: str):
     # Création d'une instance du service
     service = PopulationService()
     return service.get_epci_population(epci)
+
+@router.get("/historical/{epci}/communes",
+    response_model=EPCIHistoricalPopulationResponse,
+    summary="Obtenir l'évolution historique de population pour toutes les communes d'un EPCI",
+    description="""Récupère l'évolution démographique historique depuis 1968 pour chaque commune appartenant à l'EPCI spécifié.
+
+Les données incluent pour chaque commune :
+- La population pour chaque recensement (1968, 1975, 1982, 1990, 1999, 2010, 2015, 2021)
+- Les taux d'évolution sur différentes périodes (1968-2021 et 2015-2021)
+
+L'endpoint identifie également la commune la plus peuplée et celle ayant connu la plus forte croissance sur la période complète.""",
+    response_description="Liste des communes avec leur historique de population, triée par population décroissante")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_historical_population(request: Request, epci: str):
+    """
+    Récupère l'évolution historique de population pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = HistoricalService()
+    return service.get_communes_historical_by_epci(epci)

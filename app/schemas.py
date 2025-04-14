@@ -438,3 +438,19 @@ class EPCIPopulationResponse(BaseModel):
     gender_ratio: GenderRatio
     population_by_age: List[AgePopulationData]
     communes: List[CommunePopulationInfo]
+
+class CommuneHistoricalData(BaseModel):
+    code: str
+    name: str
+    population_history: Dict[str, float]  # Année -> Population
+    evolution_percentage: Dict[str, float]  # Période -> % d'évolution
+
+class EPCIHistoricalPopulationResponse(BaseModel):
+    epci: str
+    epci_name: str
+    communes_count: int
+    most_populated_commune: Optional[str] = None
+    fastest_growing_commune: Optional[str] = None
+    epci_population_history: Dict[str, float]  # Année -> Population totale EPCI
+    epci_evolution_percentage: Dict[str, float]  # Période -> % d'évolution EPCI
+    communes: List[CommuneHistoricalData]
