@@ -16,6 +16,7 @@ from app.schemas import EPCICommunesEmploymentResponse, CommuneEmploymentRates
 from app.schemas import EPCIDomesticViolenceResponse, CommuneDomesticViolenceData
 from app.schemas import EPCIPopulationResponse, AgePopulationData, GenderRatio, CommunePopulationInfo
 from app.schemas import EPCIHistoricalPopulationResponse
+from app.schemas import EPCICommunesBirthsResponse, CommuneBirthData
 
 # Importer vos services
 from app.services.population_service import PopulationService
@@ -28,6 +29,7 @@ from app.services.family_employment_service import FamilyEmploymentService
 from app.services.employment_service import EmploymentService
 from app.services.public_safety_service import PublicSafetyService
 from app.services.historical_service import HistoricalService
+from app.services.birth_service import BirthService
 
 # Créer un routeur
 router = APIRouter(
@@ -372,3 +374,26 @@ async def get_epci_historical_population(request: Request, epci: str):
     # Création d'une instance du service
     service = HistoricalService()
     return service.get_communes_historical_by_epci(epci)
+
+@router.get("/births/{epci}/communes",
+    response_model=EPCICommunesBirthsResponse,
+    summary="Obtenir les naissances pour toutes les communes d'un EPCI",
+    description="""Récupère les données de naissances pour chaque commune appartenant à l'EPCI spécifié.
+
+Les données incluent pour chaque commune :
+- Le nombre total de naissances sur toute la période
+- La répartition des naissances par année
+- L'année la plus récente disponible
+
+L'endpoint identifie également la commune avec le plus grand nombre de naissances.""",
+    response_description="Liste des communes avec leurs données de naissances, triée par nombre de naissances décroissant")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_communes_births(request: Request, epci: str):
+    """
+    Récupère les données de naissances pour chaque commune d'un EPCI :
+
+    - **epci**: Code de l'EPCI
+    """
+    # Création d'une instance du service
+    service = BirthService()
+    return service.get_births_by_epci_communes(epci)

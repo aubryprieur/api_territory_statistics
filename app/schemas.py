@@ -454,3 +454,19 @@ class EPCIHistoricalPopulationResponse(BaseModel):
     epci_population_history: Dict[str, float]  # Année -> Population totale EPCI
     epci_evolution_percentage: Dict[str, float]  # Période -> % d'évolution EPCI
     communes: List[CommuneHistoricalData]
+
+class CommuneBirthData(BaseModel):
+    code: str
+    name: str
+    births_by_year: Dict[int, float]
+    total_births: float
+    latest_year: Optional[int] = None
+
+class EPCICommunesBirthsResponse(BaseModel):
+    epci: str
+    epci_name: str
+    communes_count: int
+    total_births: float
+    years_available: List[int]
+    highest_births_commune: Optional[str] = None
+    communes: List[CommuneBirthData]
