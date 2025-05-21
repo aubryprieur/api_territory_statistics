@@ -36,6 +36,12 @@ DB_CONFIG = {
     "password": parsed_url.password
 }
 
+def normalize_geo_code(code):
+    """Normalise un code géographique au format standard INSEE (5 chiffres)"""
+    if code is None or pd.isna(code):
+        return None
+    return str(code).zfill(5)
+
 def optimize_db_settings(cur):
     """Optimise les paramètres de la base de données pour un import rapide."""
     logger.info("⚙️ Optimisation des paramètres de la base de données...")
@@ -106,6 +112,7 @@ def import_population_data():
                 delimiter=";",
                 encoding="utf-8",
                 low_memory=False,
+                dtype={"CODGEO": str},  # Assurer que CODGEO est traité comme une chaîne
                 chunksize=chunk_size
             )
 
@@ -125,6 +132,27 @@ def import_population_data():
                 df['SEXE'] = df['SEXE'].astype(str)
                 df['AGED100'] = df['AGED100'].astype(str).str.zfill(3)  # Garantir 3 chiffres
                 df['NB'] = pd.to_numeric(df['NB'], errors='coerce').fillna(0.0)
+
+                # ********* NORMALISATION DES CODES GÉOGRAPHIQUES **********
+                # Standardiser tous les codes de communes à 5 chiffres
+                df['CODGEO'] = df['CODGEO'].apply(normalize_geo_code)
+
+                # Vérifier et signaler les codes potentiellement problématiques
+                code_lengths = df['CODGEO'].str.len().value_counts()
+                logger.info(f"📊 Distribution des longueurs de codes géographiques après normalisation: {code_lengths.to_dict()}")
+
+                if len(code_lengths) > 1 or (5 not in code_lengths):
+                    logger.warning("⚠️ Certains codes géographiques n'ont pas une longueur de 5 caractères après normalisation!")
+
+                    # Afficher quelques exemples
+                    problematic_codes = df[df['CODGEO'].str.len() != 5]['CODGEO'].unique()[:10]
+                    if len(problematic_codes) > 0:
+                        logger.warning(f"⚠️ Exemples de codes problématiques: {problematic_codes}")
+                # ********************************************************
+
+                # Afficher la distribution des premiers chiffres des codes
+                first_digits = df['CODGEO'].str[0].value_counts().to_dict()
+                logger.info(f"📊 Distribution des premiers chiffres des codes: {first_digits}")
 
                 # Créer un buffer pour COPY
                 output = StringIO()
@@ -149,6 +177,11 @@ def import_population_data():
             # Restaurer les paramètres normaux et créer les index
             restore_table_settings(cur)
             conn.commit()
+
+            # Vérification finale des données importées
+            cur.execute("SELECT SUBSTRING(codgeo, 1, 1) as first_digit, COUNT(*) FROM populations GROUP BY first_digit ORDER BY first_digit")
+            result = cur.fetchall()
+            logger.info(f"📊 Distribution finale des premiers chiffres des codes en base: {dict(result)}")
 
             logger.info(f"✨ Import terminé avec succès : {total_records} enregistrements importés")
 
