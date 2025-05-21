@@ -58,18 +58,31 @@ class FamilyService:
             db.close()
 
     def get_families_by_department(self, dep: str, start_year: int = None, end_year: int = None):
-        """ Récupère les données agrégées par département """
+        """Récupère les données agrégées par département"""
         try:
             # Connexion à la base de données
             db = SessionLocal()
 
-            # Récupérer toutes les communes du département
-            communes = [geo.codgeo for geo in db.query(GeoCode).filter(GeoCode.dep == dep).all()]
-            if not communes:
-                return {"error": "Aucune commune trouvée pour ce département"}
+            # Normaliser le code département au format INSEE (avec zéro initial si nécessaire)
+            normalized_dep = dep.zfill(2)
 
-            # Récupérer les données des familles pour toutes les communes du département
-            results = db.query(Family).filter(Family.geo_code.in_(communes)).all()
+            # Récupérer toutes les communes du département
+            communes = db.query(GeoCode.codgeo).filter(GeoCode.dep == normalized_dep).all()
+
+            if not communes:
+                return {"error": f"Aucune commune trouvée pour ce département {dep}"}
+
+            # Récupérer les données des familles
+            commune_codes = [c[0] for c in communes]
+            results = db.query(Family).filter(Family.geo_code.in_(commune_codes)).all()
+
+            if not results:
+                return {
+                    "error": f"Aucune donnée de famille disponible pour le département {dep}",
+                    "department": dep,
+                    "communes_count": len(communes),
+                    "data_available": False
+                }
 
             return self._format_response(results, start_year, end_year)
         except SQLAlchemyError as e:
