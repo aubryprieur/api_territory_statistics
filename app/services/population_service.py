@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func, case, and_
 from app.database import SessionLocal
 from app.models import Population, GeoCode
+
 
 class PopulationService:
     def __init__(self):
@@ -11,6 +12,19 @@ class PopulationService:
         """Ferme la connexion à la base de données"""
         self.db.close()
 
+    def _safe_float(self, value):
+        """Convertit une valeur en float de manière sécurisée"""
+        try:
+            if value is None:
+                return 0.0
+            float_val = float(value)
+            return float_val
+        except (ValueError, TypeError):
+            return 0.0
+
+    # -------------------------------------------------------------------------
+    # Commune
+    # -------------------------------------------------------------------------
     def get_by_code(self, codgeo: str):
         """Récupère la pyramide des âges d'une commune"""
         try:
@@ -38,29 +52,32 @@ class PopulationService:
     def get_population_and_children_rate(self, code: str):
         """Calcule les taux d'enfants par tranches d'âge pour une commune"""
         try:
-            # Requête pour la population totale
-            total_pop = self.db.query(func.sum(Population.nb)).filter(
+            # OPTIMISATION : 1 requête au lieu de 3
+            # Calcul identique : SUM(nb), SUM(nb WHERE aged100 IN 000-002), SUM(nb WHERE aged100 IN 003-005)
+            result = self.db.query(
+                func.sum(Population.nb).label('total'),
+                func.sum(case(
+                    (Population.aged100.in_(['000', '001', '002']), Population.nb),
+                    else_=0
+                )).label('under_3'),
+                func.sum(case(
+                    (Population.aged100.in_(['003', '004', '005']), Population.nb),
+                    else_=0
+                )).label('three_to_five'),
+            ).filter(
                 Population.codgeo == str(code)
-            ).scalar() or 0
+            ).first()
 
-            # Requête pour les enfants de moins de 3 ans
-            under_3 = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo == str(code),
-                Population.aged100.in_(['000', '001', '002'])
-            ).scalar() or 0
-
-            # Requête pour les enfants de 3 à 5 ans
-            three_to_five = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo == str(code),
-                Population.aged100.in_(['003', '004', '005'])
-            ).scalar() or 0
+            total_pop = float(result.total or 0)
+            under_3 = float(result.under_3 or 0)
+            three_to_five = float(result.three_to_five or 0)
 
             return {
-                "total_population": float(total_pop),
-                "children_under_3": float(under_3),
-                "children_3_to_5": float(three_to_five),
-                "under_3_rate": float(under_3/total_pop * 100) if total_pop > 0 else 0,
-                "three_to_five_rate": float(three_to_five/total_pop * 100) if total_pop > 0 else 0
+                "total_population": total_pop,
+                "children_under_3": under_3,
+                "children_3_to_5": three_to_five,
+                "under_3_rate": float(under_3 / total_pop * 100) if total_pop > 0 else 0,
+                "three_to_five_rate": float(three_to_five / total_pop * 100) if total_pop > 0 else 0
             }
         except Exception as e:
             print(f"Erreur lors du calcul des taux d'enfants pour {code}: {str(e)}")
@@ -74,10 +91,13 @@ class PopulationService:
         finally:
             self.close()
 
+    # -------------------------------------------------------------------------
+    # EPCI — 1 requête JOIN au lieu de 4 requêtes avec IN(...)
+    # -------------------------------------------------------------------------
     def aggregate_children_by_epci(self, epci: str, geocode_service):
         """Agrège les statistiques des enfants pour un EPCI"""
         try:
-            # Obtenir les communes de l'EPCI
+            # Compteur communes depuis geo_codes (identique à l'original)
             communes = self.db.query(GeoCode.codgeo).filter(GeoCode.epci == str(epci)).all()
             if not communes:
                 return {
@@ -91,24 +111,28 @@ class PopulationService:
                     "communes_count": 0
                 }
 
-            commune_codes = [c[0] for c in communes]
+            communes_count = len(communes)
 
-            # Requête pour la population totale
-            total_pop = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes)
-            ).scalar() or 0
+            # OPTIMISATION : 1 requête JOIN au lieu de 3 requêtes IN(...)
+            result = self.db.query(
+                func.sum(Population.nb).label('total'),
+                func.sum(case(
+                    (Population.aged100.in_(['000', '001', '002']), Population.nb),
+                    else_=0
+                )).label('under_3'),
+                func.sum(case(
+                    (Population.aged100.in_(['003', '004', '005']), Population.nb),
+                    else_=0
+                )).label('three_to_five'),
+            ).join(
+                GeoCode, Population.codgeo == GeoCode.codgeo
+            ).filter(
+                GeoCode.epci == str(epci)
+            ).first()
 
-            # Requête pour les enfants de moins de 3 ans
-            under_3 = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes),
-                Population.aged100.in_(['000', '001', '002'])
-            ).scalar() or 0
-
-            # Requête pour les enfants de 3 à 5 ans
-            three_to_five = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes),
-                Population.aged100.in_(['003', '004', '005'])
-            ).scalar() or 0
+            total_pop = float(result.total or 0)
+            under_3 = float(result.under_3 or 0)
+            three_to_five = float(result.three_to_five or 0)
 
             # Obtenir le nom de l'EPCI
             epci_info = self.db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
@@ -120,9 +144,9 @@ class PopulationService:
                 "total_population": float(total_pop),
                 "children_under_3": float(under_3),
                 "children_3_to_5": float(three_to_five),
-                "under_3_rate": float(under_3/total_pop * 100) if total_pop > 0 else 0,
-                "three_to_five_rate": float(three_to_five/total_pop * 100) if total_pop > 0 else 0,
-                "communes_count": len(commune_codes)
+                "under_3_rate": float(under_3 / total_pop * 100) if total_pop > 0 else 0,
+                "three_to_five_rate": float(three_to_five / total_pop * 100) if total_pop > 0 else 0,
+                "communes_count": communes_count
             }
         except Exception as e:
             print(f"Erreur lors de l'agrégation pour l'EPCI {epci}: {str(e)}")
@@ -139,10 +163,13 @@ class PopulationService:
         finally:
             self.close()
 
+    # -------------------------------------------------------------------------
+    # Département — 1 requête JOIN au lieu de 4 requêtes avec IN(...)
+    # -------------------------------------------------------------------------
     def aggregate_children_by_department(self, dep: str, geocode_service):
         """Agrège les statistiques des enfants pour un département"""
         try:
-            # Obtenir les communes du département
+            # Compteur communes depuis geo_codes (identique à l'original)
             communes = self.db.query(GeoCode.codgeo).filter(GeoCode.dep == str(dep)).all()
             if not communes:
                 return {
@@ -155,33 +182,37 @@ class PopulationService:
                     "communes_count": 0
                 }
 
-            commune_codes = [c[0] for c in communes]
+            communes_count = len(communes)
 
-            # Requête pour la population totale
-            total_pop = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes)
-            ).scalar() or 0
+            # OPTIMISATION : 1 requête JOIN au lieu de 3 requêtes IN(...)
+            result = self.db.query(
+                func.sum(Population.nb).label('total'),
+                func.sum(case(
+                    (Population.aged100.in_(['000', '001', '002']), Population.nb),
+                    else_=0
+                )).label('under_3'),
+                func.sum(case(
+                    (Population.aged100.in_(['003', '004', '005']), Population.nb),
+                    else_=0
+                )).label('three_to_five'),
+            ).join(
+                GeoCode, Population.codgeo == GeoCode.codgeo
+            ).filter(
+                GeoCode.dep == str(dep)
+            ).first()
 
-            # Requête pour les enfants de moins de 3 ans
-            under_3 = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes),
-                Population.aged100.in_(['000', '001', '002'])
-            ).scalar() or 0
-
-            # Requête pour les enfants de 3 à 5 ans
-            three_to_five = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes),
-                Population.aged100.in_(['003', '004', '005'])
-            ).scalar() or 0
+            total_pop = float(result.total or 0)
+            under_3 = float(result.under_3 or 0)
+            three_to_five = float(result.three_to_five or 0)
 
             return {
                 "department": dep,
                 "total_population": float(total_pop),
                 "children_under_3": float(under_3),
                 "children_3_to_5": float(three_to_five),
-                "under_3_rate": float(under_3/total_pop * 100) if total_pop > 0 else 0,
-                "three_to_five_rate": float(three_to_five/total_pop * 100) if total_pop > 0 else 0,
-                "communes_count": len(commune_codes)
+                "under_3_rate": float(under_3 / total_pop * 100) if total_pop > 0 else 0,
+                "three_to_five_rate": float(three_to_five / total_pop * 100) if total_pop > 0 else 0,
+                "communes_count": communes_count
             }
         except Exception as e:
             print(f"Erreur lors de l'agrégation pour le département {dep}: {str(e)}")
@@ -197,10 +228,13 @@ class PopulationService:
         finally:
             self.close()
 
+    # -------------------------------------------------------------------------
+    # Région — 1 requête JOIN au lieu de 5 requêtes avec IN(...)
+    # -------------------------------------------------------------------------
     def aggregate_children_by_region(self, reg: str, geocode_service):
         """Agrège les statistiques des enfants pour une région"""
         try:
-            # Obtenir les communes de la région
+            # Compteurs depuis geo_codes (identique à l'original)
             communes = self.db.query(GeoCode.codgeo).filter(GeoCode.reg == str(reg)).all()
             if not communes:
                 return {
@@ -214,37 +248,41 @@ class PopulationService:
                     "departments_count": 0
                 }
 
-            commune_codes = [c[0] for c in communes]
+            communes_count = len(communes)
 
-            # Requête pour la population totale
-            total_pop = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes)
-            ).scalar() or 0
-
-            # Requête pour les enfants de moins de 3 ans
-            under_3 = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes),
-                Population.aged100.in_(['000', '001', '002'])
-            ).scalar() or 0
-
-            # Requête pour les enfants de 3 à 5 ans
-            three_to_five = self.db.query(func.sum(Population.nb)).filter(
-                Population.codgeo.in_(commune_codes),
-                Population.aged100.in_(['003', '004', '005'])
-            ).scalar() or 0
-
-            # Compter les départements dans la région
+            # Compter les départements dans la région (identique à l'original)
             departments = self.db.query(GeoCode.dep).filter(GeoCode.reg == str(reg)).distinct().all()
             departments_count = len(departments)
+
+            # OPTIMISATION : 1 requête JOIN au lieu de 3 requêtes IN(...)
+            result = self.db.query(
+                func.sum(Population.nb).label('total'),
+                func.sum(case(
+                    (Population.aged100.in_(['000', '001', '002']), Population.nb),
+                    else_=0
+                )).label('under_3'),
+                func.sum(case(
+                    (Population.aged100.in_(['003', '004', '005']), Population.nb),
+                    else_=0
+                )).label('three_to_five'),
+            ).join(
+                GeoCode, Population.codgeo == GeoCode.codgeo
+            ).filter(
+                GeoCode.reg == str(reg)
+            ).first()
+
+            total_pop = float(result.total or 0)
+            under_3 = float(result.under_3 or 0)
+            three_to_five = float(result.three_to_five or 0)
 
             return {
                 "region": reg,
                 "total_population": float(total_pop),
                 "children_under_3": float(under_3),
                 "children_3_to_5": float(three_to_five),
-                "under_3_rate": float(under_3/total_pop * 100) if total_pop > 0 else 0,
-                "three_to_five_rate": float(three_to_five/total_pop * 100) if total_pop > 0 else 0,
-                "communes_count": len(commune_codes),
+                "under_3_rate": float(under_3 / total_pop * 100) if total_pop > 0 else 0,
+                "three_to_five_rate": float(three_to_five / total_pop * 100) if total_pop > 0 else 0,
+                "communes_count": communes_count,
                 "departments_count": departments_count
             }
         except Exception as e:
@@ -262,33 +300,40 @@ class PopulationService:
         finally:
             self.close()
 
+    # -------------------------------------------------------------------------
+    # France — 2 requêtes au lieu de 6
+    # -------------------------------------------------------------------------
     def aggregate_children_france(self, geocode_service):
         """Agrège les statistiques des enfants au niveau national"""
         try:
-            # Requête pour la population totale
-            total_pop = self.db.query(func.sum(Population.nb)).scalar() or 0
+            # OPTIMISATION : 1 requête pour population + enfants (au lieu de 3)
+            result = self.db.query(
+                func.sum(Population.nb).label('total'),
+                func.sum(case(
+                    (Population.aged100.in_(['000', '001', '002']), Population.nb),
+                    else_=0
+                )).label('under_3'),
+                func.sum(case(
+                    (Population.aged100.in_(['003', '004', '005']), Population.nb),
+                    else_=0
+                )).label('three_to_five'),
+            ).first()
 
-            # Requête pour les enfants de moins de 3 ans
-            under_3 = self.db.query(func.sum(Population.nb)).filter(
-                Population.aged100.in_(['000', '001', '002'])
-            ).scalar() or 0
-
-            # Requête pour les enfants de 3 à 5 ans
-            three_to_five = self.db.query(func.sum(Population.nb)).filter(
-                Population.aged100.in_(['003', '004', '005'])
-            ).scalar() or 0
-
-            # Compter les communes, départements et régions
+            # Compteurs géographiques depuis geo_codes (identique à l'original)
             communes_count = self.db.query(func.count(GeoCode.codgeo)).scalar() or 0
             departments_count = self.db.query(func.count(func.distinct(GeoCode.dep))).scalar() or 0
             regions_count = self.db.query(func.count(func.distinct(GeoCode.reg))).scalar() or 0
+
+            total_pop = float(result.total or 0)
+            under_3 = float(result.under_3 or 0)
+            three_to_five = float(result.three_to_five or 0)
 
             return {
                 "total_population": float(total_pop),
                 "children_under_3": float(under_3),
                 "children_3_to_5": float(three_to_five),
-                "under_3_rate": float(under_3/total_pop * 100) if total_pop > 0 else 0,
-                "three_to_five_rate": float(three_to_five/total_pop * 100) if total_pop > 0 else 0,
+                "under_3_rate": float(under_3 / total_pop * 100) if total_pop > 0 else 0,
+                "three_to_five_rate": float(three_to_five / total_pop * 100) if total_pop > 0 else 0,
                 "communes_count": communes_count,
                 "departments_count": departments_count,
                 "regions_count": regions_count
@@ -308,17 +353,9 @@ class PopulationService:
         finally:
             self.close()
 
-
-    def _safe_float(self, value):
-        """Convertit une valeur en float de manière sécurisée"""
-        try:
-            if value is None:
-                return 0.0
-            float_val = float(value)
-            return float_val
-        except (ValueError, TypeError):
-            return 0.0
-
+    # -------------------------------------------------------------------------
+    # EPCI — liste des communes avec statistiques enfants (inchangé)
+    # -------------------------------------------------------------------------
     def get_children_by_epci_communes(self, epci: str, geocode_service):
         """Récupère les statistiques des enfants pour toutes les communes d'un EPCI"""
         try:
@@ -362,6 +399,9 @@ class PopulationService:
         finally:
             self.close()
 
+    # -------------------------------------------------------------------------
+    # EPCI — pyramide des âges complète (inchangé)
+    # -------------------------------------------------------------------------
     def get_epci_population(self, epci: str):
         """Récupère la pyramide des âges d'un EPCI en agrégeant les communes membres"""
         try:
