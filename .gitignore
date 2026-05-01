@@ -6,3 +6,4 @@ venv/
 data/
 *.csv
 *.CSV
+scripts/benchmark_endpoints.sh
