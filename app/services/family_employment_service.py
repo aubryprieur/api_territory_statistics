@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from app.database import SessionLocal
 from app.models import FamilyEmployment, GeoCode
 
+
 class FamilyEmploymentService:
     def __init__(self):
         self.db = SessionLocal()
@@ -26,7 +27,6 @@ class FamilyEmploymentService:
 
     def _adjust_age_group_format(self, age_group):
         """Ajuste le format du groupe d'âge pour qu'il corresponde au format de la base de données"""
-        # Convertir "0" en "00" et "3" en "03"
         if age_group == "0":
             return "00"
         elif age_group == "3":
@@ -40,10 +40,13 @@ class FamilyEmploymentService:
             return [year[0] for year in years]
         except Exception as e:
             print(f"Erreur lors de la récupération des années disponibles: {str(e)}")
-            return [2021]  # Valeur par défaut en cas d'erreur
+            return [2021]
         finally:
             self.close()
 
+    # =========================================================================
+    # Méthode d'origine (inchangée — pour commune, EPCI, détails communes)
+    # =========================================================================
     def _calculate_distribution(self, data, age_group="0"):
         """Calcule la répartition des TF12 pour un groupe d'âge spécifié"""
         try:
@@ -82,15 +85,80 @@ class FamilyEmploymentService:
                 "age_group": "0-2 ans" if age_group in ["0", "00"] else "3-5 ans"
             }
 
+    # =========================================================================
+    # OPTIMISÉ : agrégation SQL GROUP BY tf12 au lieu de charger toutes les lignes
+    # Retourne exactement le même format que _calculate_distribution
+    # =========================================================================
+    def _calculate_distribution_sql(self, age_group="0", year=2021, geo_filter=None):
+        """
+        Calcule la distribution directement en SQL avec GROUP BY tf12.
+
+        Args:
+            age_group: groupe d'âge ("0" ou "3")
+            year: année
+            geo_filter: tuple (column, value) pour JOIN sur geo_codes, ou None pour France
+        """
+        try:
+            formatted_age_group = self._adjust_age_group_format(age_group)
+
+            # 1 requête SQL avec GROUP BY tf12 au lieu de charger toutes les lignes
+            query = self.db.query(
+                FamilyEmployment.tf12,
+                func.sum(FamilyEmployment.number).label('count')
+            ).filter(
+                FamilyEmployment.age_group == formatted_age_group,
+                FamilyEmployment.year == year
+            )
+
+            # Appliquer le filtre géographique via JOIN si nécessaire
+            if geo_filter:
+                column, value = geo_filter
+                query = query.join(
+                    GeoCode, FamilyEmployment.geo_code == GeoCode.codgeo
+                ).filter(column == str(value))
+
+            query = query.group_by(FamilyEmployment.tf12)
+            rows = query.all()
+
+            # Construire le résultat dans le même format que _calculate_distribution
+            total = sum(float(row.count or 0) for row in rows)
+
+            distributions = {}
+            if total > 0:
+                for row in sorted(rows, key=lambda r: r.tf12):
+                    count = float(row.count or 0)
+                    percentage = (count / total * 100) if total > 0 else 0
+
+                    key = self.tf12_labels.get(row.tf12, f"Type {row.tf12}")
+                    distributions[key] = {
+                        "code": str(row.tf12),
+                        "count": count,
+                        "percentage": round(percentage, 1)
+                    }
+
+            return {
+                "total_count": float(total),
+                "distributions": distributions,
+                "age_group": "0-2 ans" if age_group in ["0", "00"] else "3-5 ans"
+            }
+        except Exception as e:
+            print(f"Erreur dans _calculate_distribution_sql: {str(e)}")
+            return {
+                "total_count": 0,
+                "distributions": {},
+                "age_group": "0-2 ans" if age_group in ["0", "00"] else "3-5 ans"
+            }
+
+    # =========================================================================
+    # Commune (inchangé)
+    # =========================================================================
     def get_commune_distribution(self, code: str, age_group="0", year=None):
         """Récupère la distribution pour une commune"""
         try:
-            # Récupérer l'année la plus récente si non spécifiée
             if year is None:
                 available_years = self.get_available_years()
                 year = available_years[-1] if available_years else 2021
 
-            # Vérifier si la commune existe
             geo_info = self.db.query(GeoCode).filter(GeoCode.codgeo == str(code)).first()
             if not geo_info:
                 return {
@@ -102,12 +170,10 @@ class FamilyEmploymentService:
 
             results = {}
 
-            # Ajuster le format du groupe d'âge
             formatted_age_group = self._adjust_age_group_format(age_group)
 
             print(f"Recherche des données pour commune {code}, année {year}, groupe d'âge {formatted_age_group}")
 
-            # Récupérer les données pour l'année spécifiée
             commune_data = self.db.query(FamilyEmployment).filter(
                 FamilyEmployment.geo_code == str(code),
                 FamilyEmployment.age_group == formatted_age_group,
@@ -139,15 +205,16 @@ class FamilyEmploymentService:
         finally:
             self.close()
 
+    # =========================================================================
+    # EPCI (inchangé)
+    # =========================================================================
     def get_epci_distribution(self, epci: str, age_group="0", year=None):
         """Récupère la distribution pour un EPCI"""
         try:
-            # Récupérer l'année la plus récente si non spécifiée
             if year is None:
                 available_years = self.get_available_years()
                 year = available_years[-1] if available_years else 2021
 
-            # Récupérer les communes de l'EPCI
             communes = self.db.query(GeoCode.codgeo).filter(GeoCode.epci == str(epci)).all()
             if not communes:
                 return {
@@ -160,10 +227,8 @@ class FamilyEmploymentService:
             commune_codes = [c[0] for c in communes]
             results = {}
 
-            # Ajuster le format du groupe d'âge
             formatted_age_group = self._adjust_age_group_format(age_group)
 
-            # Récupérer les données de la base
             epci_data = self.db.query(FamilyEmployment).filter(
                 FamilyEmployment.geo_code.in_(commune_codes),
                 FamilyEmployment.age_group == formatted_age_group,
@@ -173,7 +238,6 @@ class FamilyEmploymentService:
             if epci_data:
                 results[year] = self._calculate_distribution(epci_data, age_group)
 
-            # Obtenir le nom de l'EPCI
             epci_name = self.db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
 
             return {
@@ -193,15 +257,16 @@ class FamilyEmploymentService:
         finally:
             self.close()
 
+    # =========================================================================
+    # Département — OPTIMISÉ : SQL GROUP BY + JOIN au lieu de IN(...)
+    # =========================================================================
     def get_department_distribution(self, dep: str, age_group="0", year=None):
         """Récupère la distribution pour un département"""
         try:
-            # Récupérer l'année la plus récente si non spécifiée
             if year is None:
                 available_years = self.get_available_years()
                 year = available_years[-1] if available_years else 2021
 
-            # Récupérer les communes du département
             communes = self.db.query(GeoCode.codgeo).filter(GeoCode.dep == str(dep)).all()
             if not communes:
                 return {
@@ -211,21 +276,17 @@ class FamilyEmploymentService:
                     "data": {}
                 }
 
-            commune_codes = [c[0] for c in communes]
             results = {}
 
-            # Ajuster le format du groupe d'âge
-            formatted_age_group = self._adjust_age_group_format(age_group)
+            # OPTIMISATION : SQL GROUP BY + JOIN au lieu de charger toutes les lignes
+            distribution = self._calculate_distribution_sql(
+                age_group=age_group,
+                year=year,
+                geo_filter=(GeoCode.dep, dep)
+            )
 
-            # Récupérer les données de la base
-            dep_data = self.db.query(FamilyEmployment).filter(
-                FamilyEmployment.geo_code.in_(commune_codes),
-                FamilyEmployment.age_group == formatted_age_group,
-                FamilyEmployment.year == year
-            ).all()
-
-            if dep_data:
-                results[year] = self._calculate_distribution(dep_data, age_group)
+            if distribution["total_count"] > 0:
+                results[year] = distribution
 
             return {
                 "territory_type": "department",
@@ -244,15 +305,16 @@ class FamilyEmploymentService:
         finally:
             self.close()
 
+    # =========================================================================
+    # Région — OPTIMISÉ : SQL GROUP BY + JOIN au lieu de IN(...)
+    # =========================================================================
     def get_region_distribution(self, reg: str, age_group="0", year=None):
         """Récupère la distribution pour une région"""
         try:
-            # Récupérer l'année la plus récente si non spécifiée
             if year is None:
                 available_years = self.get_available_years()
                 year = available_years[-1] if available_years else 2021
 
-            # Récupérer les communes de la région
             communes = self.db.query(GeoCode.codgeo).filter(GeoCode.reg == str(reg)).all()
             if not communes:
                 return {
@@ -262,21 +324,17 @@ class FamilyEmploymentService:
                     "data": {}
                 }
 
-            commune_codes = [c[0] for c in communes]
             results = {}
 
-            # Ajuster le format du groupe d'âge
-            formatted_age_group = self._adjust_age_group_format(age_group)
+            # OPTIMISATION : SQL GROUP BY + JOIN au lieu de charger toutes les lignes
+            distribution = self._calculate_distribution_sql(
+                age_group=age_group,
+                year=year,
+                geo_filter=(GeoCode.reg, reg)
+            )
 
-            # Récupérer les données de la base
-            reg_data = self.db.query(FamilyEmployment).filter(
-                FamilyEmployment.geo_code.in_(commune_codes),
-                FamilyEmployment.age_group == formatted_age_group,
-                FamilyEmployment.year == year
-            ).all()
-
-            if reg_data:
-                results[year] = self._calculate_distribution(reg_data, age_group)
+            if distribution["total_count"] > 0:
+                results[year] = distribution
 
             return {
                 "territory_type": "region",
@@ -295,27 +353,26 @@ class FamilyEmploymentService:
         finally:
             self.close()
 
+    # =========================================================================
+    # France — OPTIMISÉ : SQL GROUP BY au lieu de charger ~35k × 8 lignes
+    # =========================================================================
     def get_france_distribution(self, age_group="0", year=None):
         """Récupère la distribution pour la France entière"""
         try:
-            # Récupérer l'année la plus récente si non spécifiée
             if year is None:
                 available_years = self.get_available_years()
                 year = available_years[-1] if available_years else 2021
 
             results = {}
 
-            # Ajuster le format du groupe d'âge
-            formatted_age_group = self._adjust_age_group_format(age_group)
+            # OPTIMISATION : SQL GROUP BY sans filtre géo (pas de JOIN)
+            distribution = self._calculate_distribution_sql(
+                age_group=age_group,
+                year=year
+            )
 
-            # Récupérer toutes les données nationales pour l'année et le groupe d'âge spécifiés
-            france_data = self.db.query(FamilyEmployment).filter(
-                FamilyEmployment.age_group == formatted_age_group,
-                FamilyEmployment.year == year
-            ).all()
-
-            if france_data:
-                results[year] = self._calculate_distribution(france_data, age_group)
+            if distribution["total_count"] > 0:
+                results[year] = distribution
 
             return {
                 "territory_type": "country",
@@ -334,18 +391,18 @@ class FamilyEmploymentService:
         finally:
             self.close()
 
+    # =========================================================================
+    # EPCI — détails communes (inchangé)
+    # =========================================================================
     def get_communes_distribution_by_epci(self, epci: str, age_group="0", year=None):
         """Récupère la distribution pour toutes les communes d'un EPCI"""
         try:
-            # Établir une connexion à la base de données
             db = SessionLocal()
 
-            # Récupérer l'année la plus récente si non spécifiée
             if year is None:
                 available_years = self.get_available_years()
                 year = available_years[-1] if available_years else 2021
 
-            # Récupérer les communes de l'EPCI
             communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
             if not communes:
                 return {
@@ -356,21 +413,17 @@ class FamilyEmploymentService:
                     "communes": []
                 }
 
-            # Récupérer le nom de l'EPCI
             epci_info = db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
             epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
 
-            # Ajuster le format du groupe d'âge
             formatted_age_group = self._adjust_age_group_format(age_group)
 
-            # Récupérer les données pour chaque commune
             communes_data = []
             total_families = 0
             total_dual_active = 0
             total_single_parent_active = 0
 
             for code, name in communes:
-                # Récupérer les données pour cette commune
                 commune_data = db.query(FamilyEmployment).filter(
                     FamilyEmployment.geo_code == code,
                     FamilyEmployment.age_group == formatted_age_group,
@@ -378,14 +431,11 @@ class FamilyEmploymentService:
                 ).all()
 
                 if commune_data:
-                    # Calculer la distribution
                     distribution = self._calculate_distribution(commune_data, age_group)
 
-                    # Extraire les valeurs pertinentes
                     total_count = distribution["total_count"]
                     distributions = distribution["distributions"]
 
-                    # Calculer les taux d'emploi spécifiques
                     dual_active_count = distributions.get("Couple avec enfant(s) - Deux parents actifs ayant un emploi", {}).get("count", 0)
                     dual_active_rate = (dual_active_count / total_count * 100) if total_count > 0 else 0
 
@@ -406,7 +456,6 @@ class FamilyEmploymentService:
                         "distributions": distributions
                     })
 
-                    # Ajouter aux totaux EPCI
                     total_families += total_count
                     total_dual_active += dual_active_count
                     total_single_parent_active += single_parent_active_count
@@ -422,12 +471,10 @@ class FamilyEmploymentService:
                         "distributions": {}
                     })
 
-            # Calculer les taux EPCI
+            communes_data.sort(key=lambda x: x["dual_active_rate"], reverse=True)
+
             epci_dual_active_rate = (total_dual_active / total_families * 100) if total_families > 0 else 0
             epci_single_parent_active_rate = (total_single_parent_active / total_families * 100) if total_families > 0 else 0
-
-            # Trier par taux de double emploi décroissant
-            communes_data.sort(key=lambda x: x["dual_active_rate"], reverse=True)
 
             return {
                 "epci": epci,
@@ -443,14 +490,20 @@ class FamilyEmploymentService:
                 "communes": communes_data
             }
         except Exception as e:
-            print(f"Erreur lors de la récupération des données d'emploi des familles pour l'EPCI {epci}: {str(e)}")
+            print(f"Erreur pour l'EPCI {epci}: {str(e)}")
             import traceback
             print(traceback.format_exc())
             return {
                 "epci": epci,
                 "epci_name": "",
-                "year": year,
+                "year": year or 2021,
+                "age_group": "0-2 ans" if age_group in ["0", "00"] else "3-5 ans",
                 "communes_count": 0,
+                "total_families": 0,
+                "total_dual_active": 0,
+                "total_single_parent_active": 0,
+                "epci_dual_active_rate": 0,
+                "epci_single_parent_active_rate": 0,
                 "communes": []
             }
         finally:
