@@ -443,3 +443,158 @@ class IrisEducation(Base):
         Index("ix_iris_education_reg_code",  "reg_code"),
         Index("ix_iris_education_year",      "year"),
     )
+
+# ── À ajouter dans app/models.py ──────────────────────────────────────────────
+
+class IrisActivity(Base):
+    __tablename__ = "iris_activity"
+
+    id        = Column(Integer,     primary_key=True, autoincrement=True)
+    iris_code = Column(String(9),   nullable=False)
+    com_code  = Column(String(5),   nullable=False)
+    iris_name = Column(String(255), nullable=True)
+    dep_code  = Column(String(3),   nullable=True)
+    reg_code  = Column(String(2),   nullable=True)
+    year      = Column(Integer,     nullable=False)
+
+    # Population 15-64 ans — Total
+    pop_15_64  = Column(Float, nullable=True)   # P22_POP1564
+    pop_15_24  = Column(Float, nullable=True)   # P22_POP1524
+    pop_25_54  = Column(Float, nullable=True)   # P22_POP2554
+    pop_55_64  = Column(Float, nullable=True)   # P22_POP5564
+    # Population 15-64 ans — Hommes
+    pop_men_15_64 = Column(Float, nullable=True)  # P22_H1564
+    pop_men_15_24 = Column(Float, nullable=True)  # P22_H1524
+    pop_men_25_54 = Column(Float, nullable=True)  # P22_H2554
+    pop_men_55_64 = Column(Float, nullable=True)  # P22_H5564
+    # Population 15-64 ans — Femmes
+    pop_women_15_64 = Column(Float, nullable=True)  # P22_F1564
+    pop_women_15_24 = Column(Float, nullable=True)  # P22_F1524
+    pop_women_25_54 = Column(Float, nullable=True)  # P22_F2554
+    pop_women_55_64 = Column(Float, nullable=True)  # P22_F5564
+    # Actifs — Total
+    active_15_64 = Column(Float, nullable=True)  # P22_ACT1564
+    active_15_24 = Column(Float, nullable=True)  # P22_ACT1524
+    active_25_54 = Column(Float, nullable=True)  # P22_ACT2554
+    active_55_64 = Column(Float, nullable=True)  # P22_ACT5564
+    # Actifs — Hommes
+    active_men_15_64 = Column(Float, nullable=True)  # P22_HACT1564
+    active_men_15_24 = Column(Float, nullable=True)  # P22_HACT1524
+    active_men_25_54 = Column(Float, nullable=True)  # P22_HACT2554
+    active_men_55_64 = Column(Float, nullable=True)  # P22_HACT5564
+    # Actifs — Femmes
+    active_women_15_64 = Column(Float, nullable=True)  # P22_FACT1564
+    active_women_15_24 = Column(Float, nullable=True)  # P22_FACT1524
+    active_women_25_54 = Column(Float, nullable=True)  # P22_FACT2554
+    active_women_55_64 = Column(Float, nullable=True)  # P22_FACT5564
+    # Actifs occupés — Total
+    employed_15_64 = Column(Float, nullable=True)  # P22_ACTOCC1564
+    employed_15_24 = Column(Float, nullable=True)  # P22_ACTOCC1524
+    employed_25_54 = Column(Float, nullable=True)  # P22_ACTOCC2554
+    employed_55_64 = Column(Float, nullable=True)  # P22_ACTOCC5564
+    # Actifs occupés — Hommes
+    employed_men_15_64 = Column(Float, nullable=True)  # P22_HACTOCC1564
+    employed_men_15_24 = Column(Float, nullable=True)  # P22_HACTOCC1524
+    employed_men_25_54 = Column(Float, nullable=True)  # P22_HACTOCC2554
+    employed_men_55_64 = Column(Float, nullable=True)  # P22_HACTOCC5564
+    # Actifs occupés — Femmes
+    employed_women_15_64 = Column(Float, nullable=True)  # P22_FACTOCC1564
+    employed_women_15_24 = Column(Float, nullable=True)  # P22_FACTOCC1524
+    employed_women_25_54 = Column(Float, nullable=True)  # P22_FACTOCC2554
+    employed_women_55_64 = Column(Float, nullable=True)  # P22_FACTOCC5564
+    # Chômeurs par tranche d'âge
+    unemp_15_64 = Column(Float, nullable=True)  # P22_CHOM1564
+    unemp_15_24 = Column(Float, nullable=True)  # P22_CHOM1524
+    unemp_25_54 = Column(Float, nullable=True)  # P22_CHOM2554
+    unemp_55_64 = Column(Float, nullable=True)  # P22_CHOM5564
+    # Actifs par diplôme
+    active_no_dip = Column(Float, nullable=True)  # P22_ACT_DIPLMIN
+    active_bepc   = Column(Float, nullable=True)  # P22_ACT_BEPC
+    active_capbep = Column(Float, nullable=True)  # P22_ACT_CAPBEP
+    active_bac    = Column(Float, nullable=True)  # P22_ACT_BAC
+    active_sup2   = Column(Float, nullable=True)  # P22_ACT_SUP2
+    active_sup34  = Column(Float, nullable=True)  # P22_ACT_SUP34
+    active_sup5   = Column(Float, nullable=True)  # P22_ACT_SUP5
+    # Chômeurs par diplôme
+    unemp_no_dip  = Column(Float, nullable=True)  # P22_CHOM_DIPLMIN
+    unemp_bepc    = Column(Float, nullable=True)  # P22_CHOM_BEPC
+    unemp_capbep  = Column(Float, nullable=True)  # P22_CHOM_CAPBEP
+    unemp_bac     = Column(Float, nullable=True)  # P22_CHOM_BAC
+    unemp_sup2    = Column(Float, nullable=True)  # P22_CHOM_SUP2
+    unemp_sup34   = Column(Float, nullable=True)  # P22_CHOM_SUP34
+    unemp_sup5    = Column(Float, nullable=True)  # P22_CHOM_SUP5
+    # Inactifs
+    inactive_15_64       = Column(Float, nullable=True)  # P22_INACT1564
+    inactive_men_15_64   = Column(Float, nullable=True)  # P22_HINACT1564
+    inactive_women_15_64 = Column(Float, nullable=True)  # P22_FINACT1564
+    student_15_64        = Column(Float, nullable=True)  # P22_ETUD1564
+    student_men_15_64    = Column(Float, nullable=True)  # P22_HETUD1564
+    student_women_15_64  = Column(Float, nullable=True)  # P22_FETUD1564
+    retired_15_64        = Column(Float, nullable=True)  # P22_RETR1564
+    retired_men_15_64    = Column(Float, nullable=True)  # P22_HRETR1564
+    retired_women_15_64  = Column(Float, nullable=True)  # P22_FRETR1564
+    other_inactive_15_64       = Column(Float, nullable=True)  # P22_AINACT1564
+    other_inactive_men_15_64   = Column(Float, nullable=True)  # P22_HAINACT1564
+    other_inactive_women_15_64 = Column(Float, nullable=True)  # P22_FAINACT1564
+    # Actifs par CSP (compl)
+    act_farmers      = Column(Float, nullable=True)  # C22_ACT1564_STAT_GSEC11_21
+    act_craftsmen    = Column(Float, nullable=True)  # C22_ACT1564_STAT_GSEC12_22
+    act_executives   = Column(Float, nullable=True)  # C22_ACT1564_STAT_GSEC13_23
+    act_intermediary = Column(Float, nullable=True)  # C22_ACT1564_STAT_GSEC14_24
+    act_employees    = Column(Float, nullable=True)  # C22_ACT1564_STAT_GSEC15_25
+    act_workers      = Column(Float, nullable=True)  # C22_ACT1564_STAT_GSEC16_26
+    emp_farmers      = Column(Float, nullable=True)  # C22_ACTOCC1564_STAT_GSEC11
+    emp_craftsmen    = Column(Float, nullable=True)  # C22_ACTOCC1564_STAT_GSEC12
+    emp_executives   = Column(Float, nullable=True)  # C22_ACTOCC1564_STAT_GSEC13
+    emp_intermediary = Column(Float, nullable=True)  # C22_ACTOCC1564_STAT_GSEC14
+    emp_employees    = Column(Float, nullable=True)  # C22_ACTOCC1564_STAT_GSEC15
+    emp_workers      = Column(Float, nullable=True)  # C22_ACTOCC1564_STAT_GSEC16
+    # Actifs occupés 15+
+    employed_15p       = Column(Float, nullable=True)  # P22_ACTOCC15P
+    employed_men_15p   = Column(Float, nullable=True)  # P22_HACTOCC15P
+    employed_women_15p = Column(Float, nullable=True)  # P22_FACTOCC15P
+    # Salariés / Non-salariés
+    salaried_15p       = Column(Float, nullable=True)  # P22_SAL15P
+    salaried_men_15p   = Column(Float, nullable=True)  # P22_HSAL15P
+    salaried_women_15p = Column(Float, nullable=True)  # P22_FSAL15P
+    self_emp_15p       = Column(Float, nullable=True)  # P22_NSAL15P
+    self_emp_men_15p   = Column(Float, nullable=True)  # P22_HNSAL15P
+    self_emp_women_15p = Column(Float, nullable=True)  # P22_FNSAL15P
+    # Temps partiel
+    employed_15p_pt   = Column(Float, nullable=True)  # P22_ACTOCC15P_TP
+    salaried_15p_pt   = Column(Float, nullable=True)  # P22_SAL15P_TP
+    salaried_men_pt   = Column(Float, nullable=True)  # P22_HSAL15P_TP
+    salaried_women_pt = Column(Float, nullable=True)  # P22_FSAL15P_TP
+    self_emp_15p_pt   = Column(Float, nullable=True)  # P22_NSAL15P_TP
+    # Type de contrat
+    sal_cdi     = Column(Float, nullable=True)  # P22_SAL15P_CDI
+    sal_cdd     = Column(Float, nullable=True)  # P22_SAL15P_CDD
+    sal_interim = Column(Float, nullable=True)  # P22_SAL15P_INTERIM
+    sal_aided   = Column(Float, nullable=True)  # P22_SAL15P_EMPAID
+    sal_appr    = Column(Float, nullable=True)  # P22_SAL15P_APPR
+    # Non-salariés par type
+    self_emp_indep  = Column(Float, nullable=True)  # P22_NSAL15P_INDEP
+    self_emp_employ = Column(Float, nullable=True)  # P22_NSAL15P_EMPLOY
+    self_emp_family = Column(Float, nullable=True)  # P22_NSAL15P_AIDFAM
+    # Lieu de travail
+    work_same_commune       = Column(Float, nullable=True)  # P22_ACTOCC15P_ILT1
+    work_other_commune      = Column(Float, nullable=True)  # P22_ACTOCC15P_ILT2P
+    work_other_dep_same_reg = Column(Float, nullable=True)  # P22_ACTOCC15P_ILT3
+    work_other_reg_metro    = Column(Float, nullable=True)  # P22_ACTOCC15P_ILT4
+    work_other_reg_domtom   = Column(Float, nullable=True)  # P22_ACTOCC15P_ILT5
+    # Mode de transport (compl)
+    transport_none    = Column(Float, nullable=True)  # C22_ACTOCC15P_PAS
+    transport_walk    = Column(Float, nullable=True)  # C22_ACTOCC15P_MAR
+    transport_bike    = Column(Float, nullable=True)  # C22_ACTOCC15P_VELO
+    transport_moto    = Column(Float, nullable=True)  # C22_ACTOCC15P_2ROUESMOT
+    transport_car     = Column(Float, nullable=True)  # C22_ACTOCC15P_VOIT
+    transport_transit = Column(Float, nullable=True)  # C22_ACTOCC15P_TCOM
+
+    __table_args__ = (
+        UniqueConstraint("iris_code", "year", name="uq_iris_activity_iris_year"),
+        Index("ix_iris_activity_iris_year", "iris_code", "year"),
+        Index("ix_iris_activity_com_year",  "com_code",  "year"),
+        Index("ix_iris_activity_dep_code",  "dep_code"),
+        Index("ix_iris_activity_reg_code",  "reg_code"),
+        Index("ix_iris_activity_year",      "year"),
+    )

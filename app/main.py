@@ -34,6 +34,7 @@ from .routers.iris import router as iris_router
 from .routers.iris_families import router as iris_families_router
 from .routers.iris_housing import router as iris_housing_router
 from .routers.iris_education import router as iris_education_router
+from .routers.iris_activity import router as iris_activity_router
 
 from app.models import Birth  # Uniquement le modèle SQLAlchemy
 
@@ -104,6 +105,7 @@ app.include_router(iris_router)
 app.include_router(iris_families_router)
 app.include_router(iris_housing_router)
 app.include_router(iris_education_router)
+app.include_router(iris_activity_router)
 
 # 9. Ajouter le gestionnaire d'erreur pour le rate limiting
 app.state.limiter = limiter
