@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, func, Index
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, func, Index, UniqueConstraint
 from app.database import Base
 
 class User(Base):
@@ -217,4 +217,41 @@ class Childcare(Base):
         # Index composites pour optimiser les requêtes
         Index('ix_childcare_territory_type_code_year', 'territory_type', 'territory_code', 'year'),
         Index('ix_childcare_parent_type_code', 'parent_type', 'parent_code'),
+    )
+
+# ── Bloc IrisPopulation ────────────────────────
+
+class IrisPopulation(Base):
+    __tablename__ = "iris_population"
+
+    id        = Column(Integer, primary_key=True, autoincrement=True)
+    iris_code = Column(String(9), nullable=False)   # code IRIS (9 car.)
+    com_code  = Column(String(5), nullable=False)   # code commune INSEE
+    year      = Column(Integer,   nullable=False)   # millésime (2022, 2023…)
+
+    # Population totale
+    pop          = Column(Float, nullable=True)   # P_POP
+    # Tranches d'âge
+    pop_0_2      = Column(Float, nullable=True)
+    pop_3_5      = Column(Float, nullable=True)
+    pop_6_10     = Column(Float, nullable=True)
+    pop_11_17    = Column(Float, nullable=True)
+    pop_18_24    = Column(Float, nullable=True)
+    pop_25_39    = Column(Float, nullable=True)
+    pop_40_54    = Column(Float, nullable=True)
+    pop_55_64    = Column(Float, nullable=True)
+    pop_65_79    = Column(Float, nullable=True)
+    pop_80_plus  = Column(Float, nullable=True)
+    # Nationalité / origine
+    pop_foreign   = Column(Float, nullable=True)
+    pop_immigrant = Column(Float, nullable=True)
+    # Genre
+    pop_women = Column(Float, nullable=True)
+    pop_men   = Column(Float, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("iris_code", "year", name="uq_iris_population_iris_year"),
+        Index("ix_iris_population_iris_year", "iris_code", "year"),
+        Index("ix_iris_population_com_year",  "com_code",  "year"),
+        Index("ix_iris_population_year",      "year"),
     )
