@@ -377,3 +377,69 @@ class IrisHousing(Base):
         Index("ix_iris_housing_reg_code",  "reg_code"),
         Index("ix_iris_housing_year",      "year"),
     )
+
+# ── À ajouter dans app/models.py ──────────────────────────────────────────────
+
+class IrisEducation(Base):
+    __tablename__ = "iris_education"
+
+    id        = Column(Integer,     primary_key=True, autoincrement=True)
+    iris_code = Column(String(9),   nullable=False)
+    com_code  = Column(String(5),   nullable=False)
+    iris_name = Column(String(255), nullable=True)
+    dep_code  = Column(String(3),   nullable=True)
+    reg_code  = Column(String(2),   nullable=True)
+    year      = Column(Integer,     nullable=False)
+
+    # Population par tranche d'âge
+    pop_2_5   = Column(Float, nullable=True)   # P22_POP0205
+    pop_6_10  = Column(Float, nullable=True)   # P22_POP0610
+    pop_11_14 = Column(Float, nullable=True)   # P22_POP1114
+    pop_15_17 = Column(Float, nullable=True)   # P22_POP1517
+    pop_18_24 = Column(Float, nullable=True)   # P22_POP1824
+    pop_25_29 = Column(Float, nullable=True)   # P22_POP2529
+    pop_30p   = Column(Float, nullable=True)   # P22_POP30P
+    # Scolarisés
+    scol_2_5   = Column(Float, nullable=True)  # P22_SCOL0205
+    scol_6_10  = Column(Float, nullable=True)  # P22_SCOL0610
+    scol_11_14 = Column(Float, nullable=True)  # P22_SCOL1114
+    scol_15_17 = Column(Float, nullable=True)  # P22_SCOL1517
+    scol_18_24 = Column(Float, nullable=True)  # P22_SCOL1824
+    scol_25_29 = Column(Float, nullable=True)  # P22_SCOL2529
+    scol_30p   = Column(Float, nullable=True)  # P22_SCOL30P
+    # Non scolarisés 15+ — Total
+    nscol_15p         = Column(Float, nullable=True)  # P22_NSCOL15P
+    nscol_15p_no_dip  = Column(Float, nullable=True)  # P22_NSCOL15P_DIPLMIN
+    nscol_15p_bepc    = Column(Float, nullable=True)  # P22_NSCOL15P_BEPC
+    nscol_15p_capbep  = Column(Float, nullable=True)  # P22_NSCOL15P_CAPBEP
+    nscol_15p_bac     = Column(Float, nullable=True)  # P22_NSCOL15P_BAC
+    nscol_15p_sup2    = Column(Float, nullable=True)  # P22_NSCOL15P_SUP2
+    nscol_15p_sup34   = Column(Float, nullable=True)  # P22_NSCOL15P_SUP34
+    nscol_15p_sup5    = Column(Float, nullable=True)  # P22_NSCOL15P_SUP5
+    # Non scolarisés 15+ — Hommes
+    nscol_15p_men         = Column(Float, nullable=True)  # P22_HNSCOL15P
+    nscol_15p_men_no_dip  = Column(Float, nullable=True)  # P22_HNSCOL15P_DIPLMIN
+    nscol_15p_men_bepc    = Column(Float, nullable=True)  # P22_HNSCOL15P_BEPC
+    nscol_15p_men_capbep  = Column(Float, nullable=True)  # P22_HNSCOL15P_CAPBEP
+    nscol_15p_men_bac     = Column(Float, nullable=True)  # P22_HNSCOL15P_BAC
+    nscol_15p_men_sup2    = Column(Float, nullable=True)  # P22_HNSCOL15P_SUP2
+    nscol_15p_men_sup34   = Column(Float, nullable=True)  # P22_HNSCOL15P_SUP34
+    nscol_15p_men_sup5    = Column(Float, nullable=True)  # P22_HNSCOL15P_SUP5
+    # Non scolarisés 15+ — Femmes
+    nscol_15p_women         = Column(Float, nullable=True)  # P22_FNSCOL15P
+    nscol_15p_women_no_dip  = Column(Float, nullable=True)  # P22_FNSCOL15P_DIPLMIN
+    nscol_15p_women_bepc    = Column(Float, nullable=True)  # P22_FNSCOL15P_BEPC
+    nscol_15p_women_capbep  = Column(Float, nullable=True)  # P22_FNSCOL15P_CAPBEP
+    nscol_15p_women_bac     = Column(Float, nullable=True)  # P22_FNSCOL15P_BAC
+    nscol_15p_women_sup2    = Column(Float, nullable=True)  # P22_FNSCOL15P_SUP2
+    nscol_15p_women_sup34   = Column(Float, nullable=True)  # P22_FNSCOL15P_SUP34
+    nscol_15p_women_sup5    = Column(Float, nullable=True)  # P22_FNSCOL15P_SUP5
+
+    __table_args__ = (
+        UniqueConstraint("iris_code", "year", name="uq_iris_education_iris_year"),
+        Index("ix_iris_education_iris_year", "iris_code", "year"),
+        Index("ix_iris_education_com_year",  "com_code",  "year"),
+        Index("ix_iris_education_dep_code",  "dep_code"),
+        Index("ix_iris_education_reg_code",  "reg_code"),
+        Index("ix_iris_education_year",      "year"),
+    )
