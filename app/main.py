@@ -31,6 +31,7 @@ from .services.schooling_service import SchoolingService
 from .services.family_employment_service import FamilyEmploymentService
 
 from .routers.iris import router as iris_router
+from .routers.iris_families import router as iris_families_router
 
 from app.models import Birth  # Uniquement le modèle SQLAlchemy
 
@@ -98,6 +99,7 @@ app = FastAPI(title="API Population")
 from app.api import api_router
 app.include_router(api_router)
 app.include_router(iris_router)
+app.include_router(iris_families_router)
 
 # 9. Ajouter le gestionnaire d'erreur pour le rate limiting
 app.state.limiter = limiter

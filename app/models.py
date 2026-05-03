@@ -219,8 +219,6 @@ class Childcare(Base):
         Index('ix_childcare_parent_type_code', 'parent_type', 'parent_code'),
     )
 
-# ── IrisPopulation ────────────────────────
-
 class IrisPopulation(Base):
     __tablename__ = "iris_population"
 
@@ -255,4 +253,48 @@ class IrisPopulation(Base):
         Index("ix_iris_population_dep_code",  "dep_code"),
         Index("ix_iris_population_reg_code",  "reg_code"),
         Index("ix_iris_population_year",      "year"),
+    )
+
+class IrisFamilies(Base):
+    __tablename__ = "iris_families"
+
+    id        = Column(Integer,     primary_key=True, autoincrement=True)
+    iris_code = Column(String(9),   nullable=False)
+    com_code  = Column(String(5),   nullable=False)
+    iris_name = Column(String(255), nullable=True)
+    dep_code  = Column(String(3),   nullable=True)
+    reg_code  = Column(String(2),   nullable=True)
+    year      = Column(Integer,     nullable=False)
+
+    # Population 15 ans ou plus
+    pop_15p         = Column(Float, nullable=True)   # P22_POP15P
+    pop_15_24       = Column(Float, nullable=True)   # P22_POP1524
+    pop_25_54       = Column(Float, nullable=True)   # P22_POP2554
+    pop_55_79       = Column(Float, nullable=True)   # P22_POP5579
+    pop_80p         = Column(Float, nullable=True)   # P22_POP80P
+    # Personnes vivant seules
+    pop_15p_alone   = Column(Float, nullable=True)   # P22_POP15P_PSEUL
+    pop_15_24_alone = Column(Float, nullable=True)   # P22_POP1524_PSEUL
+    pop_25_54_alone = Column(Float, nullable=True)   # P22_POP2554_PSEUL
+    pop_55_79_alone = Column(Float, nullable=True)   # P22_POP5579_PSEUL
+    pop_80p_alone   = Column(Float, nullable=True)   # P22_POP80P_PSEUL
+    # Familles
+    families             = Column(Float, nullable=True)  # C22_FAM
+    couples_with_children = Column(Float, nullable=True) # C22_COUPAENF
+    single_parent        = Column(Float, nullable=True)  # C22_FAMMONO
+    couples_no_children  = Column(Float, nullable=True)  # C22_COUPSENF
+    # Nombre d'enfants
+    families_0_children  = Column(Float, nullable=True)  # C22_NE24F0
+    families_1_child     = Column(Float, nullable=True)  # C22_NE24F1
+    families_2_children  = Column(Float, nullable=True)  # C22_NE24F2
+    families_3_children  = Column(Float, nullable=True)  # C22_NE24F3
+    families_4p_children = Column(Float, nullable=True)  # C22_NE24F4P
+
+    __table_args__ = (
+        UniqueConstraint("iris_code", "year", name="uq_iris_families_iris_year"),
+        Index("ix_iris_families_iris_year", "iris_code", "year"),
+        Index("ix_iris_families_com_year",  "com_code",  "year"),
+        Index("ix_iris_families_dep_code",  "dep_code"),
+        Index("ix_iris_families_reg_code",  "reg_code"),
+        Index("ix_iris_families_year",      "year"),
     )
