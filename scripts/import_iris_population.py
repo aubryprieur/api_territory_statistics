@@ -1,19 +1,18 @@
 """
 scripts/import_iris_population.py
 ----------------------------------
-Importe un millésime du fichier de population IRIS dans la table iris_population.
-Supporte l'ajout de nouveaux millésimes sans écraser les existants (upsert).
+Importe un millésime de population IRIS depuis le fichier INSEE
+(CSV ou Excel) incluant le nom de l'IRIS, le département et la région.
 
 Usage :
-    # Import millésime 2022
-    python scripts/import_iris_population.py \\
-        --file data/iris/base-ic-evol-struct-pop-2022.CSV \\
+    python scripts/import_iris_population.py \
+        --file data/iris/base-ic-evol-struct-pop-2022.xlsx \
         --year 2022
 
-    # Remplacement complet d'un millésime déjà chargé
-    python scripts/import_iris_population.py \\
-        --file data/iris/base-ic-evol-struct-pop-2023.CSV \\
-        --year 2023 \\
+    # Remplacement d'un millésime existant
+    python scripts/import_iris_population.py \
+        --file data/iris/base-ic-evol-struct-pop-2023.xlsx \
+        --year 2023 \
         --replace
 """
 
@@ -30,10 +29,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # ── Connexion ──────────────────────────────────────────────────────────────────
@@ -51,23 +47,19 @@ DB_CONFIG = {
     "sslmode":  "require",
 }
 
-# ── Mapping colonnes CSV → colonnes BDD ───────────────────────────────────────
-# Les fichiers INSEE utilisent P{YY}_* (ex. P22_POP pour 2022, P23_POP pour 2023)
-# Le mapping est construit dynamiquement à partir de l'année passée en argument.
-
-STATIC_MAP = {
-    "IRIS": "iris_code",
-    "COM":  "com_code",
-}
 
 def build_column_map(year: int) -> dict:
-    """Construit le mapping colonnes CSV → BDD pour un millésime donné."""
-    yy = str(year)[-2:]   # "22" pour 2022, "23" pour 2023, etc.
+    """Mapping colonnes fichier INSEE → colonnes BDD pour un millésime donné."""
+    yy = str(year)[-2:]
     prefix = f"P{yy}_"
     return {
-        **STATIC_MAP,
+        "IRIS":          "iris_code",
+        "COM":           "com_code",
+        "LIBIRIS":       "iris_name",
+        "DEP":           "dep_code",
+        "REG":           "reg_code",
         f"{prefix}POP":     "pop",
-        f"{prefix}POP0002":  "pop_0_2",
+        f"{prefix}POP0002": "pop_0_2",
         f"{prefix}POP0305": "pop_3_5",
         f"{prefix}POP0610": "pop_6_10",
         f"{prefix}POP1117": "pop_11_17",
@@ -84,22 +76,47 @@ def build_column_map(year: int) -> dict:
     }
 
 
-def normalize_code(value, length: int):
+def normalize_iris(value) -> str:
     if pd.isna(value):
         return None
-    return str(value).strip().zfill(length)
+    return str(value).strip().zfill(9)
+
+def normalize_com(value) -> str:
+    if pd.isna(value):
+        return None
+    return str(value).strip().zfill(5)
+
+def normalize_dep(value) -> str:
+    if pd.isna(value):
+        return None
+    v = str(value).strip()
+    # Gère les départements DOM (971…) et corsica (2A, 2B)
+    return v if v.upper() in ("2A", "2B") or len(v) == 3 else v.zfill(2)
+
+def normalize_reg(value) -> str:
+    if pd.isna(value):
+        return None
+    return str(int(float(str(value).strip()))) if str(value).strip().replace('.','').isdigit() else str(value).strip()
 
 
-def load_csv(path: str) -> pd.DataFrame:
+def load_file(path: str) -> pd.DataFrame:
+    """Charge CSV ou Excel selon l'extension."""
     logger.info(f"📂 Lecture du fichier : {path}")
-    for sep, enc in [(";", "latin-1"), (";", "utf-8"), (",", "utf-8")]:
-        try:
-            df = pd.read_csv(path, sep=sep, encoding=enc, dtype=str, low_memory=False)
-            logger.info(f"   → {len(df):,} lignes chargées (sep='{sep}', enc='{enc}')")
-            return df
-        except (UnicodeDecodeError, Exception):
-            continue
-    raise ValueError(f"Impossible de lire le fichier : {path}")
+    ext = os.path.splitext(path)[1].lower()
+
+    if ext in (".xlsx", ".xls"):
+        df = pd.read_excel(path, dtype=str, engine="openpyxl")
+    else:
+        for sep, enc in [(";", "latin-1"), (";", "utf-8"), (",", "utf-8")]:
+            try:
+                df = pd.read_csv(path, sep=sep, encoding=enc, dtype=str, low_memory=False)
+                logger.info(f"   → CSV chargé (sep='{sep}', enc='{enc}')")
+                break
+            except UnicodeDecodeError:
+                continue
+
+    logger.info(f"   → {len(df):,} lignes, {len(df.columns)} colonnes")
+    return df
 
 
 def prepare_dataframe(df: pd.DataFrame, year: int) -> pd.DataFrame:
@@ -108,31 +125,38 @@ def prepare_dataframe(df: pd.DataFrame, year: int) -> pd.DataFrame:
     missing = [c for c in column_map if c not in df.columns]
     if missing:
         raise ValueError(
-            f"Colonnes manquantes dans le CSV pour le millésime {year} : {missing}\n"
+            f"Colonnes manquantes pour le millésime {year} : {missing}\n"
             f"Colonnes disponibles : {list(df.columns)}"
         )
 
     df = df[list(column_map.keys())].copy()
     df.rename(columns=column_map, inplace=True)
 
-    df["iris_code"] = df["iris_code"].apply(lambda v: normalize_code(v, 9))
-    df["com_code"]  = df["com_code"].apply(lambda v: normalize_code(v, 5))
-    df["year"]      = year
+    # Normalisation des codes
+    df["iris_code"] = df["iris_code"].apply(normalize_iris)
+    df["com_code"]  = df["com_code"].apply(normalize_com)
+    df["dep_code"]  = df["dep_code"].apply(normalize_dep)
+    df["reg_code"]  = df["reg_code"].apply(normalize_reg)
 
-    numeric_cols = [c for c in df.columns if c not in ("iris_code", "com_code", "year")]
+    # Nettoyage du nom IRIS
+    df["iris_name"] = df["iris_name"].apply(
+        lambda v: str(v).strip() if pd.notna(v) else None
+    )
+
+    # Millésime
+    df["year"] = year
+
+    # Colonnes numériques
+    numeric_cols = [c for c in df.columns if c not in
+                    ("iris_code", "com_code", "iris_name", "dep_code", "reg_code", "year")]
     for col in numeric_cols:
-        df[col] = pd.to_numeric(df[col].str.replace(",", "."), errors="coerce")
+        df[col] = pd.to_numeric(
+            df[col].astype(str).str.replace(",", "."), errors="coerce"
+        )
 
     df = df.dropna(subset=["iris_code", "com_code"])
     logger.info(f"   → {len(df):,} lignes après nettoyage")
     return df
-
-
-def delete_millesime(cur, year: int):
-    """Supprime uniquement le millésime ciblé (les autres sont préservés)."""
-    logger.info(f"🗑️  Suppression du millésime {year} existant...")
-    cur.execute("DELETE FROM iris_population WHERE year = %s;", (year,))
-    logger.info(f"   → lignes supprimées : {cur.rowcount:,}")
 
 
 def optimize_for_import(cur):
@@ -140,6 +164,12 @@ def optimize_for_import(cur):
     cur.execute("SET maintenance_work_mem = '512MB';")
     cur.execute("SET synchronous_commit = off;")
     logger.info("⚙️  Paramètres d'import optimisés")
+
+
+def delete_millesime(cur, year: int):
+    logger.info(f"🗑️  Suppression du millésime {year}...")
+    cur.execute("DELETE FROM iris_population WHERE year = %s;", (year,))
+    logger.info(f"   → {cur.rowcount:,} lignes supprimées")
 
 
 def bulk_insert(conn, cur, df: pd.DataFrame):
@@ -153,24 +183,24 @@ def bulk_insert(conn, cur, df: pd.DataFrame):
     logger.info("✅ Insertion terminée")
 
 
-def check_existing_millesime(cur, year: int) -> int:
+def check_existing(cur, year: int) -> int:
     cur.execute("SELECT COUNT(*) FROM iris_population WHERE year = %s;", (year,))
     return cur.fetchone()[0]
 
 
 def main():
     parser = argparse.ArgumentParser(description="Import IRIS population — multi-millésime")
-    parser.add_argument("--file",    required=True,  help="Chemin vers le CSV INSEE")
-    parser.add_argument("--year",    required=True,  type=int, help="Millésime à importer (ex. 2022)")
+    parser.add_argument("--file",    required=True,  help="Chemin vers le fichier CSV ou Excel INSEE")
+    parser.add_argument("--year",    required=True,  type=int, help="Millésime (ex. 2022)")
     parser.add_argument("--replace", action="store_true",
-                        help="Remplace le millésime s'il existe déjà (défaut : erreur si existant)")
+                        help="Remplace le millésime s'il existe déjà")
     args = parser.parse_args()
 
     if not os.path.exists(args.file):
         logger.error(f"❌ Fichier introuvable : {args.file}")
         sys.exit(1)
 
-    df = load_csv(args.file)
+    df = load_file(args.file)
     df = prepare_dataframe(df, args.year)
 
     conn = psycopg2.connect(**DB_CONFIG)
@@ -180,31 +210,28 @@ def main():
     try:
         optimize_for_import(cur)
 
-        # Vérifie si le millésime existe déjà
-        existing = check_existing_millesime(cur, args.year)
+        existing = check_existing(cur, args.year)
         if existing > 0:
             if args.replace:
                 delete_millesime(cur, args.year)
                 conn.commit()
             else:
                 logger.error(
-                    f"❌ Le millésime {args.year} contient déjà {existing:,} lignes.\n"
-                    f"   Utilise --replace pour l'écraser."
+                    f"❌ Le millésime {args.year} contient déjà {existing:,} lignes. "
+                    f"Utilise --replace pour l'écraser."
                 )
                 sys.exit(1)
 
         bulk_insert(conn, cur, df)
 
-        # Vérification
         cur.execute("SELECT COUNT(*) FROM iris_population WHERE year = %s;", (args.year,))
         count = cur.fetchone()[0]
-
         cur.execute("SELECT DISTINCT year FROM iris_population ORDER BY year;")
         all_years = [r[0] for r in cur.fetchall()]
-
         conn.commit()
+
         logger.info(f"🎉 Millésime {args.year} importé — {count:,} IRIS")
-        logger.info(f"   Millésimes disponibles en base : {all_years}")
+        logger.info(f"   Millésimes disponibles : {all_years}")
 
     except Exception as e:
         conn.rollback()

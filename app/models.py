@@ -219,19 +219,20 @@ class Childcare(Base):
         Index('ix_childcare_parent_type_code', 'parent_type', 'parent_code'),
     )
 
-# ── Bloc IrisPopulation ────────────────────────
+# ── IrisPopulation ────────────────────────
 
 class IrisPopulation(Base):
     __tablename__ = "iris_population"
 
     id        = Column(Integer, primary_key=True, autoincrement=True)
-    iris_code = Column(String(9), nullable=False)   # code IRIS (9 car.)
-    com_code  = Column(String(5), nullable=False)   # code commune INSEE
-    year      = Column(Integer,   nullable=False)   # millésime (2022, 2023…)
+    iris_code = Column(String(9),   nullable=False)
+    com_code  = Column(String(5),   nullable=False)
+    iris_name = Column(String(255), nullable=True)   # LIBIRIS
+    dep_code  = Column(String(3),   nullable=True)   # DEP
+    reg_code  = Column(String(2),   nullable=True)   # REG
+    year      = Column(Integer,     nullable=False)
 
-    # Population totale
-    pop          = Column(Float, nullable=True)   # P_POP
-    # Tranches d'âge
+    pop          = Column(Float, nullable=True)
     pop_0_2      = Column(Float, nullable=True)
     pop_3_5      = Column(Float, nullable=True)
     pop_6_10     = Column(Float, nullable=True)
@@ -242,10 +243,8 @@ class IrisPopulation(Base):
     pop_55_64    = Column(Float, nullable=True)
     pop_65_79    = Column(Float, nullable=True)
     pop_80_plus  = Column(Float, nullable=True)
-    # Nationalité / origine
     pop_foreign   = Column(Float, nullable=True)
     pop_immigrant = Column(Float, nullable=True)
-    # Genre
     pop_women = Column(Float, nullable=True)
     pop_men   = Column(Float, nullable=True)
 
@@ -253,5 +252,7 @@ class IrisPopulation(Base):
         UniqueConstraint("iris_code", "year", name="uq_iris_population_iris_year"),
         Index("ix_iris_population_iris_year", "iris_code", "year"),
         Index("ix_iris_population_com_year",  "com_code",  "year"),
+        Index("ix_iris_population_dep_code",  "dep_code"),
+        Index("ix_iris_population_reg_code",  "reg_code"),
         Index("ix_iris_population_year",      "year"),
     )
