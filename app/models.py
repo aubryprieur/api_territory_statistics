@@ -298,3 +298,82 @@ class IrisFamilies(Base):
         Index("ix_iris_families_reg_code",  "reg_code"),
         Index("ix_iris_families_year",      "year"),
     )
+
+# ── À ajouter dans app/models.py ──────────────────────────────────────────────
+
+class IrisHousing(Base):
+    __tablename__ = "iris_housing"
+
+    id        = Column(Integer,     primary_key=True, autoincrement=True)
+    iris_code = Column(String(9),   nullable=False)
+    com_code  = Column(String(5),   nullable=False)
+    iris_name = Column(String(255), nullable=True)
+    dep_code  = Column(String(3),   nullable=True)
+    reg_code  = Column(String(2),   nullable=True)
+    year      = Column(Integer,     nullable=False)
+
+    # Logements
+    housing_total       = Column(Float, nullable=True)  # P22_LOG
+    main_res            = Column(Float, nullable=True)  # P22_RP
+    second_res          = Column(Float, nullable=True)  # P22_RSECOCC
+    vacant              = Column(Float, nullable=True)  # P22_LOGVAC
+    houses              = Column(Float, nullable=True)  # P22_MAISON
+    apartments          = Column(Float, nullable=True)  # P22_APPART
+    # Résidences principales par nombre de pièces
+    rp_1room            = Column(Float, nullable=True)  # P22_RP_1P
+    rp_2rooms           = Column(Float, nullable=True)  # P22_RP_2P
+    rp_3rooms           = Column(Float, nullable=True)  # P22_RP_3P
+    rp_4rooms           = Column(Float, nullable=True)  # P22_RP_4P
+    rp_5p_rooms         = Column(Float, nullable=True)  # P22_RP_5PP
+    # Résidences principales par surface
+    rp_u30m2            = Column(Float, nullable=True)  # P22_RP_M30M2
+    rp_30_40m2          = Column(Float, nullable=True)  # P22_RP_3040M2
+    rp_40_60m2          = Column(Float, nullable=True)  # P22_RP_4060M2
+    rp_60_80m2          = Column(Float, nullable=True)  # P22_RP_6080M2
+    rp_80_100m2         = Column(Float, nullable=True)  # P22_RP_80100M2
+    rp_100_120m2        = Column(Float, nullable=True)  # P22_RP_100120M2
+    rp_120p_m2          = Column(Float, nullable=True)  # P22_RP_120M2P
+    # Résidences principales par période de construction
+    rp_built_pre1919    = Column(Float, nullable=True)  # P22_RP_ACH1919
+    rp_built_1919_1945  = Column(Float, nullable=True)  # P22_RP_ACH1945
+    rp_built_1946_1970  = Column(Float, nullable=True)  # P22_RP_ACH1970
+    rp_built_1971_1990  = Column(Float, nullable=True)  # P22_RP_ACH1990
+    rp_built_1991_2005  = Column(Float, nullable=True)  # P22_RP_ACH2005
+    rp_built_2006_2019  = Column(Float, nullable=True)  # P22_RP_ACH2019
+    # Ménages
+    households          = Column(Float, nullable=True)  # P22_MEN
+    hh_moved_u2y        = Column(Float, nullable=True)  # P22_MEN_ANEM0002
+    hh_moved_2_4y       = Column(Float, nullable=True)  # P22_MEN_ANEM0204
+    hh_moved_5_9y       = Column(Float, nullable=True)  # P22_MEN_ANEM0509
+    hh_moved_10py       = Column(Float, nullable=True)  # P22_MEN_ANEM10P
+    # Statut d'occupation
+    rp_owners           = Column(Float, nullable=True)  # P22_RP_PROP
+    rp_renters          = Column(Float, nullable=True)  # P22_RP_LOC
+    rp_social_housing   = Column(Float, nullable=True)  # P22_RP_LOCHLMV
+    rp_free             = Column(Float, nullable=True)  # P22_RP_GRAT
+    # Chauffage
+    heat_gas_network    = Column(Float, nullable=True)  # P22_RP_CGAZV
+    heat_fuel           = Column(Float, nullable=True)  # P22_RP_CFIOUL
+    heat_electric       = Column(Float, nullable=True)  # P22_RP_CELEC
+    heat_gas_bottle     = Column(Float, nullable=True)  # P22_RP_CGAZB
+    heat_other          = Column(Float, nullable=True)  # P22_RP_CAUT
+    # Voitures
+    hh_1p_car           = Column(Float, nullable=True)  # P22_RP_VOIT1P
+    hh_1_car            = Column(Float, nullable=True)  # P22_RP_VOIT1
+    hh_2p_cars          = Column(Float, nullable=True)  # P22_RP_VOIT2P
+    # Occupation
+    rp_standard_occ     = Column(Float, nullable=True)  # C22_RP_NORME
+    rp_mild_underuse    = Column(Float, nullable=True)  # C22_RP_SOUSOCC_MOD
+    rp_heavy_underuse   = Column(Float, nullable=True)  # C22_RP_SOUSOCC_ACC
+    rp_extreme_underuse = Column(Float, nullable=True)  # C22_RP_SOUSOCC_TACC
+    rp_mild_overuse     = Column(Float, nullable=True)  # C22_RP_SUROCC_MOD
+    rp_heavy_overuse    = Column(Float, nullable=True)  # C22_RP_SUROCC_ACC
+
+    __table_args__ = (
+        UniqueConstraint("iris_code", "year", name="uq_iris_housing_iris_year"),
+        Index("ix_iris_housing_iris_year", "iris_code", "year"),
+        Index("ix_iris_housing_com_year",  "com_code",  "year"),
+        Index("ix_iris_housing_dep_code",  "dep_code"),
+        Index("ix_iris_housing_reg_code",  "reg_code"),
+        Index("ix_iris_housing_year",      "year"),
+    )
