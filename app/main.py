@@ -145,8 +145,9 @@ async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequ
     return {"access_token": access_token, "token_type": "bearer"}
 
 # Tous les endpoints existants, mais maintenant sur le router protégé
-@protected_router.get("/", dependencies=[Depends(limiter.limit(DEFAULT_RATE))])
-async def root():
+@protected_router.get("/")
+@limiter.limit(DEFAULT_RATE)
+async def root(request: Request):
     return {"message": "API Population 2021"}
 
 @protected_router.get("/population/{code}",
