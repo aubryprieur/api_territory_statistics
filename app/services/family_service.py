@@ -1,7 +1,7 @@
 import math
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func
+from sqlalchemy import func, literal_column
 from app.database import SessionLocal
 from app.models import Family, GeoCode
 
@@ -40,16 +40,24 @@ class FamilyService:
             commune_codes: liste de codes communes (pour EPCI)
             start_year, end_year: filtres d'années pour l'évolution
         """
+        # NULLIF(col, 'NaN') : quelques lignes sources contiennent NaN, qui rendrait
+        # toute la somme NaN. On les ignore, comme _format_response (commune/EPCI)
+        # qui les compte pour 0 via _safe_float — résultat identique.
+        nan = literal_column("'NaN'::double precision")
+
+        def s(col):
+            return func.sum(func.nullif(col, nan))
+
         query = self.db.query(
             Family.year,
-            func.sum(Family.total_households).label('total_households'),
-            func.sum(Family.couples_with_children).label('couples_with_children'),
-            func.sum(Family.single_parent_families).label('single_parent_families'),
-            func.sum(Family.single_fathers).label('single_fathers'),
-            func.sum(Family.single_mothers).label('single_mothers'),
-            func.sum(Family.couples_without_children).label('couples_without_children'),
-            func.sum(Family.children_under_24_three_siblings).label('children_3'),
-            func.sum(Family.children_under_24_four_or_more_siblings).label('children_4p'),
+            s(Family.total_households).label('total_households'),
+            s(Family.couples_with_children).label('couples_with_children'),
+            s(Family.single_parent_families).label('single_parent_families'),
+            s(Family.single_fathers).label('single_fathers'),
+            s(Family.single_mothers).label('single_mothers'),
+            s(Family.couples_without_children).label('couples_without_children'),
+            s(Family.children_under_24_three_siblings).label('children_3'),
+            s(Family.children_under_24_four_or_more_siblings).label('children_4p'),
         )
 
         # Appliquer le filtre géographique
