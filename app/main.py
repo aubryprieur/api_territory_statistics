@@ -1,6 +1,7 @@
 # 1. Imports standards et bibliothèques tierces
 import os
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from typing import List
 from fastapi import FastAPI, HTTPException, Depends, status, APIRouter, Request
 from fastapi.staticfiles import StaticFiles
@@ -107,6 +108,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"] if not DEBUG else ["*"],
     allow_headers=["Authorization", "Content-Type"] if not DEBUG else ["*"],
 )
+
+# Compression gzip des réponses > 1 Ko (si le client envoie Accept-Encoding: gzip)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # 11. Monter les fichiers statiques
 app.mount("/static", StaticFiles(directory="static"), name="static")
