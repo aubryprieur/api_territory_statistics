@@ -1,31 +1,33 @@
+# Versions figées sur celles qui tournaient en production (pip freeze, release v79).
+# Mettre à jour volontairement, une dépendance à la fois, en testant avant de pousser.
+
 # Framework et serveur
-fastapi>=0.95.0
-uvicorn[standard]>=0.21.0
+fastapi==0.136.1
+uvicorn[standard]==0.46.0
+starlette==1.0.0
 
 # Traitement de données
-pandas>=1.5.0
+pandas==3.0.2
+numpy==2.4.4
 
 # Validation des données
-pydantic>=2.0
+pydantic==2.13.3
 
 # Base de données
-sqlalchemy>=1.4.0
-alembic>=1.8.0
-psycopg2-binary>=2.9.0  # Driver PostgreSQL
+sqlalchemy==2.0.49
+alembic==1.18.4
+psycopg2-binary==2.9.12  # Driver PostgreSQL
 
 # Variables d'environnement
-python-dotenv>=1.0.0
+python-dotenv==1.2.2
 
 # Rate limiting
-slowapi>=0.1.7
-limits>=2.8.0
+slowapi==0.1.9
+limits==5.8.0
 
 # Authentification
-python-jose[cryptography]>=3.3.0
+python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 
-# Middleware
-starlette>=0.26.0
-
-python-multipart>=0.0.5
+python-multipart==0.0.27
