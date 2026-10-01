@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, func, Index, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, Boolean, func, Index, UniqueConstraint
 from app.database import Base
 
 class User(Base):
@@ -65,6 +65,17 @@ class Schooling(Base):
     number = Column(Float, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class SchoolingSummary(Base):
+    """Pré-agrégation de `schooling` par commune et année (voir migration a3c5d7e9f1b2)."""
+    __tablename__ = "schooling_summary"
+
+    geo_code = Column(Text, primary_key=True)
+    year = Column(Integer, primary_key=True)
+    total_2y = Column(Float, nullable=False, default=0)
+    schooled_2y = Column(Float, nullable=False, default=0)
+    total_3_5y = Column(Float, nullable=False, default=0)
+    schooled_3_5y = Column(Float, nullable=False, default=0)
 
 class PublicSafety(Base):
     __tablename__ = "public_safety"

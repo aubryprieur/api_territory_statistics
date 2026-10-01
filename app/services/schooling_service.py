@@ -1,8 +1,8 @@
-from sqlalchemy import func, case
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.database import SessionLocal
-from app.models import Schooling, GeoCode
+from app.models import SchoolingSummary, GeoCode
 
 
 class SchoolingService:
@@ -25,160 +25,54 @@ class SchoolingService:
             return 0.0
 
     # =========================================================================
-    # Méthode d'origine (pour commune, EPCI — inchangée)
+    # Lecture depuis schooling_summary (pré-agrégée par commune et année)
+    # Mêmes sommes et mêmes formules que les anciennes requêtes sur `schooling`,
+    # mais sur ~35 000 lignes/an au lieu de plusieurs millions.
     # =========================================================================
-    def _calculate_schooling_rates_optimized(self, year: int, communes: list = None):
-        """Calcule les taux de scolarisation avec des agrégations SQL"""
-        try:
-            # Requête pour les enfants de 2 ans
-            two_years_query = self.db.query(
-                func.coalesce(func.sum(Schooling.number), 0).label('total'),
-                func.coalesce(func.sum(
-                    case(
-                        (Schooling.education_status.in_(['1', '2', '3', '4', '5']), Schooling.number),
-                        else_=0
-                    )
-                ), 0).label('schooled')
-            ).filter(
-                Schooling.year == year,
-                Schooling.sex.in_(['1', '2']),
-                Schooling.age == '002'
-            )
+    YEARS = range(2017, 2022)
 
-            if communes:
-                two_years_query = two_years_query.filter(Schooling.geo_code.in_(communes))
+    def _format_rates(self, row):
+        """Construit le dict de taux à partir d'une ligne agrégée (ou zéros si absente)."""
+        total_2y = self._safe_float(row.total_2y) if row else 0.0
+        schooled_2y = self._safe_float(row.schooled_2y) if row else 0.0
+        total_3_5y = self._safe_float(row.total_3_5y) if row else 0.0
+        schooled_3_5y = self._safe_float(row.schooled_3_5y) if row else 0.0
+        return {
+            "total_children_2y": total_2y,
+            "schooled_children_2y": schooled_2y,
+            "schooling_rate_2y": round((schooled_2y / total_2y * 100) if total_2y > 0 else 0, 1),
+            "total_children_3_5y": total_3_5y,
+            "schooled_children_3_5y": schooled_3_5y,
+            "schooling_rate_3_5y": round((schooled_3_5y / total_3_5y * 100) if total_3_5y > 0 else 0, 1)
+        }
 
-            two_years = two_years_query.first()
-
-            # Requête pour les enfants de 3-5 ans
-            three_to_five_query = self.db.query(
-                func.coalesce(func.sum(Schooling.number), 0).label('total'),
-                func.coalesce(func.sum(
-                    case(
-                        (Schooling.education_status.in_(['1', '2', '3', '4', '5']), Schooling.number),
-                        else_=0
-                    )
-                ), 0).label('schooled')
-            ).filter(
-                Schooling.year == year,
-                Schooling.sex.in_(['1', '2']),
-                Schooling.age.in_(['003', '004', '005'])
-            )
-
-            if communes:
-                three_to_five_query = three_to_five_query.filter(Schooling.geo_code.in_(communes))
-
-            three_to_five = three_to_five_query.first()
-
-            # Sécurisation des valeurs
-            total_2y = self._safe_float(two_years.total)
-            schooled_2y = self._safe_float(two_years.schooled)
-            rate_2y = (schooled_2y / total_2y * 100) if total_2y > 0 else 0
-
-            total_3_5y = self._safe_float(three_to_five.total)
-            schooled_3_5y = self._safe_float(three_to_five.schooled)
-            rate_3_5y = (schooled_3_5y / total_3_5y * 100) if total_3_5y > 0 else 0
-
-            return {
-                "total_children_2y": total_2y,
-                "schooled_children_2y": schooled_2y,
-                "schooling_rate_2y": round(rate_2y, 1),
-                "total_children_3_5y": total_3_5y,
-                "schooled_children_3_5y": schooled_3_5y,
-                "schooling_rate_3_5y": round(rate_3_5y, 1)
-            }
-        except Exception as e:
-            print(f"Erreur dans le calcul des taux : {str(e)}")
-            return {
-                "total_children_2y": 0.0,
-                "schooled_children_2y": 0.0,
-                "schooling_rate_2y": 0.0,
-                "total_children_3_5y": 0.0,
-                "schooled_children_3_5y": 0.0,
-                "schooling_rate_3_5y": 0.0
-            }
-
-    # =========================================================================
-    # OPTIMISÉ : 1 requête par année (touche 1 seule partition) avec JOIN
-    # Au lieu de 2 requêtes par année avec IN(...)
-    # La table schooling est partitionnée par year → 1 requête/partition est optimal
-    # =========================================================================
-    def _calculate_rates_with_join(self, year: int, geo_filter=None):
+    def _rates_by_year(self, geo_filter=None, communes=None):
         """
-        Calcule les taux pour une année en 1 requête avec CASE WHEN + JOIN.
+        Taux par année en UNE requête (GROUP BY year) sur schooling_summary.
 
         Args:
-            year: année (touche 1 seule partition)
-            geo_filter: tuple (column, value) pour JOIN sur geo_codes, ou None pour France
+            geo_filter: tuple (colonne GeoCode, valeur) → JOIN geo_codes (département, région)
+            communes: liste de codes communes (commune, EPCI)
+            aucun des deux → France entière
         """
-        try:
-            query = self.db.query(
-                # Enfants de 2 ans — total
-                func.coalesce(func.sum(case(
-                    (Schooling.age == '002', Schooling.number),
-                    else_=0
-                )), 0).label('total_2y'),
-                # Enfants de 2 ans — scolarisés
-                func.coalesce(func.sum(case(
-                    (Schooling.age == '002',
-                     case(
-                         (Schooling.education_status.in_(['1', '2', '3', '4', '5']), Schooling.number),
-                         else_=0
-                     )),
-                    else_=0
-                )), 0).label('schooled_2y'),
-                # Enfants de 3-5 ans — total
-                func.coalesce(func.sum(case(
-                    (Schooling.age.in_(['003', '004', '005']), Schooling.number),
-                    else_=0
-                )), 0).label('total_3_5y'),
-                # Enfants de 3-5 ans — scolarisés
-                func.coalesce(func.sum(case(
-                    (Schooling.age.in_(['003', '004', '005']),
-                     case(
-                         (Schooling.education_status.in_(['1', '2', '3', '4', '5']), Schooling.number),
-                         else_=0
-                     )),
-                    else_=0
-                )), 0).label('schooled_3_5y'),
-            ).filter(
-                Schooling.year == year,
-                Schooling.sex.in_(['1', '2']),
-                Schooling.age.in_(['002', '003', '004', '005'])
-            )
+        query = self.db.query(
+            SchoolingSummary.year,
+            func.sum(SchoolingSummary.total_2y).label('total_2y'),
+            func.sum(SchoolingSummary.schooled_2y).label('schooled_2y'),
+            func.sum(SchoolingSummary.total_3_5y).label('total_3_5y'),
+            func.sum(SchoolingSummary.schooled_3_5y).label('schooled_3_5y'),
+        ).filter(SchoolingSummary.year.in_(list(self.YEARS)))
 
-            # Appliquer le filtre géographique via JOIN
-            if geo_filter:
-                column, value = geo_filter
-                query = query.join(
-                    GeoCode, Schooling.geo_code == GeoCode.codgeo
-                ).filter(column == str(value))
+        if geo_filter:
+            column, value = geo_filter
+            query = query.join(
+                GeoCode, SchoolingSummary.geo_code == GeoCode.codgeo
+            ).filter(column == str(value))
+        elif communes:
+            query = query.filter(SchoolingSummary.geo_code.in_(communes))
 
-            result = query.first()
-
-            total_2y = self._safe_float(result.total_2y)
-            schooled_2y = self._safe_float(result.schooled_2y)
-            total_3_5y = self._safe_float(result.total_3_5y)
-            schooled_3_5y = self._safe_float(result.schooled_3_5y)
-
-            return {
-                "total_children_2y": total_2y,
-                "schooled_children_2y": schooled_2y,
-                "schooling_rate_2y": round((schooled_2y / total_2y * 100) if total_2y > 0 else 0, 1),
-                "total_children_3_5y": total_3_5y,
-                "schooled_children_3_5y": schooled_3_5y,
-                "schooling_rate_3_5y": round((schooled_3_5y / total_3_5y * 100) if total_3_5y > 0 else 0, 1)
-            }
-        except Exception as e:
-            print(f"Erreur dans _calculate_rates_with_join pour {year}: {str(e)}")
-            return {
-                "total_children_2y": 0.0,
-                "schooled_children_2y": 0.0,
-                "schooling_rate_2y": 0.0,
-                "total_children_3_5y": 0.0,
-                "schooled_children_3_5y": 0.0,
-                "schooling_rate_3_5y": 0.0
-            }
+        rows = {row.year: row for row in query.group_by(SchoolingSummary.year).all()}
+        return {year: self._format_rates(rows.get(year)) for year in self.YEARS}
 
     # =========================================================================
     # Commune (inchangé)
@@ -198,7 +92,7 @@ class SchoolingService:
             print(f"\nCommune trouvée: {commune}")
 
             # Calculer les taux pour chaque année
-            results = {year: self._calculate_schooling_rates_optimized(year, [commune]) for year in range(2017, 2022)}
+            results = self._rates_by_year(communes=[commune])
 
             return {
                 "territory_type": "commune",
@@ -230,7 +124,7 @@ class SchoolingService:
 
             communes = [c[0] for c in communes]
 
-            results = {year: self._calculate_schooling_rates_optimized(year, communes) for year in range(2017, 2022)}
+            results = self._rates_by_year(communes=communes)
 
             return {"territory_type": "epci", "code": epci, "name": f"EPCI {epci}", "data": results}
         except SQLAlchemyError as e:
@@ -258,7 +152,7 @@ class SchoolingService:
             print(f"\nNombre de communes trouvées pour le département {dep}: {len(communes)}")
 
             # OPTIMISATION : 1 requête par année avec JOIN au lieu de 2 avec IN(...)
-            results = {year: self._calculate_rates_with_join(year, geo_filter=(GeoCode.dep, dep)) for year in range(2017, 2022)}
+            results = self._rates_by_year(geo_filter=(GeoCode.dep, dep))
 
             return {
                 "territory_type": "department",
@@ -293,7 +187,7 @@ class SchoolingService:
                 return {"territory_type": "region", "code": reg, "name": "Région inconnue", "data": {}}
 
             # OPTIMISATION : 1 requête par année avec JOIN au lieu de 2 avec IN(...)
-            results = {year: self._calculate_rates_with_join(year, geo_filter=(GeoCode.reg, reg)) for year in range(2017, 2022)}
+            results = self._rates_by_year(geo_filter=(GeoCode.reg, reg))
 
             return {"territory_type": "region", "code": reg, "name": f"Région {reg}", "data": results}
         except SQLAlchemyError as e:
@@ -309,7 +203,7 @@ class SchoolingService:
         """Récupère les données de scolarisation pour toute la France"""
         try:
             # OPTIMISATION : 1 requête par année (pas de filtre géo, pas de JOIN)
-            results = {year: self._calculate_rates_with_join(year) for year in range(2017, 2022)}
+            results = self._rates_by_year()
 
             return {
                 "territory_type": "country",

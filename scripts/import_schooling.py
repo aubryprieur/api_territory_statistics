@@ -77,6 +77,26 @@ def verify_files():
         return False
     return True
 
+def refresh_schooling_summary(cur):
+    """Recalcule la table de synthèse schooling_summary (lue par l'API)."""
+    logger.info("🧮 Recalcul de schooling_summary...")
+    cur.execute("TRUNCATE schooling_summary;")
+    cur.execute("""
+        INSERT INTO schooling_summary (geo_code, year, total_2y, schooled_2y, total_3_5y, schooled_3_5y)
+        SELECT
+            geo_code,
+            year,
+            SUM(CASE WHEN age = '002' THEN number ELSE 0 END),
+            SUM(CASE WHEN age = '002' AND education_status IN ('1','2','3','4','5') THEN number ELSE 0 END),
+            SUM(CASE WHEN age IN ('003','004','005') THEN number ELSE 0 END),
+            SUM(CASE WHEN age IN ('003','004','005') AND education_status IN ('1','2','3','4','5') THEN number ELSE 0 END)
+        FROM schooling
+        WHERE sex IN ('1','2')
+          AND age IN ('002','003','004','005')
+        GROUP BY geo_code, year;
+    """)
+    logger.info(f"✅ schooling_summary : {cur.rowcount} lignes")
+
 def import_schooling_data():
     """Importe les données de scolarisation en mode optimisé."""
     if not verify_files():
@@ -147,6 +167,12 @@ def import_schooling_data():
 
         # Restaurer les paramètres normaux
         restore_table_settings(cur)
+        conn.commit()
+
+        # L'API lit schooling_summary : la recalculer après chaque import
+        refresh_schooling_summary(cur)
+        conn.commit()
+        cur.execute("ANALYZE schooling_summary;")
         conn.commit()
 
         logger.info(f"✨ Import terminé. Total importé : {total_imported} enregistrements")
