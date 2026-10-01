@@ -440,7 +440,8 @@ async def get_france_median_revenues(request: Request):
 
 import logging
 from fastapi import Query
-logging.basicConfig(level=logging.DEBUG)
+# Niveau de logs : INFO par défaut, DEBUG ponctuellement via `heroku config:set LOG_LEVEL=DEBUG`
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
 
 @protected_router.get("/childcare/commune/{code}",
     response_model=dict,
