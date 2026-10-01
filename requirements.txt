@@ -6,7 +6,7 @@ uvicorn[standard]>=0.21.0
 pandas>=1.5.0
 
 # Validation des données
-pydantic>=1.10.0
+pydantic>=2.0
 
 # Base de données
 sqlalchemy>=1.4.0
@@ -18,7 +18,6 @@ python-dotenv>=1.0.0
 
 # Rate limiting
 slowapi>=0.1.7
-redis>=5.0.0
 limits>=2.8.0
 
 # Authentification

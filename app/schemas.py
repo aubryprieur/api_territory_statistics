@@ -9,7 +9,7 @@ class BirthSchema(BaseModel):
     obs_value: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class FamilySchema(BaseModel):
     geo_code: str
@@ -30,7 +30,7 @@ class FamilySchema(BaseModel):
     children_under_24_four_or_more_siblings: Optional[float] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Population(BaseModel):
@@ -175,7 +175,7 @@ class PublicSafety(PublicSafetyBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class PublicSafetyDataItem(BaseModel):
     year: int

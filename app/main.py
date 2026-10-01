@@ -8,14 +8,12 @@ from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-import redis
 from fastapi.responses import JSONResponse
 
 # 2. Imports pour le rate limiting (avant utilisation)
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from limits.storage import RedisStorage
 
 # 3. Imports des modules internes
 from .services.population_service import PopulationService
@@ -64,36 +62,8 @@ DEFAULT_RATE = os.environ.get("RATE_LIMIT_DEFAULT", "60/minute")
 AUTH_RATE = os.environ.get("RATE_LIMIT_AUTH", "5/minute")
 HIGH_LOAD_RATE = os.environ.get("RATE_LIMIT_HIGH_LOAD", "20/minute")
 
-# 7. Configuration de Redis et du rate limiter
-if not DEBUG:
-    try:
-        import redis
-        from limits.storage import RedisStorage
-        import ssl
-
-        # Utiliser l'URL Redis fournie par Heroku
-        redis_url = os.environ.get("REDIS_URL")
-
-        if redis_url:
-            # Désactiver la vérification SSL pour Redis
-            from urllib.parse import urlparse
-            parsed_url = urlparse(redis_url)
-
-            # Utiliser directement le stockage en mémoire au lieu de Redis
-            # pour éviter les problèmes de certificats SSL
-            print(f"⚠️ Mode production: fallback sur le stockage en mémoire pour le rate limiting (problème SSL Redis)")
-            limiter = Limiter(key_func=get_remote_address)
-        else:
-            raise ValueError("REDIS_URL non définie")
-
-    except Exception as e:
-        print(f"⚠️ Erreur Redis: {e}")
-        print("⚠️ Fallback sur le stockage en mémoire pour le rate limiting")
-        limiter = Limiter(key_func=get_remote_address)
-else:
-    # En développement, stockage en mémoire par défaut
-    print("Mode DEBUG activé: utilisation du stockage en mémoire pour le rate limiting")
-    limiter = Limiter(key_func=get_remote_address)
+# 7. Rate limiter (stockage en mémoire, par worker)
+limiter = Limiter(key_func=get_remote_address)
 
 # 8. Créer l'application SANS dépendance globale
 app = FastAPI(title="API Population")
