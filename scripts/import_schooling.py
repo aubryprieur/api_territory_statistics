@@ -26,7 +26,7 @@ CHUNK_SIZE = 50000
 
 # Récupérer les paramètres de connexion depuis app.database
 from sqlalchemy.engine.url import make_url
-db_url = make_url(str(engine.url))
+db_url = engine.url  # objet URL : str() masquerait le mot de passe (SQLAlchemy 2)
 DB_CONFIG = {
     'host': db_url.host,
     'port': db_url.port or 5432,

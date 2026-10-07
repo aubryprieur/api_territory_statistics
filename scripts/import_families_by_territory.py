@@ -114,7 +114,7 @@ def check(wide: pd.DataFrame) -> None:
 
 
 def write(wide: pd.DataFrame) -> None:
-    url = make_url(str(engine.url))
+    url = engine.url  # objet URL : str() masquerait le mot de passe (SQLAlchemy 2)
     params = dict(host=url.host, port=url.port or 5432, dbname=url.database, user=url.username, password=url.password)
     if url.host not in (None, "localhost", "127.0.0.1"):
         params["sslmode"] = "require"
