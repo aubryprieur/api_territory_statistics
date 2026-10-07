@@ -24,6 +24,7 @@ from .services.geocode_service import GeoCodeService
 from .services.revenue_service import RevenueService
 from .services.family_service import FamilyService
 from .services.household_service import HouseholdService
+from .services.education_training_service import EducationTrainingService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -124,6 +125,7 @@ geocode_service = GeoCodeService()
 revenue_service = RevenueService()
 family_service = FamilyService()
 household_service = HouseholdService()
+education_training_service = EducationTrainingService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -850,6 +852,95 @@ async def get_france_households(
     end_year: int = None
 ):
     return household_service.get_households_france(start_year, end_year)
+
+@protected_router.get("/education-training/commune/{code}",
+    summary="Obtenir la scolarisation et les diplômes pour une commune",
+    description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- jeunes de 15-17 et 18-24 ans non scolarisés
+- diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux. Bac+3/4 et bac+5 ne sont distingués qu'à partir de 2017 (bac+3 ou plus disponible pour les 3 millésimes).""")
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_education_training(
+    request: Request,
+    code: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return education_training_service.by_commune(code, start_year, end_year)
+
+@protected_router.get("/education-training/epci/{epci}",
+    summary="Obtenir la scolarisation et les diplômes pour un EPCI",
+    description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- jeunes de 15-17 et 18-24 ans non scolarisés
+- diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux. Bac+3/4 et bac+5 ne sont distingués qu'à partir de 2017 (bac+3 ou plus disponible pour les 3 millésimes).""")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_education_training(
+    request: Request,
+    epci: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return education_training_service.by_epci(epci, start_year, end_year)
+
+@protected_router.get("/education-training/department/{dep}",
+    summary="Obtenir la scolarisation et les diplômes pour un département",
+    description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- jeunes de 15-17 et 18-24 ans non scolarisés
+- diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux. Bac+3/4 et bac+5 ne sont distingués qu'à partir de 2017 (bac+3 ou plus disponible pour les 3 millésimes).""")
+@limiter.limit(DEFAULT_RATE)
+async def get_department_education_training(
+    request: Request,
+    dep: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return education_training_service.by_department(dep, start_year, end_year)
+
+@protected_router.get("/education-training/region/{reg}",
+    summary="Obtenir la scolarisation et les diplômes pour une région",
+    description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- jeunes de 15-17 et 18-24 ans non scolarisés
+- diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux. Bac+3/4 et bac+5 ne sont distingués qu'à partir de 2017 (bac+3 ou plus disponible pour les 3 millésimes).""")
+@limiter.limit(DEFAULT_RATE)
+async def get_region_education_training(
+    request: Request,
+    reg: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return education_training_service.by_region(reg, start_year, end_year)
+
+@protected_router.get("/education-training/france",
+    summary="Obtenir la scolarisation et les diplômes pour la France métropolitaine",
+    description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- jeunes de 15-17 et 18-24 ans non scolarisés
+- diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux. Bac+3/4 et bac+5 ne sont distingués qu'à partir de 2017 (bac+3 ou plus disponible pour les 3 millésimes).""")
+@limiter.limit(DEFAULT_RATE)
+async def get_france_education_training(
+    request: Request,
+    start_year: int = None,
+    end_year: int = None
+):
+    return education_training_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

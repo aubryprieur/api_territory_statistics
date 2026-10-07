@@ -136,6 +136,52 @@ class HouseholdByTerritory(Base):
     household_population_65_79 = Column(Float)
     household_population_80_plus = Column(Float)
 
+class EducationByTerritory(Base):
+    """Scolarisation et diplômes RP INSEE (DS_RP_EDUCATION_PRINC / DS_RP_DIPLOMES_PRINC) — voir migration d6f8b0c2e4a5."""
+    __tablename__ = "education_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)           # 2012, 2017, 2023
+    pop_2_5 = Column(Float)
+    enrolled_2_5 = Column(Float)
+    pop_6_10 = Column(Float)
+    enrolled_6_10 = Column(Float)
+    pop_11_14 = Column(Float)
+    enrolled_11_14 = Column(Float)
+    pop_15_17 = Column(Float)
+    enrolled_15_17 = Column(Float)
+    pop_18_24 = Column(Float)
+    enrolled_18_24 = Column(Float)
+    pop_25_29 = Column(Float)
+    enrolled_25_29 = Column(Float)
+    pop_30_plus = Column(Float)
+    enrolled_30_plus = Column(Float)
+    pop_15_17_men = Column(Float)
+    enrolled_15_17_men = Column(Float)
+    pop_15_17_women = Column(Float)
+    enrolled_15_17_women = Column(Float)
+    pop_18_24_men = Column(Float)
+    enrolled_18_24_men = Column(Float)
+    pop_18_24_women = Column(Float)
+    enrolled_18_24_women = Column(Float)
+    non_enrolled_15_plus = Column(Float)
+    no_diploma = Column(Float)
+    bepc = Column(Float)
+    cap_bep = Column(Float)
+    bac = Column(Float)
+    higher_education = Column(Float)
+    bac2 = Column(Float)
+    bac3_4 = Column(Float)
+    bac5_plus = Column(Float)
+    bac3_plus = Column(Float)
+    non_enrolled_15_plus_men = Column(Float)
+    no_diploma_men = Column(Float)
+    higher_education_men = Column(Float)
+    non_enrolled_15_plus_women = Column(Float)
+    no_diploma_women = Column(Float)
+    higher_education_women = Column(Float)
+
 class PublicSafety(Base):
     __tablename__ = "public_safety"
 
