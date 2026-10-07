@@ -25,6 +25,7 @@ from .services.revenue_service import RevenueService
 from .services.family_service import FamilyService
 from .services.household_service import HouseholdService
 from .services.education_training_service import EducationTrainingService
+from .services.employment_activity_service import EmploymentActivityService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -126,6 +127,7 @@ revenue_service = RevenueService()
 family_service = FamilyService()
 household_service = HouseholdService()
 education_training_service = EducationTrainingService()
+employment_activity_service = EmploymentActivityService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -941,6 +943,100 @@ async def get_france_education_training(
     end_year: int = None
 ):
     return education_training_service.france(start_year, end_year)
+
+@protected_router.get("/employment-activity/commune/{code}",
+    summary="Obtenir l'emploi et l'activité pour une commune",
+    description="""Emploi et activité (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux d'activité, d'emploi et de chômage (au sens du recensement) par âge (15-64, 15-24, 25-54, 55-64 ans) et sexe ; écarts femmes-hommes
+- inactivité des 15-64 ans : étudiants, retraités, personnes au foyer, autres inactifs
+- chômage selon le diplôme (2023) et selon la catégorie socioprofessionnelle ; répartition des actifs par catégorie
+- emploi au lieu de travail : indicateur de concentration d'emploi, secteurs d'activité, salariat, temps partiel, part des femmes
+- mobilité domicile-travail : lieu de travail et mode de transport des actifs occupés
+
+Évolution par défaut 2017 → 2023 ; `difference` en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_employment_activity(
+    request: Request,
+    code: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return employment_activity_service.by_commune(code, start_year, end_year)
+
+@protected_router.get("/employment-activity/epci/{epci}",
+    summary="Obtenir l'emploi et l'activité pour un EPCI",
+    description="""Emploi et activité (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux d'activité, d'emploi et de chômage (au sens du recensement) par âge (15-64, 15-24, 25-54, 55-64 ans) et sexe ; écarts femmes-hommes
+- inactivité des 15-64 ans : étudiants, retraités, personnes au foyer, autres inactifs
+- chômage selon le diplôme (2023) et selon la catégorie socioprofessionnelle ; répartition des actifs par catégorie
+- emploi au lieu de travail : indicateur de concentration d'emploi, secteurs d'activité, salariat, temps partiel, part des femmes
+- mobilité domicile-travail : lieu de travail et mode de transport des actifs occupés
+
+Évolution par défaut 2017 → 2023 ; `difference` en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_employment_activity(
+    request: Request,
+    epci: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return employment_activity_service.by_epci(epci, start_year, end_year)
+
+@protected_router.get("/employment-activity/department/{dep}",
+    summary="Obtenir l'emploi et l'activité pour un département",
+    description="""Emploi et activité (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux d'activité, d'emploi et de chômage (au sens du recensement) par âge (15-64, 15-24, 25-54, 55-64 ans) et sexe ; écarts femmes-hommes
+- inactivité des 15-64 ans : étudiants, retraités, personnes au foyer, autres inactifs
+- chômage selon le diplôme (2023) et selon la catégorie socioprofessionnelle ; répartition des actifs par catégorie
+- emploi au lieu de travail : indicateur de concentration d'emploi, secteurs d'activité, salariat, temps partiel, part des femmes
+- mobilité domicile-travail : lieu de travail et mode de transport des actifs occupés
+
+Évolution par défaut 2017 → 2023 ; `difference` en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_department_employment_activity(
+    request: Request,
+    dep: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return employment_activity_service.by_department(dep, start_year, end_year)
+
+@protected_router.get("/employment-activity/region/{reg}",
+    summary="Obtenir l'emploi et l'activité pour une région",
+    description="""Emploi et activité (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux d'activité, d'emploi et de chômage (au sens du recensement) par âge (15-64, 15-24, 25-54, 55-64 ans) et sexe ; écarts femmes-hommes
+- inactivité des 15-64 ans : étudiants, retraités, personnes au foyer, autres inactifs
+- chômage selon le diplôme (2023) et selon la catégorie socioprofessionnelle ; répartition des actifs par catégorie
+- emploi au lieu de travail : indicateur de concentration d'emploi, secteurs d'activité, salariat, temps partiel, part des femmes
+- mobilité domicile-travail : lieu de travail et mode de transport des actifs occupés
+
+Évolution par défaut 2017 → 2023 ; `difference` en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_region_employment_activity(
+    request: Request,
+    reg: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return employment_activity_service.by_region(reg, start_year, end_year)
+
+@protected_router.get("/employment-activity/france",
+    summary="Obtenir l'emploi et l'activité pour la France métropolitaine",
+    description="""Emploi et activité (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- taux d'activité, d'emploi et de chômage (au sens du recensement) par âge (15-64, 15-24, 25-54, 55-64 ans) et sexe ; écarts femmes-hommes
+- inactivité des 15-64 ans : étudiants, retraités, personnes au foyer, autres inactifs
+- chômage selon le diplôme (2023) et selon la catégorie socioprofessionnelle ; répartition des actifs par catégorie
+- emploi au lieu de travail : indicateur de concentration d'emploi, secteurs d'activité, salariat, temps partiel, part des femmes
+- mobilité domicile-travail : lieu de travail et mode de transport des actifs occupés
+
+Évolution par défaut 2017 → 2023 ; `difference` en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_france_employment_activity(
+    request: Request,
+    start_year: int = None,
+    end_year: int = None
+):
+    return employment_activity_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
