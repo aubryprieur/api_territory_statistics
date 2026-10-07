@@ -607,13 +607,16 @@ async def get_france_childcare(
 
 @protected_router.get("/families/commune/{code}",
     summary="Obtenir les statistiques des familles pour une commune",
-    description="""Récupère l'évolution de la composition des familles pour une commune depuis 2010.
+    description="""Récupère l'évolution de la composition des familles pour une commune (millésimes 2012, 2017, 2023 — valeurs officielles INSEE).
 
 Les données incluent pour chaque année :
 - Le nombre total de familles
 - Les couples avec enfant(s)
 - Les familles monoparentales (détail père/mère)
 - Les couples sans enfant
+- Les familles nombreuses (3 enfants, 4 enfants ou plus)
+- Les familles recomposées et traditionnelles (2023)
+- Les taux correspondants
 
 Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées.""")
 @limiter.limit(DEFAULT_RATE)
@@ -627,20 +630,23 @@ async def get_commune_families(
     Obtient les statistiques des familles pour une commune :
 
     - **code**: Code INSEE de la commune
-    - **start_year**: Année de début (optionnel, >= 2010)
-    - **end_year**: Année de fin (optionnel, <= 2021)
+    - **start_year**: Année de début (optionnel, millésime 2012, 2017 ou 2023 ; défaut : millésime ≥ 5 ans avant le dernier)
+    - **end_year**: Année de fin (optionnel, défaut : dernier millésime)
     """
     return family_service.get_families_by_commune(code, start_year, end_year)
 
 @protected_router.get("/families/epci/{epci}",
     summary="Obtenir les statistiques des familles pour un EPCI",
-    description="""Récupère l'évolution de la composition des familles pour un EPCI depuis 2010.
+    description="""Récupère l'évolution de la composition des familles pour un EPCI (millésimes 2012, 2017, 2023 — valeurs officielles INSEE).
 
 Les données sont agrégées pour toutes les communes de l'EPCI et incluent pour chaque année :
 - Le nombre total de familles
 - Les couples avec enfant(s)
 - Les familles monoparentales (détail père/mère)
 - Les couples sans enfant
+- Les familles nombreuses (3 enfants, 4 enfants ou plus)
+- Les familles recomposées et traditionnelles (2023)
+- Les taux correspondants
 
 Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées.""")
 @limiter.limit(DEFAULT_RATE)
@@ -654,20 +660,23 @@ async def get_epci_families(
     Obtient les statistiques des familles agrégées pour un EPCI :
 
     - **epci**: Code de l'EPCI
-    - **start_year**: Année de début (optionnel, >= 2010)
-    - **end_year**: Année de fin (optionnel, <= 2021)
+    - **start_year**: Année de début (optionnel, millésime 2012, 2017 ou 2023 ; défaut : millésime ≥ 5 ans avant le dernier)
+    - **end_year**: Année de fin (optionnel, défaut : dernier millésime)
     """
     return family_service.get_families_by_epci(epci, start_year, end_year)
 
 @protected_router.get("/families/department/{dep}",
     summary="Obtenir les statistiques des familles pour un département",
-    description="""Récupère l'évolution de la composition des familles pour un département depuis 2010.
+    description="""Récupère l'évolution de la composition des familles pour un département (millésimes 2012, 2017, 2023 — valeurs officielles INSEE).
 
 Les données sont agrégées pour toutes les communes du département et incluent pour chaque année :
 - Le nombre total de familles
 - Les couples avec enfant(s)
 - Les familles monoparentales (détail père/mère)
 - Les couples sans enfant
+- Les familles nombreuses (3 enfants, 4 enfants ou plus)
+- Les familles recomposées et traditionnelles (2023)
+- Les taux correspondants
 
 Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées.""")
 @limiter.limit(DEFAULT_RATE)
@@ -681,20 +690,23 @@ async def get_department_families(
     Obtient les statistiques des familles agrégées pour un département :
 
     - **dep**: Code du département
-    - **start_year**: Année de début (optionnel, >= 2010)
-    - **end_year**: Année de fin (optionnel, <= 2021)
+    - **start_year**: Année de début (optionnel, millésime 2012, 2017 ou 2023 ; défaut : millésime ≥ 5 ans avant le dernier)
+    - **end_year**: Année de fin (optionnel, défaut : dernier millésime)
     """
     return family_service.get_families_by_department(dep, start_year, end_year)
 
 @protected_router.get("/families/region/{reg}",
     summary="Obtenir les statistiques des familles pour une région",
-    description="""Récupère l'évolution de la composition des familles pour une région depuis 2010.
+    description="""Récupère l'évolution de la composition des familles pour une région (millésimes 2012, 2017, 2023 — valeurs officielles INSEE).
 
 Les données sont agrégées pour toutes les communes de la région et incluent pour chaque année :
 - Le nombre total de familles
 - Les couples avec enfant(s)
 - Les familles monoparentales (détail père/mère)
 - Les couples sans enfant
+- Les familles nombreuses (3 enfants, 4 enfants ou plus)
+- Les familles recomposées et traditionnelles (2023)
+- Les taux correspondants
 
 Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées.""")
 @limiter.limit(DEFAULT_RATE)
@@ -708,20 +720,23 @@ async def get_region_families(
     Obtient les statistiques des familles agrégées pour une région :
 
     - **reg**: Code de la région
-    - **start_year**: Année de début (optionnel, >= 2010)
-    - **end_year**: Année de fin (optionnel, <= 2021)
+    - **start_year**: Année de début (optionnel, millésime 2012, 2017 ou 2023 ; défaut : millésime ≥ 5 ans avant le dernier)
+    - **end_year**: Année de fin (optionnel, défaut : dernier millésime)
     """
     return family_service.get_families_by_region(reg, start_year, end_year)
 
 @protected_router.get("/families/france",
-    summary="Obtenir les statistiques des familles pour la France entière",
-    description="""Récupère l'évolution de la composition des familles au niveau national depuis 2010.
+    summary="Obtenir les statistiques des familles pour la France métropolitaine",
+    description="""Récupère l'évolution de la composition des familles pour la France métropolitaine (millésimes 2012, 2017, 2023 — valeurs officielles INSEE).
 
 Les données incluent pour chaque année :
 - Le nombre total de familles
 - Les couples avec enfant(s)
 - Les familles monoparentales (détail père/mère)
 - Les couples sans enfant
+- Les familles nombreuses (3 enfants, 4 enfants ou plus)
+- Les familles recomposées et traditionnelles (2023)
+- Les taux correspondants
 
 Les données sont accompagnées d'une analyse de l'évolution entre les années sélectionnées, permettant d'observer
 les tendances démographiques nationales sur la structure des familles.""",
@@ -733,10 +748,10 @@ async def get_france_families(
     end_year: int = None
 ):
     """
-    Obtient les statistiques des familles agrégées au niveau national :
+    Obtient les statistiques des familles agrégées pour la France métropolitaine :
 
-    - **start_year**: Année de début (optionnel, >= 2010)
-    - **end_year**: Année de fin (optionnel, <= 2021)
+    - **start_year**: Année de début (optionnel, millésime 2012, 2017 ou 2023 ; défaut : millésime ≥ 5 ans avant le dernier)
+    - **end_year**: Année de fin (optionnel, défaut : dernier millésime)
     """
     return family_service.get_families_france(start_year, end_year)
 
@@ -1305,7 +1320,7 @@ async def get_france_family_employment_3to5(request: Request):
 
 @protected_router.get("/families/{level}/{code}",
   summary="Obtenir l'évolution de la composition des familles par niveau géographique",
-  description="""Récupère l'évolution historique de la composition des familles depuis 2010 pour le niveau géographique choisi.
+  description="""Récupère l'évolution historique de la composition des familles (millésimes 2012, 2017, 2023 — valeurs officielles INSEE) pour le niveau géographique choisi.
 
 Les niveaux géographiques disponibles sont :
 - commune : Données à l'échelle communale
@@ -1318,6 +1333,9 @@ Pour chaque année, les données incluent :
 - Les couples avec enfant(s)
 - Les familles monoparentales (détail père/mère)
 - Les couples sans enfant
+- Les familles nombreuses (3 enfants, 4 enfants ou plus)
+- Les familles recomposées et traditionnelles (2023)
+- Les taux correspondants
 
 L'évolution est calculée entre les années spécifiées (start_year et end_year) et indique pour chaque catégorie :
 - La valeur de départ
@@ -1337,17 +1355,17 @@ async def get_families(
 
    - **level**: Niveau géographique ('commune', 'epci', 'department' ou 'region')
    - **code**: Code du territoire (INSEE, EPCI, département ou région)
-   - **start_year**: Année de début pour le calcul de l'évolution (optionnel, >= 2010)
-   - **end_year**: Année de fin pour le calcul de l'évolution (optionnel, <= 2021)
+   - **start_year**: Année de début pour le calcul de l'évolution (optionnel, millésime 2012, 2017 ou 2023 ; défaut : millésime ≥ 5 ans avant le dernier)
+   - **end_year**: Année de fin pour le calcul de l'évolution (optionnel, défaut : dernier millésime)
    """
    if level == "commune":
        return family_service.get_families_by_commune(code, start_year, end_year)
    elif level == "epci":
-       return family_service.get_families_by_epci(code, geocode_service, start_year, end_year)
+       return family_service.get_families_by_epci(code, start_year, end_year)
    elif level == "department":
-       return family_service.get_families_by_department(code, geocode_service, start_year, end_year)
+       return family_service.get_families_by_department(code, start_year, end_year)
    elif level == "region":
-       return family_service.get_families_by_region(code, geocode_service, start_year, end_year)
+       return family_service.get_families_by_region(code, start_year, end_year)
    else:
        raise HTTPException(status_code=404, detail=f"Level {level} not found")
 

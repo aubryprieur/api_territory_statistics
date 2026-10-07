@@ -77,6 +77,27 @@ class SchoolingSummary(Base):
     total_3_5y = Column(Float, nullable=False, default=0)
     schooled_3_5y = Column(Float, nullable=False, default=0)
 
+class FamilyByTerritory(Base):
+    """Familles RP INSEE (DS_RP_FAMILLE_COMP) à toutes les échelles — voir migration b4d6f8a0c2e3."""
+    __tablename__ = "families_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)           # 2012, 2017, 2023
+    total_families = Column(Float)
+    couples_with_children = Column(Float)
+    couples_without_children = Column(Float)
+    single_parent_families = Column(Float)
+    single_fathers = Column(Float)
+    single_mothers = Column(Float)
+    blended_families = Column(Float)        # 2023 uniquement
+    traditional_families = Column(Float)    # 2023 uniquement
+    families_0_children = Column(Float)
+    families_1_child = Column(Float)
+    families_2_children = Column(Float)
+    families_3_children = Column(Float)
+    families_4_plus_children = Column(Float)
+
 class PublicSafety(Base):
     __tablename__ = "public_safety"
 

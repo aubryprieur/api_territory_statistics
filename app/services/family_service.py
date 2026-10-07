@@ -1,659 +1,320 @@
+"""
+Familles — données INSEE du recensement (DS_RP_FAMILLE_COMP), table families_by_territory.
+
+Les effectifs sont les valeurs officielles INSEE à chaque échelle (commune, EPCI,
+département, région, France métropolitaine) : aucune agrégation n'est faite ici.
+Seuls les taux sont calculés, à partir des effectifs de la même ligne.
+
+Millésimes disponibles : 2012, 2017, 2023.
+Par défaut, l'évolution compare le dernier millésime au millésime situé 5 à 6 ans
+plus tôt (2017 -> 2023).
+"""
 import math
-from sqlalchemy.orm import Session
+
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func, literal_column
+
 from app.database import SessionLocal
-from app.models import Family, GeoCode
+from app.models import FamilyByTerritory, GeoCode
+
+FRANCE_CODE = "FM"  # France métropolitaine
+MIN_EVOLUTION_GAP = 5  # années minimum entre millésime de comparaison et dernier millésime
+
+COUNT_FIELDS = [
+    "total_families",
+    "couples_with_children",
+    "couples_without_children",
+    "single_parent_families",
+    "single_fathers",
+    "single_mothers",
+    "blended_families",
+    "traditional_families",
+    "families_0_children",
+    "families_1_child",
+    "families_2_children",
+    "families_3_children",
+    "families_4_plus_children",
+]
+
+EVOLUTION_METRICS = [
+    "total_families",
+    "couples_with_children", "couples_with_children_percentage",
+    "couples_without_children", "couples_without_children_percentage",
+    "single_parent_families", "single_parent_families_percentage",
+    "single_fathers", "single_mothers",
+    "families_with_3_children", "families_with_4_plus_children",
+    "total_large_families", "large_families_percentage",
+    "blended_families", "blended_families_percentage",
+]
+
+
+def _num(value):
+    """float ou None (valeur absente / NaN)."""
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(v) or math.isinf(v) else v
+
+
+def _pct(part, total):
+    if part is None or not total:
+        return None
+    return round(part / total * 100, 2)
+
+
+def _zero(value):
+    return value if value is not None else 0.0
 
 
 class FamilyService:
-    def __init__(self):
-        """ Initialise la connexion à la base de données """
-        self.db = SessionLocal()
 
-    def close(self):
-        """ Ferme la session de base de données proprement """
-        self.db.close()
-
-    def _safe_float(self, value):
-        """Convertit une valeur en float de manière sécurisée"""
-        try:
-            if value is None:
-                return 0.0
-            float_val = float(value)
-            if math.isnan(float_val) or math.isinf(float_val):
-                return 0.0
-            return float_val
-        except (TypeError, ValueError):
-            return 0.0
-
-    # =========================================================================
-    # OPTIMISATION : agrégation SQL directe au lieu de charger tous les objets
-    # =========================================================================
-    def _aggregate_families_sql(self, geo_filter=None, commune_codes=None, start_year=None, end_year=None):
-        """
-        Agrège les données familles directement en SQL avec GROUP BY year.
-        Remplace _format_response pour les gros volumes (département, région, France).
-
-        Args:
-            geo_filter: tuple (column, value) pour JOIN sur geo_codes
-            commune_codes: liste de codes communes (pour EPCI)
-            start_year, end_year: filtres d'années pour l'évolution
-        """
-        # NULLIF(col, 'NaN') : quelques lignes sources contiennent NaN, qui rendrait
-        # toute la somme NaN. On les ignore, comme _format_response (commune/EPCI)
-        # qui les compte pour 0 via _safe_float — résultat identique.
-        nan = literal_column("'NaN'::double precision")
-
-        def s(col):
-            return func.sum(func.nullif(col, nan))
-
-        query = self.db.query(
-            Family.year,
-            s(Family.total_households).label('total_households'),
-            s(Family.couples_with_children).label('couples_with_children'),
-            s(Family.single_parent_families).label('single_parent_families'),
-            s(Family.single_fathers).label('single_fathers'),
-            s(Family.single_mothers).label('single_mothers'),
-            s(Family.couples_without_children).label('couples_without_children'),
-            s(Family.children_under_24_three_siblings).label('children_3'),
-            s(Family.children_under_24_four_or_more_siblings).label('children_4p'),
-        )
-
-        # Appliquer le filtre géographique
-        if geo_filter:
-            column, value = geo_filter
-            query = query.join(
-                GeoCode, Family.geo_code == GeoCode.codgeo
-            ).filter(column == str(value))
-        elif commune_codes is not None:
-            query = query.filter(Family.geo_code.in_(commune_codes))
-
-        query = query.group_by(Family.year)
-        rows = query.all()
-
-        # Construire data_by_year dans le même format que _format_response
-        data_by_year = {}
-        for row in rows:
-            total_families = self._safe_float(row.total_households)
-            couples_with_children = self._safe_float(row.couples_with_children)
-            single_parent_families = self._safe_float(row.single_parent_families)
-            single_fathers = self._safe_float(row.single_fathers)
-            single_mothers = self._safe_float(row.single_mothers)
-            couples_without_children = self._safe_float(row.couples_without_children)
-            families_with_3_children = self._safe_float(row.children_3)
-            families_with_4_plus_children = self._safe_float(row.children_4p)
-            total_large_families = families_with_3_children + families_with_4_plus_children
-
-            data = {
-                "total_families": total_families,
-                "couples_with_children": couples_with_children,
-                "single_parent_families": single_parent_families,
-                "single_fathers": single_fathers,
-                "single_mothers": single_mothers,
-                "couples_without_children": couples_without_children,
-                "families_with_3_children": families_with_3_children,
-                "families_with_4_plus_children": families_with_4_plus_children,
-                "total_large_families": total_large_families,
-            }
-
-            # Calculer les pourcentages
-            if total_families > 0:
-                data["large_families_percentage"] = round(
-                    (total_large_families / total_families) * 100, 2
-                )
-                data["couples_with_children_percentage"] = round(
-                    (couples_with_children / total_families) * 100, 2
-                )
-                data["single_parent_families_percentage"] = round(
-                    (single_parent_families / total_families) * 100, 2
-                )
-                data["couples_without_children_percentage"] = round(
-                    (couples_without_children / total_families) * 100, 2
-                )
-
-            data_by_year[row.year] = data
-
-        # Calcul des évolutions
-        evolution = self._calculate_evolution(data_by_year, start_year, end_year)
+    # ------------------------------------------------------------------ format
+    def _year_data(self, row):
+        """Effectifs + taux pour une ligne (un territoire, un millésime)."""
+        c = {f: _num(getattr(row, f)) for f in COUNT_FIELDS}
+        total = c["total_families"]
+        f3, f4 = c["families_3_children"], c["families_4_plus_children"]
+        large = (f3 + f4) if f3 is not None and f4 is not None else None
 
         return {
-            "family_data": data_by_year,
-            "evolution": evolution
+            # Noms historiques conservés pour le dashboard
+            "total_families": c["total_families"],
+            "couples_with_children": c["couples_with_children"],
+            "couples_without_children": c["couples_without_children"],
+            "single_parent_families": c["single_parent_families"],
+            "single_fathers": c["single_fathers"],
+            "single_mothers": c["single_mothers"],
+            "families_with_3_children": f3,
+            "families_with_4_plus_children": f4,
+            "total_large_families": large,
+            # Nouveaux effectifs
+            "blended_families": c["blended_families"],
+            "traditional_families": c["traditional_families"],
+            "families_0_children": c["families_0_children"],
+            "families_1_child": c["families_1_child"],
+            "families_2_children": c["families_2_children"],
+            # Taux (en % de l'ensemble des familles, sauf mention)
+            "couples_with_children_percentage": _pct(c["couples_with_children"], total),
+            "couples_without_children_percentage": _pct(c["couples_without_children"], total),
+            "single_parent_families_percentage": _pct(c["single_parent_families"], total),
+            "large_families_percentage": _pct(large, total),
+            "families_3_children_percentage": _pct(f3, total),
+            "families_4_plus_children_percentage": _pct(f4, total),
+            # % des familles monoparentales
+            "single_fathers_percentage": _pct(c["single_fathers"], c["single_parent_families"]),
+            "single_mothers_percentage": _pct(c["single_mothers"], c["single_parent_families"]),
+            # % des couples avec enfant(s)
+            "blended_families_percentage": _pct(c["blended_families"], c["couples_with_children"]),
+            "traditional_families_percentage": _pct(c["traditional_families"], c["couples_with_children"]),
         }
 
-    # =========================================================================
-    # Commune (inchangé — peu de lignes)
-    # =========================================================================
-    def get_families_by_commune(self, geo_code: str, start_year: int = None, end_year: int = None):
-        """ Récupère les données des familles pour une commune donnée """
+    def _default_period(self, years):
+        """Dernier millésime et millésime situé au moins 5 ans plus tôt (le plus récent)."""
+        end = years[-1]
+        earlier = [y for y in years if y <= end - MIN_EVOLUTION_GAP]
+        start = earlier[-1] if earlier else years[0]
+        return start, end
+
+    def _calculate_evolution(self, data, start_year, end_year):
+        years = sorted(data.keys())
+        if len(years) < 2:
+            return {}
+        default_start, default_end = self._default_period(years)
+        start_year = start_year or default_start
+        end_year = end_year or default_end
+        if start_year not in data or end_year not in data:
+            return {"error": f"Millésimes disponibles : {', '.join(map(str, years))}"}
+
+        evolutions = {}
+        for metric in EVOLUTION_METRICS:
+            v0, v1 = data[start_year].get(metric), data[end_year].get(metric)
+            if v0 is None or v1 is None:
+                continue  # ex. familles recomposées : 2023 uniquement
+            evolutions[metric] = {
+                "start_value": v0,
+                "end_value": v1,
+                "evolution_percentage": round((v1 - v0) / v0 * 100, 2) if v0 else 0.0,
+                "period": f"{start_year}-{end_year}",
+            }
+        return evolutions
+
+    def _get(self, level, code, start_year=None, end_year=None):
+        db = SessionLocal()
         try:
-            results = self.db.query(Family).filter(Family.geo_code == geo_code).all()
-            return self._format_response(results, start_year, end_year)
-        except SQLAlchemyError as e:
-            return {"error": str(e)}
-        finally:
-            self.close()
+            rows = (
+                db.query(FamilyByTerritory)
+                .filter(FamilyByTerritory.geo_level == level, FamilyByTerritory.geo_code == str(code))
+                .order_by(FamilyByTerritory.year)
+                .all()
+            )
+            if not rows:
+                return {"error": f"Aucune donnée familles pour {level} {code}"}
 
-    # =========================================================================
-    # EPCI (inchangé — peu de communes)
-    # =========================================================================
-    def get_families_by_epci(self, epci: str, start_year: int = None, end_year: int = None):
-        """ Récupère les données agrégées par EPCI """
-        try:
-            db = SessionLocal()
-
-            communes = [geo.codgeo for geo in db.query(GeoCode).filter(GeoCode.epci == epci).all()]
-            if not communes:
-                return {"error": "Aucune commune trouvée pour cet EPCI"}
-
-            results = db.query(Family).filter(Family.geo_code.in_(communes)).all()
-
-            return self._format_response(results, start_year, end_year)
+            data = {row.year: self._year_data(row) for row in rows}
+            years = sorted(data)
+            start, end = self._default_period(years)
+            return {
+                "territory": {"level": level, "code": str(code)},
+                "available_years": years,
+                "latest_year": end,
+                "comparison_year": start,
+                "family_data": data,
+                "evolution": self._calculate_evolution(data, start_year, end_year),
+            }
         except SQLAlchemyError as e:
             return {"error": str(e)}
         finally:
             db.close()
 
-    # =========================================================================
-    # Département — OPTIMISÉ : SQL GROUP BY + JOIN au lieu de IN(...)
-    # =========================================================================
+    # ------------------------------------------------------------ territoires
+    def get_families_by_commune(self, geo_code: str, start_year: int = None, end_year: int = None):
+        code = str(geo_code).zfill(5)
+        result = self._get("COM", code, start_year, end_year)
+        if "error" in result:
+            # Arrondissements municipaux de Paris, Lyon, Marseille
+            arm = self._get("ARM", code, start_year, end_year)
+            if "error" not in arm:
+                return arm
+        return result
+
+    def get_families_by_epci(self, epci: str, start_year: int = None, end_year: int = None):
+        return self._get("EPCI", epci, start_year, end_year)
+
     def get_families_by_department(self, dep: str, start_year: int = None, end_year: int = None):
-        """Récupère les données agrégées par département"""
-        try:
-            normalized_dep = dep.zfill(2)
+        dep = str(dep)
+        if dep.isdigit() and len(dep) < 2:
+            dep = dep.zfill(2)
+        return self._get("DEP", dep, start_year, end_year)
 
-            communes = self.db.query(GeoCode.codgeo).filter(GeoCode.dep == normalized_dep).all()
-            if not communes:
-                return {"error": f"Aucune commune trouvée pour ce département {dep}"}
-
-            # OPTIMISATION : agrégation SQL directe
-            return self._aggregate_families_sql(
-                geo_filter=(GeoCode.dep, normalized_dep),
-                start_year=start_year,
-                end_year=end_year
-            )
-        except SQLAlchemyError as e:
-            return {"error": str(e)}
-        finally:
-            self.close()
-
-    # =========================================================================
-    # Région — OPTIMISÉ : SQL GROUP BY + JOIN au lieu de IN(...)
-    # =========================================================================
     def get_families_by_region(self, reg: str, start_year: int = None, end_year: int = None):
-        """ Récupère les données agrégées par région """
-        try:
-            communes = self.db.query(GeoCode.codgeo).filter(GeoCode.reg == str(reg)).all()
-            if not communes:
-                return {"error": "Aucune commune trouvée pour cette région"}
+        return self._get("REG", str(reg).zfill(2), start_year, end_year)
 
-            # OPTIMISATION : agrégation SQL directe
-            return self._aggregate_families_sql(
-                geo_filter=(GeoCode.reg, reg),
-                start_year=start_year,
-                end_year=end_year
-            )
-        except SQLAlchemyError as e:
-            return {"error": str(e)}
-        finally:
-            self.close()
-
-    # =========================================================================
-    # France — OPTIMISÉ : SQL GROUP BY au lieu de charger ~175k lignes
-    # =========================================================================
     def get_families_france(self, start_year: int = None, end_year: int = None):
-        """ Récupère les données agrégées pour toute la France """
-        try:
-            # OPTIMISATION : agrégation SQL directe (pas de filtre géo)
-            return self._aggregate_families_sql(
-                start_year=start_year,
-                end_year=end_year
+        """France métropolitaine."""
+        return self._get("FRANCE", FRANCE_CODE, start_year, end_year)
+
+    # ------------------------------------------- EPCI : détail par commune
+    def _epci_communes(self, db, epci):
+        communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
+        epci_info = db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
+        epci_name = epci_info[0] if epci_info and epci_info[0] else f"EPCI {epci}"
+        latest_year = None
+        rows = {}
+        if communes:
+            codes = [c for c, _ in communes]
+            q = db.query(FamilyByTerritory).filter(
+                FamilyByTerritory.geo_level == "COM", FamilyByTerritory.geo_code.in_(codes)
             )
-        except SQLAlchemyError as e:
-            return {"error": str(e)}
-        finally:
-            self.close()
+            all_rows = q.all()
+            if all_rows:
+                latest_year = max(r.year for r in all_rows)
+                rows = {r.geo_code: r for r in all_rows if r.year == latest_year}
+        return communes, epci_name, latest_year, rows
 
-    # =========================================================================
-    # _format_response (inchangé — utilisé pour commune et EPCI)
-    # =========================================================================
-    def _format_response(self, results, start_year=None, end_year=None):
-        """Formate les résultats et calcule l'évolution si nécessaire"""
-        if not results:
-            return {"error": "Aucune donnée disponible"}
-
-        # Organisation des données par année
-        data_by_year = {}
-        for f in results:
-            if f.year not in data_by_year:
-                data_by_year[f.year] = {
-                    "total_families": 0.0,
-                    "couples_with_children": 0.0,
-                    "single_parent_families": 0.0,
-                    "single_fathers": 0.0,
-                    "single_mothers": 0.0,
-                    "couples_without_children": 0.0,
-                    # Familles nombreuses
-                    "families_with_3_children": 0.0,
-                    "families_with_4_plus_children": 0.0,
-                    "total_large_families": 0.0,
-                }
-
-            # Utiliser _safe_float pour les valeurs
-            data_by_year[f.year]["total_families"] += self._safe_float(f.total_households)
-            data_by_year[f.year]["couples_with_children"] += self._safe_float(f.couples_with_children)
-            data_by_year[f.year]["single_parent_families"] += self._safe_float(f.single_parent_families)
-            data_by_year[f.year]["single_fathers"] += self._safe_float(f.single_fathers)
-            data_by_year[f.year]["single_mothers"] += self._safe_float(f.single_mothers)
-            data_by_year[f.year]["couples_without_children"] += self._safe_float(f.couples_without_children)
-
-            # Familles nombreuses
-            data_by_year[f.year]["families_with_3_children"] += self._safe_float(f.children_under_24_three_siblings)
-            data_by_year[f.year]["families_with_4_plus_children"] += self._safe_float(f.children_under_24_four_or_more_siblings)
-
-        # Calculer les totaux et pourcentages APRÈS avoir accumulé toutes les données
-        for year, data in data_by_year.items():
-            # Calculer le total des familles nombreuses
-            data["total_large_families"] = data["families_with_3_children"] + data["families_with_4_plus_children"]
-
-            # Calculer tous les pourcentages
-            total_families = data["total_families"]
-            if total_families > 0:
-                data["large_families_percentage"] = round(
-                    (data["total_large_families"] / total_families) * 100, 2
-                )
-                data["couples_with_children_percentage"] = round(
-                    (data["couples_with_children"] / total_families) * 100, 2
-                )
-                data["single_parent_families_percentage"] = round(
-                    (data["single_parent_families"] / total_families) * 100, 2
-                )
-                data["couples_without_children_percentage"] = round(
-                    (data["couples_without_children"] / total_families) * 100, 2
-                )
-
-        # Calcul des évolutions si demandé
-        evolution = self._calculate_evolution(data_by_year, start_year, end_year)
-
-        return {
-            "family_data": data_by_year,
-            "evolution": evolution
-        }
-
-    # =========================================================================
-    # _calculate_evolution (inchangé)
-    # =========================================================================
-    def _calculate_evolution(self, data, start_year, end_year):
-        """Calcule l'évolution des familles entre deux années"""
-        years = sorted(data.keys())
-        if not years:
-            return {"error": "Aucune donnée disponible pour l'évolution"}
-
-        start_year = start_year or years[0]
-        end_year = end_year or years[-1]
-
-        if start_year not in years or end_year not in years:
-            return {"error": f"Les années doivent être comprises entre {years[0]} et {years[-1]}"}
-
-        evolutions = {}
-        metrics = ["total_families", "couples_with_children", "couples_with_children_percentage",
-                    "single_parent_families", "single_parent_families_percentage",
-                    "single_fathers", "single_mothers", "couples_without_children",
-                    "couples_without_children_percentage",
-                    "families_with_3_children", "families_with_4_plus_children",
-                    "total_large_families", "large_families_percentage"]
-
-        for metric in metrics:
-            try:
-                value_start = self._safe_float(data[start_year].get(metric, 0))
-                value_end = self._safe_float(data[end_year].get(metric, 0))
-
-                if value_start > 0:
-                    evolution = ((value_end - value_start) / value_start * 100)
-                    evolution = round(self._safe_float(evolution), 2)
-                else:
-                    evolution = 0.0
-            except:
-                evolution = 0.0
-
-            evolutions[metric] = {
-                "start_value": value_start,
-                "end_value": value_end,
-                "evolution_percentage": evolution,
-                "period": f"{start_year}-{end_year}"
-            }
-
-        return evolutions
-
-    # =========================================================================
-    # EPCI détails communes (inchangés)
-    # =========================================================================
     def get_couples_with_children_by_epci(self, epci: str):
-        """Récupère les statistiques des couples avec enfants pour toutes les communes d'un EPCI"""
+        db = SessionLocal()
         try:
-            db = SessionLocal()
-
-            communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
-
-            if not communes:
-                return {
-                    "epci": epci,
-                    "epci_name": "",
-                    "year": 2021,
-                    "communes_count": 0,
-                    "total_households": 0.0,
-                    "total_couples_with_children": 0.0,
-                    "epci_couples_with_children_percentage": 0.0,
-                    "communes": []
-                }
-
-            epci_info = db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
-            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
-
-            latest_year = db.query(func.max(Family.year)).scalar() or 2021
-
-            communes_data = []
-            total_households = 0
-            total_couples_with_children = 0
-
+            communes, epci_name, year, rows = self._epci_communes(db, epci)
+            communes_data, tot, tot_cwc = [], 0.0, 0.0
             for code, name in communes:
-                commune_data = db.query(Family).filter(
-                    Family.geo_code == code,
-                    Family.year == latest_year
-                ).first()
-
-                if commune_data:
-                    commune_households = self._safe_float(commune_data.total_households)
-                    commune_couples_with_children = self._safe_float(commune_data.couples_with_children)
-                    percentage = (commune_couples_with_children / commune_households * 100) if commune_households > 0 else 0
-
-                    communes_data.append({
-                        "code": code,
-                        "name": name,
-                        "total_households": commune_households,
-                        "couples_with_children": commune_couples_with_children,
-                        "couples_with_children_percentage": round(percentage, 2)
-                    })
-
-                    total_households += commune_households
-                    total_couples_with_children += commune_couples_with_children
-                else:
-                    communes_data.append({
-                        "code": code,
-                        "name": name,
-                        "total_households": 0.0,
-                        "couples_with_children": 0.0,
-                        "couples_with_children_percentage": 0.0
-                    })
-
-            epci_percentage = (total_couples_with_children / total_households * 100) if total_households > 0 else 0
-
+                r = rows.get(code)
+                total = _zero(_num(r.total_families)) if r else 0.0
+                cwc = _zero(_num(r.couples_with_children)) if r else 0.0
+                communes_data.append({
+                    "code": code, "name": name,
+                    "total_households": total,  # = nombre de familles (nom historique)
+                    "couples_with_children": cwc,
+                    "couples_with_children_percentage": _pct(cwc, total) or 0.0,
+                })
+                tot += total
+                tot_cwc += cwc
             communes_data.sort(key=lambda x: x["couples_with_children_percentage"], reverse=True)
-
             return {
-                "epci": epci,
-                "epci_name": epci_name,
-                "year": latest_year,
+                "epci": epci, "epci_name": epci_name, "year": year,
                 "communes_count": len(communes),
-                "total_households": total_households,
-                "total_couples_with_children": total_couples_with_children,
-                "epci_couples_with_children_percentage": round(epci_percentage, 2),
-                "communes": communes_data
-            }
-        except Exception as e:
-            print(f"Erreur lors de la récupération des données des couples avec enfants pour l'EPCI {epci}: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-            return {
-                "epci": epci,
-                "epci_name": "",
-                "year": 2021,
-                "communes_count": 0,
-                "total_households": 0.0,
-                "total_couples_with_children": 0.0,
-                "epci_couples_with_children_percentage": 0.0,
-                "communes": []
+                "total_households": tot,
+                "total_couples_with_children": tot_cwc,
+                "epci_couples_with_children_percentage": _pct(tot_cwc, tot) or 0.0,
+                "communes": communes_data,
             }
         finally:
             db.close()
 
     def get_single_parent_families_by_epci(self, epci: str):
-        """Récupère les statistiques des familles monoparentales pour toutes les communes d'un EPCI"""
+        db = SessionLocal()
         try:
-            db = SessionLocal()
-
-            communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
-
-            if not communes:
-                return {
-                    "epci": epci,
-                    "epci_name": "",
-                    "year": 2021,
-                    "communes_count": 0,
-                    "total_households": 0.0,
-                    "total_single_parent_families": 0.0,
-                    "total_single_fathers": 0.0,
-                    "total_single_mothers": 0.0,
-                    "epci_single_parent_percentage": 0.0,
-                    "epci_single_father_percentage": 0.0,
-                    "epci_single_mother_percentage": 0.0,
-                    "communes": []
-                }
-
-            epci_info = db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
-            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
-
-            latest_year = db.query(func.max(Family.year)).scalar() or 2021
-
+            communes, epci_name, year, rows = self._epci_communes(db, epci)
             communes_data = []
-            total_households = 0
-            total_single_parent = 0
-            total_single_fathers = 0
-            total_single_mothers = 0
-
+            tot = tot_sp = tot_f = tot_m = 0.0
             for code, name in communes:
-                commune_data = db.query(Family).filter(
-                    Family.geo_code == code,
-                    Family.year == latest_year
-                ).first()
-
-                if commune_data:
-                    commune_households = self._safe_float(commune_data.total_households)
-                    commune_single_parent = self._safe_float(commune_data.single_parent_families)
-                    commune_single_fathers = self._safe_float(commune_data.single_fathers)
-                    commune_single_mothers = self._safe_float(commune_data.single_mothers)
-
-                    percentage = (commune_single_parent / commune_households * 100) if commune_households > 0 else 0
-                    father_pct = (commune_single_fathers / commune_single_parent * 100) if commune_single_parent > 0 else 0
-                    mother_pct = (commune_single_mothers / commune_single_parent * 100) if commune_single_parent > 0 else 0
-
-                    communes_data.append({
-                        "code": code,
-                        "name": name,
-                        "total_households": commune_households,
-                        "single_parent_families": commune_single_parent,
-                        "single_fathers": commune_single_fathers,
-                        "single_mothers": commune_single_mothers,
-                        "single_parent_percentage": round(percentage, 2),
-                        "single_father_percentage": round(father_pct, 2),
-                        "single_mother_percentage": round(mother_pct, 2)
-                    })
-
-                    total_households += commune_households
-                    total_single_parent += commune_single_parent
-                    total_single_fathers += commune_single_fathers
-                    total_single_mothers += commune_single_mothers
-                else:
-                    communes_data.append({
-                        "code": code,
-                        "name": name,
-                        "total_households": 0.0,
-                        "single_parent_families": 0.0,
-                        "single_fathers": 0.0,
-                        "single_mothers": 0.0,
-                        "single_parent_percentage": 0.0,
-                        "single_father_percentage": 0.0,
-                        "single_mother_percentage": 0.0
-                    })
-
-            epci_pct = (total_single_parent / total_households * 100) if total_households > 0 else 0
-            epci_father_pct = (total_single_fathers / total_single_parent * 100) if total_single_parent > 0 else 0
-            epci_mother_pct = (total_single_mothers / total_single_parent * 100) if total_single_parent > 0 else 0
-
+                r = rows.get(code)
+                total = _zero(_num(r.total_families)) if r else 0.0
+                sp = _zero(_num(r.single_parent_families)) if r else 0.0
+                f = _zero(_num(r.single_fathers)) if r else 0.0
+                m = _zero(_num(r.single_mothers)) if r else 0.0
+                communes_data.append({
+                    "code": code, "name": name,
+                    "total_households": total,
+                    "single_parent_families": sp,
+                    "single_fathers": f,
+                    "single_mothers": m,
+                    "single_parent_percentage": _pct(sp, total) or 0.0,
+                    "single_father_percentage": _pct(f, sp) or 0.0,
+                    "single_mother_percentage": _pct(m, sp) or 0.0,
+                })
+                tot += total; tot_sp += sp; tot_f += f; tot_m += m
             communes_data.sort(key=lambda x: x["single_parent_percentage"], reverse=True)
-
             return {
-                "epci": epci,
-                "epci_name": epci_name,
-                "year": latest_year,
+                "epci": epci, "epci_name": epci_name, "year": year,
                 "communes_count": len(communes),
-                "total_households": total_households,
-                "total_single_parent_families": total_single_parent,
-                "total_single_fathers": total_single_fathers,
-                "total_single_mothers": total_single_mothers,
-                "epci_single_parent_percentage": round(epci_pct, 2),
-                "epci_single_father_percentage": round(epci_father_pct, 2),
-                "epci_single_mother_percentage": round(epci_mother_pct, 2),
-                "communes": communes_data
-            }
-        except Exception as e:
-            print(f"Erreur lors de la récupération des familles monoparentales pour l'EPCI {epci}: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-            return {
-                "epci": epci,
-                "epci_name": "",
-                "year": 2021,
-                "communes_count": 0,
-                "total_households": 0.0,
-                "total_single_parent_families": 0.0,
-                "total_single_fathers": 0.0,
-                "total_single_mothers": 0.0,
-                "epci_single_parent_percentage": 0.0,
-                "epci_single_father_percentage": 0.0,
-                "epci_single_mother_percentage": 0.0,
-                "communes": []
+                "total_households": tot,
+                "total_single_parent_families": tot_sp,
+                "total_single_fathers": tot_f,
+                "total_single_mothers": tot_m,
+                "epci_single_parent_percentage": _pct(tot_sp, tot) or 0.0,
+                "epci_single_father_percentage": _pct(tot_f, tot_sp) or 0.0,
+                "epci_single_mother_percentage": _pct(tot_m, tot_sp) or 0.0,
+                "communes": communes_data,
             }
         finally:
             db.close()
 
     def get_large_families_by_epci(self, epci: str):
-        """Récupère les statistiques des familles nombreuses pour toutes les communes d'un EPCI"""
+        db = SessionLocal()
         try:
-            db = SessionLocal()
-
-            communes = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).all()
-
-            if not communes:
-                return {
-                    "epci": epci,
-                    "epci_name": "",
-                    "year": 2021,
-                    "communes_count": 0,
-                    "total_households": 0.0,
-                    "total_large_families": 0.0,
-                    "total_families_3_children": 0.0,
-                    "total_families_4_plus_children": 0.0,
-                    "epci_large_families_percentage": 0.0,
-                    "epci_families_3_children_percentage": 0.0,
-                    "epci_families_4_plus_percentage": 0.0,
-                    "communes": []
-                }
-
-            epci_info = db.query(GeoCode.libepci).filter(GeoCode.epci == str(epci)).first()
-            epci_name = epci_info[0] if epci_info else f"EPCI {epci}"
-
-            latest_year = db.query(func.max(Family.year)).scalar() or 2021
-
+            communes, epci_name, year, rows = self._epci_communes(db, epci)
             communes_data = []
-            total_households = 0
-            total_large_families = 0
-            total_3_children = 0
-            total_4_plus = 0
-
+            tot = tot_large = tot_3 = tot_4 = 0.0
             for code, name in communes:
-                commune_data = db.query(Family).filter(
-                    Family.geo_code == code,
-                    Family.year == latest_year
-                ).first()
-
-                if commune_data:
-                    commune_households = self._safe_float(commune_data.total_households)
-                    commune_3 = self._safe_float(commune_data.children_under_24_three_siblings)
-                    commune_4p = self._safe_float(commune_data.children_under_24_four_or_more_siblings)
-                    commune_large = commune_3 + commune_4p
-
-                    large_pct = (commune_large / commune_households * 100) if commune_households > 0 else 0
-                    pct_3 = (commune_3 / commune_households * 100) if commune_households > 0 else 0
-                    pct_4p = (commune_4p / commune_households * 100) if commune_households > 0 else 0
-
-                    communes_data.append({
-                        "code": code,
-                        "name": name,
-                        "total_households": commune_households,
-                        "large_families": commune_large,
-                        "families_3_children": commune_3,
-                        "families_4_plus_children": commune_4p,
-                        "large_families_percentage": round(large_pct, 2),
-                        "families_3_children_percentage": round(pct_3, 2),
-                        "families_4_plus_percentage": round(pct_4p, 2)
-                    })
-
-                    total_households += commune_households
-                    total_large_families += commune_large
-                    total_3_children += commune_3
-                    total_4_plus += commune_4p
-                else:
-                    communes_data.append({
-                        "code": code,
-                        "name": name,
-                        "total_households": 0.0,
-                        "large_families": 0.0,
-                        "families_3_children": 0.0,
-                        "families_4_plus_children": 0.0,
-                        "large_families_percentage": 0.0,
-                        "families_3_children_percentage": 0.0,
-                        "families_4_plus_percentage": 0.0
-                    })
-
-            epci_large_pct = (total_large_families / total_households * 100) if total_households > 0 else 0
-            epci_3_pct = (total_3_children / total_households * 100) if total_households > 0 else 0
-            epci_4p_pct = (total_4_plus / total_households * 100) if total_households > 0 else 0
-
+                r = rows.get(code)
+                total = _zero(_num(r.total_families)) if r else 0.0
+                f3 = _zero(_num(r.families_3_children)) if r else 0.0
+                f4 = _zero(_num(r.families_4_plus_children)) if r else 0.0
+                communes_data.append({
+                    "code": code, "name": name,
+                    "total_households": total,
+                    "large_families": f3 + f4,
+                    "families_3_children": f3,
+                    "families_4_plus_children": f4,
+                    "large_families_percentage": _pct(f3 + f4, total) or 0.0,
+                    "families_3_children_percentage": _pct(f3, total) or 0.0,
+                    "families_4_plus_percentage": _pct(f4, total) or 0.0,
+                })
+                tot += total; tot_large += f3 + f4; tot_3 += f3; tot_4 += f4
             communes_data.sort(key=lambda x: x["large_families_percentage"], reverse=True)
-
             return {
-                "epci": epci,
-                "epci_name": epci_name,
-                "year": latest_year,
+                "epci": epci, "epci_name": epci_name, "year": year,
                 "communes_count": len(communes),
-                "total_households": total_households,
-                "total_large_families": total_large_families,
-                "total_families_3_children": total_3_children,
-                "total_families_4_plus_children": total_4_plus,
-                "epci_large_families_percentage": round(epci_large_pct, 2),
-                "epci_families_3_children_percentage": round(epci_3_pct, 2),
-                "epci_families_4_plus_percentage": round(epci_4p_pct, 2),
-                "communes": communes_data
-            }
-        except Exception as e:
-            print(f"Erreur lors de la récupération des familles nombreuses pour l'EPCI {epci}: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-            return {
-                "epci": epci,
-                "epci_name": "",
-                "year": 2021,
-                "communes_count": 0,
-                "total_households": 0.0,
-                "total_large_families": 0.0,
-                "total_families_3_children": 0.0,
-                "total_families_4_plus_children": 0.0,
-                "epci_large_families_percentage": 0.0,
-                "epci_families_3_children_percentage": 0.0,
-                "epci_families_4_plus_percentage": 0.0,
-                "communes": []
+                "total_households": tot,
+                "total_large_families": tot_large,
+                "total_families_3_children": tot_3,
+                "total_families_4_plus_children": tot_4,
+                "epci_large_families_percentage": _pct(tot_large, tot) or 0.0,
+                "epci_families_3_children_percentage": _pct(tot_3, tot) or 0.0,
+                "epci_families_4_plus_percentage": _pct(tot_4, tot) or 0.0,
+                "communes": communes_data,
             }
         finally:
             db.close()
