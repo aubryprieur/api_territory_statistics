@@ -23,6 +23,7 @@ from .services.birth_service import BirthService
 from .services.geocode_service import GeoCodeService
 from .services.revenue_service import RevenueService
 from .services.family_service import FamilyService
+from .services.household_service import HouseholdService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -122,6 +123,7 @@ birth_service = BirthService()
 geocode_service = GeoCodeService()
 revenue_service = RevenueService()
 family_service = FamilyService()
+household_service = HouseholdService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -754,6 +756,100 @@ async def get_france_families(
     - **end_year**: Année de fin (optionnel, défaut : dernier millésime)
     """
     return family_service.get_families_france(start_year, end_year)
+
+@protected_router.get("/households/commune/{code}",
+    summary="Obtenir la composition des ménages pour une commune",
+    description="""Composition des ménages (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- nombre de ménages, population des ménages et taille moyenne
+- types de ménages : personnes seules (hommes / femmes), sans famille, couples avec ou sans enfant(s), familles monoparentales
+- ménages selon la catégorie socioprofessionnelle de la personne de référence
+- personnes vivant seules par tranche d'âge (taux en % de la population des ménages du même âge)
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_households(
+    request: Request,
+    code: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return household_service.get_households_by_commune(code, start_year, end_year)
+
+@protected_router.get("/households/epci/{epci}",
+    summary="Obtenir la composition des ménages pour un EPCI",
+    description="""Composition des ménages (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- nombre de ménages, population des ménages et taille moyenne
+- types de ménages : personnes seules (hommes / femmes), sans famille, couples avec ou sans enfant(s), familles monoparentales
+- ménages selon la catégorie socioprofessionnelle de la personne de référence
+- personnes vivant seules par tranche d'âge (taux en % de la population des ménages du même âge)
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_households(
+    request: Request,
+    epci: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return household_service.get_households_by_epci(epci, start_year, end_year)
+
+@protected_router.get("/households/department/{dep}",
+    summary="Obtenir la composition des ménages pour un département",
+    description="""Composition des ménages (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- nombre de ménages, population des ménages et taille moyenne
+- types de ménages : personnes seules (hommes / femmes), sans famille, couples avec ou sans enfant(s), familles monoparentales
+- ménages selon la catégorie socioprofessionnelle de la personne de référence
+- personnes vivant seules par tranche d'âge (taux en % de la population des ménages du même âge)
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_department_households(
+    request: Request,
+    dep: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return household_service.get_households_by_department(dep, start_year, end_year)
+
+@protected_router.get("/households/region/{reg}",
+    summary="Obtenir la composition des ménages pour une région",
+    description="""Composition des ménages (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- nombre de ménages, population des ménages et taille moyenne
+- types de ménages : personnes seules (hommes / femmes), sans famille, couples avec ou sans enfant(s), familles monoparentales
+- ménages selon la catégorie socioprofessionnelle de la personne de référence
+- personnes vivant seules par tranche d'âge (taux en % de la population des ménages du même âge)
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_region_households(
+    request: Request,
+    reg: str,
+    start_year: int = None,
+    end_year: int = None
+):
+    return household_service.get_households_by_region(reg, start_year, end_year)
+
+@protected_router.get("/households/france",
+    summary="Obtenir la composition des ménages pour la France métropolitaine",
+    description="""Composition des ménages (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- nombre de ménages, population des ménages et taille moyenne
+- types de ménages : personnes seules (hommes / femmes), sans famille, couples avec ou sans enfant(s), familles monoparentales
+- ménages selon la catégorie socioprofessionnelle de la personne de référence
+- personnes vivant seules par tranche d'âge (taux en % de la population des ménages du même âge)
+
+Évolution par défaut entre le dernier millésime et celui situé 5 à 6 ans plus tôt (2017 → 2023) ;
+`difference` est exprimée en points pour les taux.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_france_households(
+    request: Request,
+    start_year: int = None,
+    end_year: int = None
+):
+    return household_service.get_households_france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

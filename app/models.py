@@ -98,6 +98,44 @@ class FamilyByTerritory(Base):
     families_3_children = Column(Float)
     families_4_plus_children = Column(Float)
 
+class HouseholdByTerritory(Base):
+    """Ménages RP INSEE (DS_RP_MENAGES_COMP / _PRINC) à toutes les échelles — voir migration c5e7a9b1d3f4."""
+    __tablename__ = "households_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)           # 2012, 2017, 2023
+    households = Column(Float)
+    household_population = Column(Float)
+    one_person = Column(Float)
+    men_alone = Column(Float)
+    women_alone = Column(Float)
+    other_without_family = Column(Float)
+    with_family = Column(Float)
+    single_parent = Column(Float)
+    couple_without_children = Column(Float)
+    couple_with_children = Column(Float)
+    pcs_1 = Column(Float)
+    pcs_2 = Column(Float)
+    pcs_3 = Column(Float)
+    pcs_4 = Column(Float)
+    pcs_5 = Column(Float)
+    pcs_6 = Column(Float)
+    pcs_7 = Column(Float)
+    pcs_9 = Column(Float)
+    living_alone_15_24 = Column(Float)
+    living_alone_25_39 = Column(Float)
+    living_alone_40_54 = Column(Float)
+    living_alone_55_64 = Column(Float)
+    living_alone_65_79 = Column(Float)
+    living_alone_80_plus = Column(Float)
+    household_population_15_24 = Column(Float)
+    household_population_25_39 = Column(Float)
+    household_population_40_54 = Column(Float)
+    household_population_55_64 = Column(Float)
+    household_population_65_79 = Column(Float)
+    household_population_80_plus = Column(Float)
+
 class PublicSafety(Base):
     __tablename__ = "public_safety"
 
