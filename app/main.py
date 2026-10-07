@@ -26,6 +26,7 @@ from .services.family_service import FamilyService
 from .services.household_service import HouseholdService
 from .services.education_training_service import EducationTrainingService
 from .services.employment_activity_service import EmploymentActivityService
+from .services.housing_service import HousingService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -128,6 +129,7 @@ family_service = FamilyService()
 household_service = HouseholdService()
 education_training_service = EducationTrainingService()
 employment_activity_service = EmploymentActivityService()
+housing_service = HousingService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1037,6 +1039,50 @@ async def get_france_employment_activity(
     end_year: int = None
 ):
     return employment_activity_service.france(start_year, end_year)
+
+HOUSING_DESCRIPTION = """Logement (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
+- parc : résidences principales, secondaires, logements vacants ; maisons et appartements
+- statut d'occupation : propriétaires, locataires du parc privé, locataires HLM, meublés, logés gratuitement
+- taille et peuplement : nombre de pièces, personnes par logement, suroccupation et sous-occupation
+- mobilité résidentielle : ancienneté d'emménagement (emménagés récents, ancienneté moyenne par statut)
+- conditions de vie : ménages sans voiture, stationnement, combustible de chauffage, période de construction
+
+Évolution par défaut 2017 → 2023 ; `difference` en points pour les taux."""
+
+
+@protected_router.get("/housing/commune/{code}", summary="Obtenir le logement pour une commune",
+                      description=HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_housing(request: Request, code: str, start_year: int = None, end_year: int = None):
+    return housing_service.by_commune(code, start_year, end_year)
+
+
+@protected_router.get("/housing/epci/{epci}", summary="Obtenir le logement pour un EPCI",
+                      description=HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_housing(request: Request, epci: str, start_year: int = None, end_year: int = None):
+    return housing_service.by_epci(epci, start_year, end_year)
+
+
+@protected_router.get("/housing/department/{dep}", summary="Obtenir le logement pour un département",
+                      description=HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_housing(request: Request, dep: str, start_year: int = None, end_year: int = None):
+    return housing_service.by_department(dep, start_year, end_year)
+
+
+@protected_router.get("/housing/region/{reg}", summary="Obtenir le logement pour une région",
+                      description=HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_housing(request: Request, reg: str, start_year: int = None, end_year: int = None):
+    return housing_service.by_region(reg, start_year, end_year)
+
+
+@protected_router.get("/housing/france", summary="Obtenir le logement pour la France métropolitaine",
+                      description=HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_housing(request: Request, start_year: int = None, end_year: int = None):
+    return housing_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
