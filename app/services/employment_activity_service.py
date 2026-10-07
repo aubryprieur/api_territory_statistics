@@ -8,6 +8,8 @@ Indicateurs pour l'analyse des besoins sociaux :
   - chômage selon le diplôme (2023) et selon la catégorie socioprofessionnelle
   - emploi local : indicateur de concentration d'emploi, secteurs, salariat, temps partiel
   - mobilité domicile-travail : lieu de travail et mode de transport
+  - conditions d'emploi des habitants (DS_RP_ACTIVITE_PRINC) : non-salariat, contrats à durée
+    limitée (CDD, intérim, emplois aidés, apprentissage, stage), temps partiel par sexe et âge
 """
 from app.models import EmploymentByTerritory
 from app.services.territory_stats_service import TerritoryStatsService, num, pct, total
@@ -24,6 +26,8 @@ SECTORS = {"agriculture": "Agriculture", "industry": "Industrie", "construction"
            "public_services": "Administration publique, enseignement, santé, action sociale"}
 WORK_AREAS = ["in_commune", "other_commune_dep", "other_dep_region", "other_region", "abroad_overseas"]
 COMMUTES = ["none", "walk", "bike", "two_wheels", "car", "public"]
+RES_FIELDS = ["res_workers", "res_salaried", "res_non_salaried", "res_permanent", "res_fixed_term",
+              "res_part_time", "res_salaried_part_time"]
 
 COUNT_FIELDS = (
     [f"{p}_{a}{s}" for a in AGES for s in SEXES for p in ("pop", "active", "employed", "unemployed")]
@@ -34,6 +38,8 @@ COUNT_FIELDS = (
     + ["jobs", "jobs_salaried", "jobs_non_salaried", "jobs_salaried_part_time", "jobs_women"]
     + [f"jobs_{k}" for k in SECTORS]
     + ["workers"] + [f"work_{w}" for w in WORK_AREAS] + [f"commute_{c}" for c in COMMUTES]
+    + [f"{f}{s}" for f in RES_FIELDS for s in SEXES]
+    + [f"res_{p}_{a}{s}" for a in AGES for s in SEXES for p in ("salaried", "salaried_part_time")]
 )
 
 
@@ -56,6 +62,10 @@ class EmploymentActivityService(TerritoryStatsService):
         + [f"jobs_{k}_percentage" for k in SECTORS]
         + [f"work_{w}_percentage" for w in WORK_AREAS] + [f"commute_{c}_percentage" for c in COMMUTES]
         + ["unemployed_15_64", "unemployed_15_24"]
+        + [f"{r}{s}" for r in ("fixed_term_percentage", "non_salaried_percentage", "part_time_percentage",
+                                "salaried_part_time_percentage") for s in SEXES]
+        + [f"salaried_part_time_percentage_{a}{s}" for a in AGES for s in SEXES]
+        + ["part_time_gap_women_men", "fixed_term_gap_women_men"]
     )
 
     def year_data(self, row):
@@ -116,4 +126,18 @@ class EmploymentActivityService(TerritoryStatsService):
         commute_total = total(*(c[f"commute_{m}"] for m in ["none", "walk", "two_wheels", "car", "public"]))
         for m in COMMUTES:
             d[f"commute_{m}_percentage"] = pct(c[f"commute_{m}"], commute_total)
+
+        # --- Conditions d'emploi des habitants (actifs occupés de 15 ans ou plus, au lieu de résidence)
+        for s in SEXES:
+            d[f"fixed_term_percentage{s}"] = pct(c[f"res_fixed_term{s}"], c[f"res_salaried{s}"])  # % des salariés
+            d[f"permanent_percentage{s}"] = pct(c[f"res_permanent{s}"], c[f"res_salaried{s}"])
+            d[f"non_salaried_percentage{s}"] = pct(c[f"res_non_salaried{s}"], c[f"res_workers{s}"])
+            d[f"part_time_percentage{s}"] = pct(c[f"res_part_time{s}"], c[f"res_workers{s}"])
+            d[f"salaried_part_time_percentage{s}"] = pct(c[f"res_salaried_part_time{s}"], c[f"res_salaried{s}"])
+            for a in AGES:
+                d[f"salaried_part_time_percentage_{a}{s}"] = pct(c[f"res_salaried_part_time_{a}{s}"],
+                                                                 c[f"res_salaried_{a}{s}"])
+        d["part_time_gap_women_men"] = _diff(d["salaried_part_time_percentage_women"],
+                                             d["salaried_part_time_percentage_men"])
+        d["fixed_term_gap_women_men"] = _diff(d["fixed_term_percentage_women"], d["fixed_term_percentage_men"])
         return d

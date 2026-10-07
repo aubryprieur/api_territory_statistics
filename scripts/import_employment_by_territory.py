@@ -9,6 +9,7 @@ Sources (recensement de la population, millésimes 2012, 2017, 2023) :
   - DS_RP_EMPLOI_LT_PRINC (parquet) : emplois au lieu de travail (statut, temps partiel, sexe)
   - DS_RP_EMPLOI_LT_COMP  (parquet) : emplois au lieu de travail par secteur d'activité
   - DS_RP_NAVETTES_PRINC  (csv ou parquet) : actifs occupés par lieu de travail et mode de transport
+  - DS_RP_ACTIVITE_PRINC  (parquet) : actifs occupés résidents par statut, contrat, temps partiel, âge, sexe
 
 Usage :
     python scripts/import_employment_by_territory.py              # fichiers par défaut
@@ -39,6 +40,7 @@ DEFAULTS = {
     "lt_princ": f"{DIR}/DS_RP_EMPLOI_LT_PRINC_2023.parquet",
     "lt_comp": f"{DIR}/DS_RP_EMPLOI_LT_COMP_2023.parquet",
     "navettes": f"{DIR}/DS_RP_NAVETTES_PRINC_2023_data.csv",
+    "activite": f"{DIR}/DS_RP_ACTIVITE_PRINC_2023.parquet",
 }
 LEVELS = ["COM", "ARM", "EPCI", "DEP", "REG"]
 FRANCE_CODE = "FM"
@@ -106,12 +108,27 @@ NAVETTES = {
     ("6", "_T", "Y_GE15", "1"): "commute_public",
 }
 
+# --- DS_RP_ACTIVITE_PRINC : (EMPFORM, WKTIME, AGE, SEX) -> colonne  (actifs occupés au lieu de résidence)
+#     EMPFORM : 1 = non salariés, 2 = salariés, 211 = CDI / titulaires de la fonction publique,
+#               22T27 = contrats à durée limitée (CDD, intérim, emplois aidés, apprentissage, stage)
+ACTIVITE = {}
+RES_GE15 = {("_T", "_T"): "res_workers", ("2", "_T"): "res_salaried", ("1", "_T"): "res_non_salaried",
+            ("211", "_T"): "res_permanent", ("22T27", "_T"): "res_fixed_term",
+            ("_T", "PT"): "res_part_time", ("2", "PT"): "res_salaried_part_time"}
+for sx, s in SEXES.items():
+    for (ef, wt), name in RES_GE15.items():
+        ACTIVITE[(ef, wt, "Y_GE15", sx)] = f"{name}{s}"
+    for ag, a in AGES.items():
+        ACTIVITE[("2", "_T", ag, sx)] = f"res_salaried_{a}{s}"
+        ACTIVITE[("2", "PT", ag, sx)] = f"res_salaried_part_time_{a}{s}"
+
 SOURCES = [
     ("lr_princ", ["EMPSTA_ENQ", "AGE", "SEX", "EDUC"], LR_PRINC),
     ("lr_comp", ["EMPSTA_ENQ", "AGE", "PCS"], LR_COMP),
     ("lt_princ", ["EMPFORM", "SEX", "WKTIME", "AGE"], LT_PRINC),
     ("lt_comp", ["EMP_ACTIVITY", "SEX", "PCS", "EMPFORM"], LT_COMP),
     ("navettes", ["TRANS", "WORK_AREA", "AGE", "EMPSTA_ENQ"], NAVETTES),
+    ("activite", ["EMPFORM", "WKTIME", "AGE", "SEX"], ACTIVITE),
 ]
 COLUMNS = KEY + [c for _, _, m in SOURCES for c in m.values() if not c.startswith("_")]
 
@@ -175,7 +192,7 @@ def check(wide):
     com = wide[wide.geo_level == "COM"].copy()
     com["dep"] = com.geo_code.str[:3].where(com.geo_code.str.startswith("97"), com.geo_code.str[:2])
     dep = wide[wide.geo_level == "DEP"].set_index(["geo_code", "year"])
-    for col in ["unemployed_15_64", "jobs", "workers"]:
+    for col in ["unemployed_15_64", "jobs", "workers", "res_fixed_term", "res_salaried_part_time_15_64"]:
         sums = com.groupby(["dep", "year"])[col].sum()
         ecart = (dep[col] - sums.reindex(dep.index)).abs().max()
         logger.info(f"🔎 {col} : écart max département officiel vs somme des communes = {ecart:.6f}")
@@ -183,6 +200,17 @@ def check(wide):
     rate = (fm["unemployed_15_64"] / fm["active_15_64"] * 100).round(1)
     logger.info("🔎 France métropolitaine, taux de chômage 15-64 ans : " +
                 ", ".join(f"{y} = {v} %" for y, v in rate.items()))
+    # Cohérence du fichier ACTIVITE : CDI + contrats courts = salariés ; salariés + non salariés = actifs occupés
+    gap1 = (wide["res_permanent"] + wide["res_fixed_term"] - wide["res_salaried"]).abs().max()
+    gap2 = (wide["res_salaried"] + wide["res_non_salaried"] - wide["res_workers"]).abs().max()
+    logger.info(f"🔎 CDI + contrats courts - salariés : écart max = {gap1:.6f} ; "
+                f"salariés + non salariés - actifs occupés : écart max = {gap2:.6f}")
+    precarious = (fm["res_fixed_term"] / fm["res_salaried"] * 100).round(1)
+    part_time = (fm["res_salaried_part_time_women"] / fm["res_salaried_women"] * 100).round(1)
+    logger.info("🔎 France métropolitaine, part des contrats à durée limitée parmi les salariés résidents : " +
+                ", ".join(f"{y} = {v} %" for y, v in precarious.items()))
+    logger.info("🔎 France métropolitaine, temps partiel des femmes salariées : " +
+                ", ".join(f"{y} = {v} %" for y, v in part_time.items()))
 
 
 def _connect():

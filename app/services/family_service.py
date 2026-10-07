@@ -19,6 +19,11 @@ from app.models import FamilyByTerritory, GeoCode
 FRANCE_CODE = "FM"  # France métropolitaine
 MIN_EVOLUTION_GAP = 5  # années minimum entre millésime de comparaison et dernier millésime
 
+PARENT_TYPES = ["father_employed", "father_not_employed", "mother_employed", "mother_not_employed",
+                "couple_both_employed", "couple_man_only_employed", "couple_woman_only_employed",
+                "couple_none_employed"]
+CHILD_AGES = ["lt2", "2_5"]  # moins de 2 ans, 2 à 5 ans (tableau détaillé 2023)
+
 COUNT_FIELDS = [
     "total_families",
     "couples_with_children",
@@ -33,7 +38,7 @@ COUNT_FIELDS = [
     "families_2_children",
     "families_3_children",
     "families_4_plus_children",
-]
+] + [f"children_{a}_{t}" for a in CHILD_AGES for t in PARENT_TYPES]
 
 EVOLUTION_METRICS = [
     "total_families",
@@ -108,7 +113,33 @@ class FamilyService:
             # % des couples avec enfant(s)
             "blended_families_percentage": _pct(c["blended_families"], c["couples_with_children"]),
             "traditional_families_percentage": _pct(c["traditional_families"], c["couples_with_children"]),
+            # Enfants de moins de 2 ans et de 2-5 ans selon l'activité des parents (2023)
+            **self._children_by_parents_activity(c),
         }
+
+    def _children_by_parents_activity(self, c):
+        """Répartition des jeunes enfants selon la situation d'emploi de leurs parents (en % des enfants)."""
+        out = {}
+        for a in CHILD_AGES:
+            v = {t: c[f"children_{a}_{t}"] for t in PARENT_TYPES}
+            if all(x is None for x in v.values()):
+                continue
+            total = sum(x for x in v.values() if x is not None)
+            out[f"children_{a}_total"] = total
+            for t, x in v.items():
+                out[f"children_{a}_{t}"] = x
+                out[f"children_{a}_{t}_percentage"] = _pct(x, total)
+            groups = {
+                # tous les parents présents ont un emploi (besoin potentiel de mode de garde)
+                "all_parents_employed": ["father_employed", "mother_employed", "couple_both_employed"],
+                # aucun parent en emploi (fragilité économique)
+                "no_parent_employed": ["father_not_employed", "mother_not_employed", "couple_none_employed"],
+                "single_parent": ["father_employed", "father_not_employed", "mother_employed", "mother_not_employed"],
+                "couple_one_employed": ["couple_man_only_employed", "couple_woman_only_employed"],
+            }
+            for g, types in groups.items():
+                out[f"children_{a}_{g}_percentage"] = _pct(sum(v[t] or 0 for t in types), total)
+        return out
 
     def _default_period(self, years):
         """Dernier millésime et millésime situé au moins 5 ans plus tôt (le plus récent)."""
