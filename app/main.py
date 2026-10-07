@@ -856,7 +856,7 @@ async def get_france_households(
 @protected_router.get("/education-training/commune/{code}",
     summary="Obtenir la scolarisation et les diplômes pour une commune",
     description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
-- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- taux de scolarisation à 2 ans et à 3-5 ans (2017, 2023) et par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
 - jeunes de 15-17 et 18-24 ans non scolarisés
 - diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
 
@@ -874,7 +874,7 @@ async def get_commune_education_training(
 @protected_router.get("/education-training/epci/{epci}",
     summary="Obtenir la scolarisation et les diplômes pour un EPCI",
     description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
-- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- taux de scolarisation à 2 ans et à 3-5 ans (2017, 2023) et par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
 - jeunes de 15-17 et 18-24 ans non scolarisés
 - diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
 
@@ -892,7 +892,7 @@ async def get_epci_education_training(
 @protected_router.get("/education-training/department/{dep}",
     summary="Obtenir la scolarisation et les diplômes pour un département",
     description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
-- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- taux de scolarisation à 2 ans et à 3-5 ans (2017, 2023) et par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
 - jeunes de 15-17 et 18-24 ans non scolarisés
 - diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
 
@@ -910,7 +910,7 @@ async def get_department_education_training(
 @protected_router.get("/education-training/region/{reg}",
     summary="Obtenir la scolarisation et les diplômes pour une région",
     description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
-- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- taux de scolarisation à 2 ans et à 3-5 ans (2017, 2023) et par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
 - jeunes de 15-17 et 18-24 ans non scolarisés
 - diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
 
@@ -928,7 +928,7 @@ async def get_region_education_training(
 @protected_router.get("/education-training/france",
     summary="Obtenir la scolarisation et les diplômes pour la France métropolitaine",
     description="""Scolarisation et diplômes (INSEE, recensements 2012, 2017, 2023 — valeurs officielles) :
-- taux de scolarisation par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
+- taux de scolarisation à 2 ans et à 3-5 ans (2017, 2023) et par âge (2-5, 6-10, 11-14, 15-17, 18-24, 25-29 ans, 30 ans ou plus), par sexe pour 15-17 et 18-24 ans
 - jeunes de 15-17 et 18-24 ans non scolarisés
 - diplôme le plus élevé de la population de 15 ans ou plus non scolarisée (sans diplôme, brevet, CAP-BEP, bac, supérieur : bac+2, bac+3/4, bac+5 ou plus), par sexe pour « sans diplôme » et « supérieur »
 

@@ -7,11 +7,17 @@ Sources (recensement de la population, millésimes 2012, 2017, 2023) :
   - DS_RP_EDUCATION_PRINC (parquet) : population et population scolarisée par âge et sexe
   - DS_RP_DIPLOMES_PRINC  (parquet) : population de 15 ans ou plus non scolarisée,
                                        par diplôme le plus élevé et sexe
+  - DS_RP_TD_EDUCATION_PRINC et DS_RP_TD_POPULATION_AGESEX_PRINC (parquet, tableaux détaillés,
+    2023 uniquement) : scolarisés et population par âge fin -> scolarisation à 2 ans et à 3-5 ans.
+    Les fichiers complets ou les extraits « _extrait_2-5ans » conviennent.
+    Pour 2017, ces 4 colonnes sont reprises de la table schooling_summary (FOR1 2017, communes),
+    agrégée par EPCI / département / région via geo_codes. 2012 : non disponible.
 
 Usage :
     python scripts/import_education_by_territory.py              # fichiers par défaut
     python scripts/import_education_by_territory.py --dry-run    # contrôles sans écrire en base
-    python scripts/import_education_by_territory.py --education f.parquet --diplomas f.parquet
+    python scripts/import_education_by_territory.py --education f.parquet --diplomas f.parquet \
+        --td-education f.parquet --td-population f.parquet
 
 Nécessite pyarrow (pip install pyarrow). Les millésimes présents remplacent ceux déjà en base.
 """
@@ -33,6 +39,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_EDUCATION = "data/education/territory/DS_RP_EDUCATION_PRINC_2023.parquet"
 DEFAULT_DIPLOMAS = "data/education/territory/DS_RP_DIPLOMES_PRINC_2023.parquet"
+DEFAULT_TD_EDUCATION = "data/education/territory/DS_RP_TD_EDUCATION_PRINC_2023_extrait_2-5ans.parquet"
+DEFAULT_TD_POPULATION = "data/education/territory/DS_RP_TD_POPULATION_AGESEX_PRINC_2023_extrait_2-5ans.parquet"
+EARLY_COLUMNS = ["pop_2", "enrolled_2", "pop_3_5", "enrolled_3_5"]
 LEVELS = ["COM", "ARM", "EPCI", "DEP", "REG"]
 FRANCE_CODE = "FM"
 KEY = ["geo_level", "geo_code", "year"]
@@ -70,7 +79,7 @@ for sx, s in SEXES.items():
     DIPLOMA_MEASURES[("001T100_RP", sx)] = f"no_diploma_{s}"
     DIPLOMA_MEASURES[("500T702_RP", sx)] = f"higher_education_{s}"
 
-COLUMNS = KEY + list(EDUCATION_MEASURES.values()) + list(DIPLOMA_MEASURES.values())
+COLUMNS = KEY + list(EDUCATION_MEASURES.values()) + list(DIPLOMA_MEASURES.values()) + EARLY_COLUMNS
 
 
 def _read(path, dims, mapping):
@@ -89,7 +98,70 @@ def _read(path, dims, mapping):
              .pivot(index=KEY, columns="measure", values="value")
 
 
-def load(education_path, diplomas_path):
+def _connect():
+    url = make_url(str(engine.url))
+    params = dict(host=url.host, port=url.port or 5432, dbname=url.database, user=url.username, password=url.password)
+    if url.host not in (None, "localhost", "127.0.0.1"):
+        params["sslmode"] = "require"
+    return psycopg2.connect(**params)
+
+
+def load_early_2023(td_education_path, td_population_path):
+    """Scolarisés et population à 2 ans et 3-5 ans (tableaux détaillés 2023)."""
+    group = {"Y2": "2", "Y3": "3_5", "Y4": "3_5", "Y5": "3_5"}
+    frames = {}
+    for path, prefix, extra in [(td_education_path, "enrolled", {"STUD_AREA": "_T"}),
+                                (td_population_path, "pop", {})]:
+        logger.info(f"📥 Lecture de {path}")
+        cols = ["GEO", "GEO_OBJECT", "TIME_PERIOD", "AGE", "SEX", "OBS_VALUE", *extra]
+        df = pd.read_parquet(path, columns=cols)
+        keep = df["GEO_OBJECT"].isin(LEVELS) | ((df["GEO_OBJECT"] == "FRANCE") & (df["GEO"] == FRANCE_CODE))
+        keep &= df["AGE"].isin(list(group)) & (df["SEX"] == "_T")
+        for k, v in extra.items():
+            keep &= df[k] == v
+        df = df[keep].assign(
+            measure=lambda d: prefix + "_" + d["AGE"].map(group),
+            year=lambda d: pd.to_datetime(d["TIME_PERIOD"]).dt.year.astype(int),
+        )
+        frames[prefix] = (df.groupby(["GEO_OBJECT", "GEO", "year", "measure"])["OBS_VALUE"].sum()
+                            .unstack("measure"))
+    early = frames["enrolled"].join(frames["pop"], how="outer")
+    early.index = early.index.set_names(KEY)
+    return early
+
+
+ARM_PATTERN = r"^(751(0[1-9]|1[0-9]|20)|6938[1-9]|132(0[1-9]|1[0-6]))$"
+EARLY_2017_SQL = f"""
+WITH s AS (
+    SELECT geo_code, total_2y AS pop_2, schooled_2y AS enrolled_2,
+           total_3_5y AS pop_3_5, schooled_3_5y AS enrolled_3_5,
+           geo_code ~ '{ARM_PATTERN}' AS is_arm
+    FROM schooling_summary WHERE year = 2017
+), com AS (
+    SELECT s.*, g.epci, g.dep, g.reg FROM s LEFT JOIN geo_codes g ON g.codgeo = s.geo_code WHERE NOT s.is_arm
+)
+SELECT 'COM' AS geo_level, geo_code, pop_2, enrolled_2, pop_3_5, enrolled_3_5 FROM com
+UNION ALL SELECT 'ARM', geo_code, pop_2, enrolled_2, pop_3_5, enrolled_3_5 FROM s WHERE is_arm
+UNION ALL SELECT 'EPCI', epci, sum(pop_2), sum(enrolled_2), sum(pop_3_5), sum(enrolled_3_5) FROM com WHERE epci IS NOT NULL GROUP BY epci
+UNION ALL SELECT 'DEP', dep, sum(pop_2), sum(enrolled_2), sum(pop_3_5), sum(enrolled_3_5) FROM com WHERE dep IS NOT NULL GROUP BY dep
+UNION ALL SELECT 'REG', reg, sum(pop_2), sum(enrolled_2), sum(pop_3_5), sum(enrolled_3_5) FROM com WHERE reg IS NOT NULL GROUP BY reg
+UNION ALL SELECT 'FRANCE', '{FRANCE_CODE}', sum(pop_2), sum(enrolled_2), sum(pop_3_5), sum(enrolled_3_5) FROM com WHERE geo_code NOT LIKE '97%'
+"""
+
+
+def load_early_2017():
+    """Scolarisation à 2 ans et 3-5 ans en 2017, depuis schooling_summary (agrégats via geo_codes)."""
+    logger.info("📥 Lecture de schooling_summary (2017) en base")
+    conn = _connect()
+    try:
+        df = pd.read_sql(EARLY_2017_SQL, conn)
+    finally:
+        conn.close()
+    df["year"] = 2017
+    return df.set_index(KEY)
+
+
+def load(education_path, diplomas_path, td_education_path=None, td_population_path=None, with_2017=True):
     edu = _read(education_path, ["AGE", "STUD", "SEX"], EDUCATION_MEASURES)
     dip = _read(diplomas_path, ["EDUC", "SEX"], DIPLOMA_MEASURES)
     wide = edu.join(dip, how="outer").reset_index()
@@ -99,6 +171,16 @@ def load(education_path, diplomas_path):
     # Bac+3 ou plus : publié en 2012, = bac+3/4 + bac+5 ou plus ensuite
     computed = wide["bac3_4"] + wide["bac5_plus"]
     wide["bac3_plus"] = wide["bac3_plus"].fillna(computed)
+
+    # Scolarisation à 2 ans et 3-5 ans : 2023 (tableaux détaillés) + 2017 (schooling_summary)
+    early_parts = []
+    if td_education_path and td_population_path:
+        early_parts.append(load_early_2023(td_education_path, td_population_path))
+    if with_2017:
+        early_parts.append(load_early_2017())
+    if early_parts:
+        early = pd.concat(early_parts)[EARLY_COLUMNS]
+        wide = wide.drop(columns=EARLY_COLUMNS).set_index(KEY).join(early, how="left").reset_index()
     return wide[COLUMNS]
 
 
@@ -114,21 +196,23 @@ def check(wide):
         ecart = (dep[col] - sums.reindex(dep.index)).abs().max()
         logger.info(f"🔎 {col} : écart max département officiel vs somme des communes = {ecart:.6f}")
     fm = wide[wide.geo_level == "FRANCE"].set_index("year")
+    for a in ["2", "3_5"]:
+        r = (fm[f"enrolled_{a}"] / fm[f"pop_{a}"] * 100).round(1)
+        logger.info(f"🔎 France métropolitaine, scolarisation à {a.replace('_', '-')} ans : " +
+                    ", ".join(f"{y} = {v} %" for y, v in r.items()))
+    filled = wide.dropna(subset=["pop_2"]).groupby(["geo_level", "year"]).size().unstack(fill_value=0)
+    logger.info("🔎 Lignes avec scolarisation à 2 ans renseignée : " + filled.to_dict().__repr__())
     rate = (fm["no_diploma"] / fm["non_enrolled_15_plus"] * 100).round(1)
     logger.info("🔎 France métropolitaine, part des sans diplôme : " +
                 ", ".join(f"{y} = {v} %" for y, v in rate.items()))
 
 
 def write(wide):
-    url = make_url(str(engine.url))
-    params = dict(host=url.host, port=url.port or 5432, dbname=url.database, user=url.username, password=url.password)
-    if url.host not in (None, "localhost", "127.0.0.1"):
-        params["sslmode"] = "require"
     years = sorted(int(y) for y in wide["year"].unique())
     buf = io.StringIO()
     wide.to_csv(buf, sep="\t", header=False, index=False, na_rep="\\N")
     buf.seek(0)
-    conn = psycopg2.connect(**params)
+    conn = _connect()
     try:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM education_by_territory WHERE year = ANY(%s)", (years,))
@@ -151,10 +235,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--education", default=DEFAULT_EDUCATION)
     parser.add_argument("--diplomas", default=DEFAULT_DIPLOMAS)
+    parser.add_argument("--td-education", default=DEFAULT_TD_EDUCATION)
+    parser.add_argument("--td-population", default=DEFAULT_TD_POPULATION)
+    parser.add_argument("--without-2017", action="store_true",
+                        help="ne pas reprendre la scolarisation à 2 ans / 3-5 ans 2017 depuis schooling_summary")
     parser.add_argument("--dry-run", action="store_true", help="contrôles uniquement, aucune écriture")
     args = parser.parse_args()
 
-    data = load(args.education, args.diplomas)
+    data = load(args.education, args.diplomas, args.td_education, args.td_population,
+                with_2017=not args.without_2017)
     check(data)
     if args.dry_run:
         logger.info("🧪 Dry-run : rien n'a été écrit en base")

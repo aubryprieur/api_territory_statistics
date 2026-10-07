@@ -181,6 +181,11 @@ class EducationByTerritory(Base):
     non_enrolled_15_plus_women = Column(Float)
     no_diploma_women = Column(Float)
     higher_education_women = Column(Float)
+    # Scolarisation à 2 ans et à 3-5 ans (2023 : tableaux détaillés INSEE ; 2017 : agrégat FOR1)
+    pop_2 = Column(Float)
+    enrolled_2 = Column(Float)
+    pop_3_5 = Column(Float)
+    enrolled_3_5 = Column(Float)
 
 class PublicSafety(Base):
     __tablename__ = "public_safety"

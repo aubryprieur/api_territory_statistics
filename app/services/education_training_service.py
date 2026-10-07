@@ -3,6 +3,8 @@ Scolarisation et diplômes — INSEE, recensement (DS_RP_EDUCATION_PRINC, DS_RP_
 table education_by_territory. Millésimes 2012, 2017, 2023 ; valeurs officielles par territoire.
 
 Taux de scolarisation : population scolarisée / population de la tranche d'âge.
+Scolarisation à 2 ans et à 3-5 ans : 2023 (tableaux détaillés, valeurs officielles) et 2017
+(agrégat des communes, tableau FOR1) ; non disponible pour 2012.
 Diplômes : part de la population de 15 ans ou plus NON scolarisée, selon le diplôme le plus élevé.
 """
 from app.models import EducationByTerritory
@@ -28,6 +30,7 @@ DIPLOMA_LABELS = {
 COUNT_FIELDS = (
     [f"{p}_{a}" for a in AGES for p in ("pop", "enrolled")]
     + [f"{p}_{a}_{s}" for a in ("15_17", "18_24") for s in ("men", "women") for p in ("pop", "enrolled")]
+    + ["pop_2", "enrolled_2", "pop_3_5", "enrolled_3_5"]
     + ["non_enrolled_15_plus"] + DIPLOMA_LEVELS
     + [f"{f}_{s}" for s in ("men", "women") for f in ("non_enrolled_15_plus", "no_diploma", "higher_education")]
 )
@@ -40,6 +43,7 @@ class EducationTrainingService(TerritoryStatsService):
     EXTRA = {"labels": {"ages": AGE_LABELS, "diplomas": DIPLOMA_LABELS}}
     EVOLUTION_METRICS = (
         [f"schooling_rate_{a}" for a in AGES]
+        + ["schooling_rate_2", "schooling_rate_3_5"]
         + ["schooling_rate_15_17_men", "schooling_rate_15_17_women",
            "schooling_rate_18_24_men", "schooling_rate_18_24_women", "not_enrolled_18_24"]
         + [f"{lvl}_percentage" for lvl in DIPLOMA_LEVELS]
@@ -54,6 +58,8 @@ class EducationTrainingService(TerritoryStatsService):
         # --- Scolarisation (% de la tranche d'âge)
         for a in AGES:
             d[f"schooling_rate_{a}"] = pct(c[f"enrolled_{a}"], c[f"pop_{a}"])
+        d["schooling_rate_2"] = pct(c["enrolled_2"], c["pop_2"])
+        d["schooling_rate_3_5"] = pct(c["enrolled_3_5"], c["pop_3_5"])
         for a in ("15_17", "18_24"):
             for s in ("men", "women"):
                 d[f"schooling_rate_{a}_{s}"] = pct(c[f"enrolled_{a}_{s}"], c[f"pop_{a}_{s}"])
