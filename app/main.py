@@ -30,6 +30,7 @@ from .services.housing_service import HousingService
 from .services.population_structure_service import PopulationStructureService
 from .services.childcare_offer_service import ChildcareOfferService
 from .services.caf_benefits_service import CafBenefitsService
+from .services.revenues_service import RevenuesService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -136,6 +137,7 @@ housing_service = HousingService()
 population_structure_service = PopulationStructureService()
 childcare_offer_service = ChildcareOfferService()
 caf_benefits_service = CafBenefitsService()
+revenues_poverty_service = RevenuesService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1226,6 +1228,51 @@ async def get_region_caf_benefits(request: Request, reg: str, start_year: int = 
 @limiter.limit(DEFAULT_RATE)
 async def get_france_caf_benefits(request: Request, start_year: int = None, end_year: int = None):
     return caf_benefits_service.france(start_year, end_year)
+
+REVENUES_POVERTY_DESCRIPTION = """Revenus et pauvreté (INSEE, Filosofi — 2017 à 2021 et 2023) :
+- niveau de vie médian, déciles D1 et D9, rapport interdécile ; Gini et S80/S20 (2023, départements, régions, France)
+- taux de pauvreté au seuil de 60 % : global, par âge du référent fiscal (2017-2021), par âge des individus dont
+  moins de 18 ans (2023, départements, régions, France), par statut d'occupation du logement
+- structure du revenu disponible (activité, chômage, pensions, patrimoine, prestations sociales, impôts)
+- communes et EPCI 2023 : niveau de vie médian et taux de pauvreté seulement ; détail des communes soumis au
+  secret statistique en deçà d'environ 1 000 ménages fiscaux
+
+Évolution par défaut 2018 → 2023 ; `difference` en points pour les taux, en euros pour les niveaux de vie."""
+
+
+@protected_router.get("/revenues-poverty/commune/{code}", summary="Revenus et pauvreté d'une commune",
+                      description=REVENUES_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_revenues_poverty(request: Request, code: str, start_year: int = None, end_year: int = None):
+    return revenues_poverty_service.by_commune(code, start_year, end_year)
+
+
+@protected_router.get("/revenues-poverty/epci/{epci}", summary="Revenus et pauvreté d'un EPCI",
+                      description=REVENUES_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_revenues_poverty(request: Request, epci: str, start_year: int = None, end_year: int = None):
+    return revenues_poverty_service.by_epci(epci, start_year, end_year)
+
+
+@protected_router.get("/revenues-poverty/department/{dep}", summary="Revenus et pauvreté d'un département",
+                      description=REVENUES_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_revenues_poverty(request: Request, dep: str, start_year: int = None, end_year: int = None):
+    return revenues_poverty_service.by_department(dep, start_year, end_year)
+
+
+@protected_router.get("/revenues-poverty/region/{reg}", summary="Revenus et pauvreté d'une région",
+                      description=REVENUES_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_revenues_poverty(request: Request, reg: str, start_year: int = None, end_year: int = None):
+    return revenues_poverty_service.by_region(reg, start_year, end_year)
+
+
+@protected_router.get("/revenues-poverty/france", summary="Revenus et pauvreté en France métropolitaine",
+                      description=REVENUES_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_revenues_poverty(request: Request, start_year: int = None, end_year: int = None):
+    return revenues_poverty_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
