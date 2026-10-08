@@ -32,6 +32,7 @@ from .services.childcare_offer_service import ChildcareOfferService
 from .services.caf_benefits_service import CafBenefitsService
 from .services.revenues_service import RevenuesService
 from .services.schools_service import SchoolsService, SixthGradeService
+from .services.immigration_service import ImmigrationService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -141,6 +142,7 @@ caf_benefits_service = CafBenefitsService()
 revenues_poverty_service = RevenuesService()
 schools_service = SchoolsService()
 sixth_grade_service = SixthGradeService()
+immigration_service = ImmigrationService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1327,6 +1329,49 @@ async def get_region_sixth_grade(request: Request, reg: str, start_year: int = N
 @limiter.limit(DEFAULT_RATE)
 async def get_france_sixth_grade(request: Request, start_year: int = None, end_year: int = None):
     return sixth_grade_service.france(start_year, end_year)
+
+IMMIGRATION_DESCRIPTION = """Immigrés et étrangers (INSEE, recensement 2023) :
+- part des immigrés (nés étrangers à l'étranger) et des étrangers (sans la nationalité française) dans la population
+- âge : part des 55 ans ou plus parmi les immigrés, part des immigrés parmi les 55 ans ou plus
+- emploi : chômage des immigrés / non-immigrés et des étrangers / Français (15 ans ou plus), taux d'emploi des
+  25-54 ans et des femmes de 25-54 ans, part des femmes de 25-54 ans au foyer
+- part des ouvriers et employés (exploitation complémentaire)
+Effectifs issus du recensement (estimations) : à manier avec prudence en dessous de 200 personnes."""
+
+
+@protected_router.get("/immigration/commune/{code}", summary="Immigrés et étrangers d'une commune",
+                      description=IMMIGRATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_immigration(request: Request, code: str):
+    return immigration_service.by_commune(code)
+
+
+@protected_router.get("/immigration/epci/{epci}", summary="Immigrés et étrangers d'un EPCI",
+                      description=IMMIGRATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_immigration(request: Request, epci: str):
+    return immigration_service.by_epci(epci)
+
+
+@protected_router.get("/immigration/department/{dep}", summary="Immigrés et étrangers d'un département",
+                      description=IMMIGRATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_immigration(request: Request, dep: str):
+    return immigration_service.by_department(dep)
+
+
+@protected_router.get("/immigration/region/{reg}", summary="Immigrés et étrangers d'une région",
+                      description=IMMIGRATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_immigration(request: Request, reg: str):
+    return immigration_service.by_region(reg)
+
+
+@protected_router.get("/immigration/france", summary="Immigrés et étrangers en France métropolitaine",
+                      description=IMMIGRATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_immigration(request: Request):
+    return immigration_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
