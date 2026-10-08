@@ -33,6 +33,7 @@ from .services.caf_benefits_service import CafBenefitsService
 from .services.revenues_service import RevenuesService
 from .services.schools_service import SchoolsService, SixthGradeService
 from .services.immigration_service import ImmigrationService
+from .services.economic_fabric_service import EconomicFabricService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -143,6 +144,7 @@ revenues_poverty_service = RevenuesService()
 schools_service = SchoolsService()
 sixth_grade_service = SixthGradeService()
 immigration_service = ImmigrationService()
+economic_fabric_service = EconomicFabricService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1372,6 +1374,46 @@ async def get_region_immigration(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_immigration(request: Request):
     return immigration_service.france()
+
+ECONOMIC_FABRIC_DESCRIPTION = """Tissu économique local (INSEE, Flores — établissements actifs et postes salariés au 31 décembre 2017
+et 2021) : établissements et postes par grand secteur et par taille, sphère présentielle / productive, domaine public,
+particuliers employeurs d'assistants maternels (et pour 100 enfants de moins de 5 ans, recensement 2023).
+EPCI, départements, régions et France métropolitaine ('FM') : sommes des communes. Évolution 2017 → 2021."""
+
+
+@protected_router.get("/economic-fabric/commune/{code}", summary="Tissu économique d'une commune",
+                      description=ECONOMIC_FABRIC_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_economic_fabric(request: Request, code: str):
+    return economic_fabric_service.by_commune(code)
+
+
+@protected_router.get("/economic-fabric/epci/{epci}", summary="Tissu économique d'un EPCI",
+                      description=ECONOMIC_FABRIC_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_economic_fabric(request: Request, epci: str):
+    return economic_fabric_service.by_epci(epci)
+
+
+@protected_router.get("/economic-fabric/department/{dep}", summary="Tissu économique d'un département",
+                      description=ECONOMIC_FABRIC_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_economic_fabric(request: Request, dep: str):
+    return economic_fabric_service.by_department(dep)
+
+
+@protected_router.get("/economic-fabric/region/{reg}", summary="Tissu économique d'une région",
+                      description=ECONOMIC_FABRIC_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_economic_fabric(request: Request, reg: str):
+    return economic_fabric_service.by_region(reg)
+
+
+@protected_router.get("/economic-fabric/france", summary="Tissu économique de la France métropolitaine",
+                      description=ECONOMIC_FABRIC_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_economic_fabric(request: Request):
+    return economic_fabric_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

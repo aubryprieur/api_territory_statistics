@@ -1335,3 +1335,16 @@ class ImmigrationByTerritory(Base):
 
 for _m in ['imm', 'imm_women', 'imm_lt15', 'imm_15_24', 'imm_25_54', 'imm_ge55', 'imm_employed_15p', 'imm_unemployed_15p', 'imm_retired_15p', 'imm_students_15p', 'imm_homemakers_15p', 'imm_other_inactive_15p', 'imm_employed_25_54', 'imm_women_25_54', 'imm_women_employed_25_54', 'imm_women_homemakers_25_54', 'imm_pcs1', 'imm_pcs2', 'imm_pcs3', 'imm_pcs4', 'imm_pcs5', 'imm_pcs6', 'nonimm', 'nonimm_women', 'nonimm_lt15', 'nonimm_15_24', 'nonimm_25_54', 'nonimm_ge55', 'nonimm_employed_15p', 'nonimm_unemployed_15p', 'nonimm_retired_15p', 'nonimm_students_15p', 'nonimm_homemakers_15p', 'nonimm_other_inactive_15p', 'nonimm_employed_25_54', 'nonimm_women_25_54', 'nonimm_women_employed_25_54', 'nonimm_women_homemakers_25_54', 'nonimm_pcs1', 'nonimm_pcs2', 'nonimm_pcs3', 'nonimm_pcs4', 'nonimm_pcs5', 'nonimm_pcs6', 'population', 'foreign', 'foreign_women', 'foreign_lt15', 'foreign_employed_15p', 'foreign_unemployed_15p', 'french', 'french_women', 'french_lt15', 'french_employed_15p', 'french_unemployed_15p']:
     setattr(ImmigrationByTerritory, _m, Column(_m, Float))
+
+
+class EconomicFabricByTerritory(Base):
+    """Tissu économique local (INSEE, Flores 2017 et 2021) — voir migration d9f1b3c5e7a8."""
+    __tablename__ = "economic_fabric_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)           # 2017, 2021
+
+
+for _m in ['ets_total', 'posts_total', 'ets_agriculture', 'posts_agriculture', 'ets_industry', 'posts_industry', 'ets_construction', 'posts_construction', 'ets_market_services', 'posts_market_services', 'ets_trade', 'posts_trade', 'ets_non_market', 'posts_non_market', 'ets_size_0', 'ets_size_1_9', 'ets_size_10_19', 'ets_size_20_49', 'ets_size_50p', 'posts_size_1_9', 'posts_size_10_19', 'posts_size_20_49', 'posts_size_50_99', 'posts_size_100p', 'ets_presential', 'ets_productive', 'ets_presential_public', 'ets_productive_public', 'posts_presential', 'posts_productive', 'posts_presential_public', 'posts_productive_public', 'childminder_employers', 'other_home_employers']:
+    setattr(EconomicFabricByTerritory, _m, Column(_m, Float))
