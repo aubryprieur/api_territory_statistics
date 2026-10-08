@@ -31,6 +31,7 @@ from .services.population_structure_service import PopulationStructureService
 from .services.childcare_offer_service import ChildcareOfferService
 from .services.caf_benefits_service import CafBenefitsService
 from .services.revenues_service import RevenuesService
+from .services.schools_service import SchoolsService, SixthGradeService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -138,6 +139,8 @@ population_structure_service = PopulationStructureService()
 childcare_offer_service = ChildcareOfferService()
 caf_benefits_service = CafBenefitsService()
 revenues_poverty_service = RevenuesService()
+schools_service = SchoolsService()
+sixth_grade_service = SixthGradeService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1273,6 +1276,57 @@ async def get_region_revenues_poverty(request: Request, reg: str, start_year: in
 @limiter.limit(DEFAULT_RATE)
 async def get_france_revenues_poverty(request: Request, start_year: int = None, end_year: int = None):
     return revenues_poverty_service.france(start_year, end_year)
+
+SCHOOLS_DESCRIPTION = """Établissements scolaires (ministère de l'Éducation nationale, DEPP) d'une commune ou d'un EPCI :
+écoles, collèges et lycées, avec pour chacun et par année :
+- l'indice de position sociale (IPS), son décile et son centile parmi les établissements du même type en France
+  (écoles ; collèges ; lycées LEGT, LPO, LP — public et privé sous contrat), les IPS de référence
+- collèges : DNB (taux de réussite, note à l'écrit), valeurs ajoutées et leur centile national, accès 6e-3e
+- lycées : bac général et technologique / professionnel, valeurs ajoutées (réussite, accès de la 2nde au bac, mentions)
+- l'indice d'éloignement (collèges, lycées ; base 100, plus élevé = plus éloigné des ressources), son décile
+
+`year` = année de rentrée pour l'IPS et l'éloignement (2025 = 2025-2026), année de session pour les examens.
+`national` : distribution nationale (moyenne, déciles D1-D9) de chaque indicateur par type et par année."""
+
+
+@protected_router.get("/schools/commune/{code}", summary="Établissements scolaires d'une commune",
+                      description=SCHOOLS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_schools(request: Request, code: str):
+    return schools_service.by_commune(code)
+
+
+@protected_router.get("/schools/epci/{epci}", summary="Établissements scolaires d'un EPCI",
+                      description=SCHOOLS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_schools(request: Request, epci: str):
+    return schools_service.by_epci(epci)
+
+
+SIXTH_GRADE_DESCRIPTION = """Âge des élèves à l'entrée en 6e (DEPP), 2020 à 2025 : élèves à l'heure, en avance, en retard,
+par sexe et par secteur ; taux de retard (late_rate). Publié par département ; régions et France métropolitaine
+('FM') obtenues par somme des départements."""
+
+
+@protected_router.get("/sixth-grade/department/{dep}", summary="Retard à l'entrée en 6e d'un département",
+                      description=SIXTH_GRADE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_sixth_grade(request: Request, dep: str, start_year: int = None, end_year: int = None):
+    return sixth_grade_service.by_department(dep, start_year, end_year)
+
+
+@protected_router.get("/sixth-grade/region/{reg}", summary="Retard à l'entrée en 6e d'une région",
+                      description=SIXTH_GRADE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_sixth_grade(request: Request, reg: str, start_year: int = None, end_year: int = None):
+    return sixth_grade_service.by_region(reg, start_year, end_year)
+
+
+@protected_router.get("/sixth-grade/france", summary="Retard à l'entrée en 6e en France métropolitaine",
+                      description=SIXTH_GRADE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_sixth_grade(request: Request, start_year: int = None, end_year: int = None):
+    return sixth_grade_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

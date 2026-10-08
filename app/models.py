@@ -1254,3 +1254,71 @@ class RevenuesByTerritory(Base):
     median_ind_50_64 = Column(Float)
     median_ind_65_74 = Column(Float)
     median_ind_ge75 = Column(Float)
+
+
+# --------------------------------------------------------------------------- Éducation nationale
+_SCHOOL_FLOATS = ['ips', 'ips_sd', 'ips_gt', 'ips_pro', 'ips_post_bac', 'ips_percentile', 'ips_national',
+                  'ips_national_public', 'ips_national_private', 'ips_academic', 'ips_departmental',
+                  'ips_departmental_public', 'ips_departmental_private', 'remoteness', 'remoteness_percentile',
+                  'dnb_candidates', 'dnb_success_rate', 'dnb_success_va', 'dnb_written_score', 'dnb_written_va',
+                  'dnb_mentions_rate', 'dnb_tb_rate', 'access_6_3_rate', 'dnb_success_va_percentile',
+                  'dnb_written_va_percentile',
+                  'gt_candidates', 'gt_success_rate', 'gt_success_va', 'gt_access_rate', 'gt_access_va',
+                  'gt_mentions_rate', 'gt_mentions_va', 'gt_success_va_percentile', 'gt_access_va_percentile',
+                  'pro_candidates', 'pro_success_rate', 'pro_success_va', 'pro_access_rate', 'pro_access_va',
+                  'pro_mentions_rate', 'pro_mentions_va', 'pro_success_va_percentile', 'pro_access_va_percentile']
+
+
+class SchoolByYear(Base):
+    """Indicateurs d'un établissement scolaire (IPS, valeurs ajoutées, éloignement) — migration b7d9f1a3c5e6."""
+    __tablename__ = "schools_by_year"
+
+    uai = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)        # rentrée (IPS, éloignement) ou session (examens)
+    school_type = Column(String(10))                # ecole, college, lycee
+    lycee_type = Column(String(10))                 # LEGT, LPO, LP
+    name = Column(String)
+    sector = Column(String(10))                     # public, private
+    commune_code = Column(String(5), index=True)
+    commune_name = Column(String)
+    department_code = Column(String(3))
+    ips_decile = Column(Integer)
+    remoteness_decile = Column(Integer)
+
+
+for _c in _SCHOOL_FLOATS:
+    setattr(SchoolByYear, _c, Column(_c, Float))
+
+
+class SchoolNationalByYear(Base):
+    """Distribution nationale d'un indicateur par type d'établissement et année (moyenne, déciles)."""
+    __tablename__ = "schools_national_by_year"
+
+    school_type = Column(String(20), primary_key=True)  # ecole, college, lycee, lycee_LEGT, lycee_LPO, lycee_LP
+    year = Column(Integer, primary_key=True)
+    metric = Column(String(40), primary_key=True)
+    establishments = Column(Integer)
+    mean = Column(Float)
+    d1 = Column(Float)
+    d2 = Column(Float)
+    d3 = Column(Float)
+    d4 = Column(Float)
+    d5 = Column(Float)
+    d6 = Column(Float)
+    d7 = Column(Float)
+    d8 = Column(Float)
+    d9 = Column(Float)
+
+
+class SixthGradeAgeByTerritory(Base):
+    """Âge des élèves à l'entrée en 6e (DEP, REG, FRANCE 'FM') — migration b7d9f1a3c5e6."""
+    __tablename__ = "sixth_grade_age_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _g in ("total", "girls", "boys", "public", "private"):
+    for _m in ("pupils", "on_time", "early", "late"):
+        setattr(SixthGradeAgeByTerritory, f"{_m}_{_g}", Column(f"{_m}_{_g}", Float))
