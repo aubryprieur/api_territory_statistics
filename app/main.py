@@ -27,6 +27,7 @@ from .services.household_service import HouseholdService
 from .services.education_training_service import EducationTrainingService
 from .services.employment_activity_service import EmploymentActivityService
 from .services.housing_service import HousingService
+from .services.population_structure_service import PopulationStructureService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -130,6 +131,7 @@ household_service = HouseholdService()
 education_training_service = EducationTrainingService()
 employment_activity_service = EmploymentActivityService()
 housing_service = HousingService()
+population_structure_service = PopulationStructureService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1083,6 +1085,52 @@ async def get_region_housing(request: Request, reg: str, start_year: int = None,
 @limiter.limit(DEFAULT_RATE)
 async def get_france_housing(request: Request, start_year: int = None, end_year: int = None):
     return housing_service.france(start_year, end_year)
+
+POPULATION_DESCRIPTION = """Population (INSEE, recensements — valeurs officielles) :
+- structure par âge et sexe (2012, 2017, 2023) : jeunes, seniors, grand âge ; indice de vieillissement ; rapport de dépendance
+- pyramide des âges par tranche de 5 ans et sexe, tranches de l'enfance et de la jeunesse (2023)
+- catégories socioprofessionnelles des 15 ans ou plus, dont retraités
+- mobilité résidentielle : lieu de résidence un an auparavant, âge des nouveaux arrivants
+- `history` : série longue 1968 → 2023 (population, densité, logements) et, par période intercensitaire,
+  taux de variation annuel moyen dû au solde naturel et au solde migratoire apparent, taux de natalité et de mortalité
+
+Évolution par défaut 2017 → 2023 ; `difference` en points pour les taux."""
+
+
+@protected_router.get("/population-structure/commune/{code}", summary="Obtenir la population d'une commune",
+                      description=POPULATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_population_structure(request: Request, code: str, start_year: int = None, end_year: int = None):
+    return population_structure_service.by_commune(code, start_year, end_year)
+
+
+@protected_router.get("/population-structure/epci/{epci}", summary="Obtenir la population d'un EPCI",
+                      description=POPULATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_population_structure(request: Request, epci: str, start_year: int = None, end_year: int = None):
+    return population_structure_service.by_epci(epci, start_year, end_year)
+
+
+@protected_router.get("/population-structure/department/{dep}", summary="Obtenir la population d'un département",
+                      description=POPULATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_population_structure(request: Request, dep: str, start_year: int = None,
+                                              end_year: int = None):
+    return population_structure_service.by_department(dep, start_year, end_year)
+
+
+@protected_router.get("/population-structure/region/{reg}", summary="Obtenir la population d'une région",
+                      description=POPULATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_population_structure(request: Request, reg: str, start_year: int = None, end_year: int = None):
+    return population_structure_service.by_region(reg, start_year, end_year)
+
+
+@protected_router.get("/population-structure/france", summary="Obtenir la population de la France métropolitaine",
+                      description=POPULATION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_population_structure(request: Request, start_year: int = None, end_year: int = None):
+    return population_structure_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
