@@ -29,6 +29,7 @@ from .services.employment_activity_service import EmploymentActivityService
 from .services.housing_service import HousingService
 from .services.population_structure_service import PopulationStructureService
 from .services.childcare_offer_service import ChildcareOfferService
+from .services.caf_benefits_service import CafBenefitsService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -134,6 +135,7 @@ employment_activity_service = EmploymentActivityService()
 housing_service = HousingService()
 population_structure_service = PopulationStructureService()
 childcare_offer_service = ChildcareOfferService()
+caf_benefits_service = CafBenefitsService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1177,6 +1179,53 @@ async def get_region_childcare_offer(request: Request, reg: str, start_year: int
 @limiter.limit(DEFAULT_RATE)
 async def get_france_childcare_offer(request: Request, start_year: int = None, end_year: int = None):
     return childcare_offer_service.france(start_year, end_year)
+
+CAF_BENEFITS_DESCRIPTION = """Prestations CAF (Cnaf, data.caf.fr — foyers allocataires au 31 décembre, 2020 à 2024) :
+- par prestation : foyers allocataires, personnes couvertes, montant mensuel versé (RSA, prime d'activité,
+  aides au logement APL/ALF/ALS, allocations familiales, ASF, Paje, CMG, AAH, AEEH...)
+- taux pour l'analyse des besoins sociaux, rapportés au recensement 2023 du territoire (`denominators`) :
+  part des ménages allocataires et de la population couverte, population couverte par le RSA, la prime
+  d'activité, les aides au logement, bénéficiaires de l'AAH pour 100 personnes de 20-64 ans, ASF pour
+  100 familles monoparentales, montants moyens
+- communes : sans les prestations liées au handicap (non publiées) ; régions et France métropolitaine :
+  somme des départements
+
+Évolution par défaut 2020 → 2024 ; `difference` en points pour les taux."""
+
+
+@protected_router.get("/caf-benefits/commune/{code}", summary="Prestations CAF d'une commune",
+                      description=CAF_BENEFITS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_caf_benefits(request: Request, code: str, start_year: int = None, end_year: int = None):
+    return caf_benefits_service.by_commune(code, start_year, end_year)
+
+
+@protected_router.get("/caf-benefits/epci/{epci}", summary="Prestations CAF d'un EPCI",
+                      description=CAF_BENEFITS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_caf_benefits(request: Request, epci: str, start_year: int = None, end_year: int = None):
+    return caf_benefits_service.by_epci(epci, start_year, end_year)
+
+
+@protected_router.get("/caf-benefits/department/{dep}", summary="Prestations CAF d'un département",
+                      description=CAF_BENEFITS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_caf_benefits(request: Request, dep: str, start_year: int = None, end_year: int = None):
+    return caf_benefits_service.by_department(dep, start_year, end_year)
+
+
+@protected_router.get("/caf-benefits/region/{reg}", summary="Prestations CAF d'une région",
+                      description=CAF_BENEFITS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_caf_benefits(request: Request, reg: str, start_year: int = None, end_year: int = None):
+    return caf_benefits_service.by_region(reg, start_year, end_year)
+
+
+@protected_router.get("/caf-benefits/france", summary="Prestations CAF en France métropolitaine",
+                      description=CAF_BENEFITS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_caf_benefits(request: Request, start_year: int = None, end_year: int = None):
+    return caf_benefits_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
