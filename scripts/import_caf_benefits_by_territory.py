@@ -86,6 +86,10 @@ def _prepare(df, level, code_col):
         if src not in df.columns:
             df[src] = float("nan")
     out = df[["geo_level", "geo_code", "year", *SOURCE_COLUMNS]].rename(columns=SOURCE_COLUMNS)
+    # Certaines colonnes sont publiées en texte (ex. indben_aeeh des départements) : conversion numérique,
+    # sinon la somme régionale concatène les chaînes
+    values = list(SOURCE_COLUMNS.values())
+    out[values] = out[values].apply(pd.to_numeric, errors="coerce")
     return out, df
 
 
@@ -133,6 +137,8 @@ def check(data, d=DIR):
         logger.info("🔎 Foyers allocataires, somme des départements vs France entière : " +
                     ", ".join(f"{y} : {alldep.get(y, 0):,.0f} / {v:,.0f}" for y, v in nat.items() if y in YEARS))
     fm = data[data.geo_level == "FRANCE"].set_index("year")
+    logger.info("🔎 France métropolitaine, bénéficiaires de l'AEEH : " +
+                ", ".join(f"{y} = {v:,.0f}" for y, v in fm["aeeh_beneficiaries"].items()))
     logger.info("🔎 France métropolitaine, foyers allocataires du RSA : " +
                 ", ".join(f"{y} = {v:,.0f}" for y, v in fm["rsa_households"].items()))
 
