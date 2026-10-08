@@ -147,8 +147,10 @@ def write(data):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM immigration_by_territory WHERE year = %s", (YEAR,))
             logger.info(f"🗑️ {cur.rowcount} lignes supprimées pour {YEAR}")
+            # noms entre guillemets : « foreign » est un mot réservé de PostgreSQL
+            columns = ", ".join('"%s"' % c for c in COLUMNS)
             cur.copy_expert(
-                f"COPY immigration_by_territory ({', '.join(COLUMNS)}) FROM STDIN WITH (FORMAT text, NULL '\\N')", buf)
+                f"COPY immigration_by_territory ({columns}) FROM STDIN WITH (FORMAT text, NULL '\\N')", buf)
             logger.info(f"✅ {cur.rowcount} lignes importées")
         conn.commit()
         conn.autocommit = True
