@@ -1348,3 +1348,39 @@ class EconomicFabricByTerritory(Base):
 
 for _m in ['ets_total', 'posts_total', 'ets_agriculture', 'posts_agriculture', 'ets_industry', 'posts_industry', 'ets_construction', 'posts_construction', 'ets_market_services', 'posts_market_services', 'ets_trade', 'posts_trade', 'ets_non_market', 'posts_non_market', 'ets_size_0', 'ets_size_1_9', 'ets_size_10_19', 'ets_size_20_49', 'ets_size_50p', 'posts_size_1_9', 'posts_size_10_19', 'posts_size_20_49', 'posts_size_50_99', 'posts_size_100p', 'ets_presential', 'ets_productive', 'ets_presential_public', 'ets_productive_public', 'posts_presential', 'posts_productive', 'posts_presential_public', 'posts_productive_public', 'childminder_employers', 'other_home_employers']:
     setattr(EconomicFabricByTerritory, _m, Column(_m, Float))
+
+
+class EquipmentType(Base):
+    """Types d'équipements de la BPE (libellé, domaine, sous-domaine) — migration e1a3c5d7f9b2."""
+    __tablename__ = "equipment_types"
+
+    typequ = Column(String(4), primary_key=True)
+    label = Column(String)
+    domain = Column(String(1))
+    domain_label = Column(String)
+    subdomain = Column(String(2))
+    subdomain_label = Column(String)
+
+
+class EquipmentByTerritory(Base):
+    """Nombre d'équipements par type et par territoire (BPE), dont en QPV — migration e1a3c5d7f9b2."""
+    __tablename__ = "equipment_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)
+    typequ = Column(String(4), primary_key=True)
+    count = Column(Integer)
+    count_qpv = Column(Integer)
+
+
+class EquipmentNearest(Base):
+    """Distance au service clé le plus proche pour les communes qui n'en ont pas (BPE) — migration e1a3c5d7f9b2."""
+    __tablename__ = "equipment_nearest"
+
+    geo_code = Column(String(10), primary_key=True)    # commune (ou arrondissement)
+    year = Column(Integer, primary_key=True)
+    service = Column(String(40), primary_key=True)     # clé de app/equipment_catalog.SERVICES
+    distance_km = Column(Float)
+    nearest_code = Column(String(10))
+    nearest_name = Column(String)

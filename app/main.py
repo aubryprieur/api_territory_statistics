@@ -34,6 +34,7 @@ from .services.revenues_service import RevenuesService
 from .services.schools_service import SchoolsService, SixthGradeService
 from .services.immigration_service import ImmigrationService
 from .services.economic_fabric_service import EconomicFabricService
+from .services.equipment_service import EquipmentService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -145,6 +146,7 @@ schools_service = SchoolsService()
 sixth_grade_service = SixthGradeService()
 immigration_service = ImmigrationService()
 economic_fabric_service = EconomicFabricService()
+equipment_service = EquipmentService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1414,6 +1416,27 @@ async def get_region_economic_fabric(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_economic_fabric(request: Request):
     return economic_fabric_service.france()
+
+EQUIPMENT_DESCRIPTION = """Équipements et services (INSEE, Base permanente des équipements 2025) :
+- services clés pour l'analyse des besoins sociaux (santé, petite enfance, personnes âgées, accès aux droits,
+  commerces, culture) : nombre, dont en quartier prioritaire (QPV 2024), densité pour 10 000 habitants comparée à
+  l'EPCI, au département, à la région et à la France métropolitaine ; pour les services absents de la commune,
+  distance à vol d'oiseau au plus proche (depuis la mairie)
+- inventaire complet des équipements par domaine et sous-domaine"""
+
+
+@protected_router.get("/equipment/commune/{code}", summary="Équipements et services d'une commune",
+                      description=EQUIPMENT_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_equipment(request: Request, code: str):
+    return equipment_service.by_commune(code)
+
+
+@protected_router.get("/equipment/epci/{epci}", summary="Équipements et services d'un EPCI",
+                      description=EQUIPMENT_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_equipment(request: Request, epci: str):
+    return equipment_service.by_epci(epci)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
