@@ -1096,3 +1096,29 @@ class PopulationHistoryByTerritory(Base):
     dwellings_vacant = Column(Float)
     households_population = Column(Float)
     area_km2 = Column(Float)
+
+
+class ChildcareByTerritory(Base):
+    """Accueil du jeune enfant (Cnaf) : places et taux de couverture par mode — voir migration e4a6c8d0f2b3."""
+    __tablename__ = "childcare_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FE' (France entière hors Mayotte)
+    year = Column(Integer, primary_key=True)           # 2017 à 2023
+    places_eaje_psu = Column(Float)
+    places_eaje_hors_psu = Column(Float)
+    places_eaje = Column(Float)
+    places_preschool = Column(Float)
+    places_childminder = Column(Float)
+    places_home_care = Column(Float)
+    places_individual = Column(Float)
+    places_total = Column(Float)
+    rate_eaje_psu = Column(Float)
+    rate_eaje_hors_psu = Column(Float)
+    rate_eaje = Column(Float)
+    rate_preschool = Column(Float)
+    rate_childminder = Column(Float)
+    rate_home_care = Column(Float)
+    rate_individual = Column(Float)
+    rate_global = Column(Float)
+    source = Column(String(20))                        # cnaf_detail | cnaf_tauxcouv

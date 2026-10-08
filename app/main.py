@@ -28,6 +28,7 @@ from .services.education_training_service import EducationTrainingService
 from .services.employment_activity_service import EmploymentActivityService
 from .services.housing_service import HousingService
 from .services.population_structure_service import PopulationStructureService
+from .services.childcare_offer_service import ChildcareOfferService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -132,6 +133,7 @@ education_training_service = EducationTrainingService()
 employment_activity_service = EmploymentActivityService()
 housing_service = HousingService()
 population_structure_service = PopulationStructureService()
+childcare_offer_service = ChildcareOfferService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1131,6 +1133,50 @@ async def get_region_population_structure(request: Request, reg: str, start_year
 @limiter.limit(DEFAULT_RATE)
 async def get_france_population_structure(request: Request, start_year: int = None, end_year: int = None):
     return population_structure_service.france(start_year, end_year)
+
+CHILDCARE_OFFER_DESCRIPTION = """Accueil du jeune enfant (Cnaf, data.caf.fr — années 2017 à 2023) :
+- nombre de places par mode d'accueil : accueil collectif (EAJE, PSU et hors PSU), préscolarisation,
+  assistantes maternelles, garde à domicile ; répartition de l'offre
+- taux de couverture (places pour 100 enfants de moins de 3 ans) par mode et global
+- communes : celles publiées en détail par la Cnaf (environ 1 000) ; pour les autres, taux global 2020 et 2021
+- France : France entière hors Mayotte (périmètre Cnaf)
+
+Évolution par défaut : dernière année et année distante d'au moins 5 ans ; `difference` en points pour les taux."""
+
+
+@protected_router.get("/childcare-offer/commune/{code}", summary="Accueil du jeune enfant d'une commune",
+                      description=CHILDCARE_OFFER_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_childcare_offer(request: Request, code: str, start_year: int = None, end_year: int = None):
+    return childcare_offer_service.by_commune(code, start_year, end_year)
+
+
+@protected_router.get("/childcare-offer/epci/{epci}", summary="Accueil du jeune enfant d'un EPCI",
+                      description=CHILDCARE_OFFER_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_childcare_offer(request: Request, epci: str, start_year: int = None, end_year: int = None):
+    return childcare_offer_service.by_epci(epci, start_year, end_year)
+
+
+@protected_router.get("/childcare-offer/department/{dep}", summary="Accueil du jeune enfant d'un département",
+                      description=CHILDCARE_OFFER_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_childcare_offer(request: Request, dep: str, start_year: int = None, end_year: int = None):
+    return childcare_offer_service.by_department(dep, start_year, end_year)
+
+
+@protected_router.get("/childcare-offer/region/{reg}", summary="Accueil du jeune enfant d'une région",
+                      description=CHILDCARE_OFFER_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_childcare_offer(request: Request, reg: str, start_year: int = None, end_year: int = None):
+    return childcare_offer_service.by_region(reg, start_year, end_year)
+
+
+@protected_router.get("/childcare-offer/france", summary="Accueil du jeune enfant en France (hors Mayotte)",
+                      description=CHILDCARE_OFFER_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_childcare_offer(request: Request, start_year: int = None, end_year: int = None):
+    return childcare_offer_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
