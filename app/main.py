@@ -35,6 +35,7 @@ from .services.schools_service import SchoolsService, SixthGradeService
 from .services.immigration_service import ImmigrationService
 from .services.economic_fabric_service import EconomicFabricService
 from .services.equipment_service import EquipmentService
+from .services.delinquency_service import DelinquencyService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -147,6 +148,7 @@ sixth_grade_service = SixthGradeService()
 immigration_service = ImmigrationService()
 economic_fabric_service = EconomicFabricService()
 equipment_service = EquipmentService()
+delinquency_service = DelinquencyService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1437,6 +1439,47 @@ async def get_commune_equipment(request: Request, code: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_epci_equipment(request: Request, epci: str):
     return equipment_service.by_epci(epci)
+
+DELINQUENCY_DESCRIPTION = """Crimes et délits enregistrés par la police et la gendarmerie (SSMSI, 2016-2025) : violences physiques
+intrafamiliales et hors cadre familial, violences sexuelles, vols, cambriolages, dégradations, stupéfiants,
+escroqueries (homicides et tentatives : départements, régions, France). Pour chaque indicateur : nombre, taux pour
+1 000 habitants (logements pour les cambriolages), `diffused` (petits effectifs communaux non diffusés).
+EPCI = somme des communes ; France métropolitaine ('FM') = somme des départements."""
+
+
+@protected_router.get("/delinquency/commune/{code}", summary="Délinquance enregistrée dans une commune",
+                      description=DELINQUENCY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_delinquency(request: Request, code: str, start_year: int = None, end_year: int = None):
+    return delinquency_service.by_commune(code, start_year, end_year)
+
+
+@protected_router.get("/delinquency/epci/{epci}", summary="Délinquance enregistrée dans un EPCI",
+                      description=DELINQUENCY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_delinquency(request: Request, epci: str, start_year: int = None, end_year: int = None):
+    return delinquency_service.by_epci(epci, start_year, end_year)
+
+
+@protected_router.get("/delinquency/department/{dep}", summary="Délinquance enregistrée dans un département",
+                      description=DELINQUENCY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_delinquency(request: Request, dep: str, start_year: int = None, end_year: int = None):
+    return delinquency_service.by_department(dep, start_year, end_year)
+
+
+@protected_router.get("/delinquency/region/{reg}", summary="Délinquance enregistrée dans une région",
+                      description=DELINQUENCY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_delinquency(request: Request, reg: str, start_year: int = None, end_year: int = None):
+    return delinquency_service.by_region(reg, start_year, end_year)
+
+
+@protected_router.get("/delinquency/france", summary="Délinquance enregistrée en France métropolitaine",
+                      description=DELINQUENCY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_delinquency(request: Request, start_year: int = None, end_year: int = None):
+    return delinquency_service.france(start_year, end_year)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

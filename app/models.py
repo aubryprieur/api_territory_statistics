@@ -1384,3 +1384,20 @@ class EquipmentNearest(Base):
     distance_km = Column(Float)
     nearest_code = Column(String(10))
     nearest_name = Column(String)
+
+
+class DelinquencyByTerritory(Base):
+    """Crimes et délits enregistrés (SSMSI, 2016-2025) — voir migration f2b4d6e8a0c1."""
+    __tablename__ = "delinquency_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)           # 2016 à 2025
+    population = Column(Float)
+    dwellings = Column(Float)
+
+
+for _ind in ['homicide', 'attempted_homicide', 'intrafamily_violence', 'other_physical_violence', 'sexual_violence', 'armed_robbery', 'violent_theft', 'theft_without_violence', 'burglary', 'vehicle_theft', 'theft_from_vehicle', 'vehicle_accessory_theft', 'vandalism', 'drug_use', 'drug_use_afd', 'drug_use_non_afd', 'drug_trafficking', 'fraud']:
+    setattr(DelinquencyByTerritory, f"{_ind}_count", Column(f"{_ind}_count", Float))
+    setattr(DelinquencyByTerritory, f"{_ind}_rate", Column(f"{_ind}_rate", Float))
+    setattr(DelinquencyByTerritory, f"{_ind}_diffused", Column(f"{_ind}_diffused", Boolean))
