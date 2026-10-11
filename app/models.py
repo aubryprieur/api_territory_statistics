@@ -1417,7 +1417,7 @@ for _m in ['young_neet_rate', 'young_no_diploma_rate', 'long_term_unemployed_sha
 
 
 class JobSeekersByTerritory(Base):
-    """Demandeurs d'emploi inscrits à France Travail, catégories A, B, C (Dares, 4e trimestre) — migration b4d6f8a0c2e3."""
+    """Demandeurs d'emploi inscrits à France Travail, catégories A, B, C (Dares, 4e trimestre) — migration c9e1a3b5d7f0."""
     __tablename__ = "job_seekers_by_territory"
 
     geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE

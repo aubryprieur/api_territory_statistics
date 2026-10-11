@@ -1,6 +1,6 @@
 """create job_seekers_by_territory (demandeurs d'emploi inscrits à France Travail — Dares, données communales)
 
-Revision ID: b4d6f8a0c2e3
+Revision ID: c9e1a3b5d7f0
 Revises: a3c5e7f9b1d2
 Create Date: 2026-10-11
 
@@ -14,7 +14,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = 'b4d6f8a0c2e3'
+revision: str = 'c9e1a3b5d7f0'
 down_revision: Union[str, None] = 'a3c5e7f9b1d2'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
