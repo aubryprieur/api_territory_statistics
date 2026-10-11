@@ -36,6 +36,7 @@ from .services.immigration_service import ImmigrationService
 from .services.economic_fabric_service import EconomicFabricService
 from .services.equipment_service import EquipmentService
 from .services.delinquency_service import DelinquencyService
+from .services.sdg_indicators_service import SdgIndicatorsService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -149,6 +150,7 @@ immigration_service = ImmigrationService()
 economic_fabric_service = EconomicFabricService()
 equipment_service = EquipmentService()
 delinquency_service = DelinquencyService()
+sdg_indicators_service = SdgIndicatorsService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1480,6 +1482,46 @@ async def get_region_delinquency(request: Request, reg: str, start_year: int = N
 @limiter.limit(DEFAULT_RATE)
 async def get_france_delinquency(request: Request, start_year: int = None, end_year: int = None):
     return delinquency_service.france(start_year, end_year)
+
+SDG_DESCRIPTION = """Indicateurs territoriaux de développement durable (INSEE / SDES, base ODD) retenus pour l'analyse des
+besoins sociaux : insertion des jeunes, chômage de longue durée, écart d'emploi femmes-hommes, économie sociale et
+solidaire, accessibilité aux médecins généralistes (APL), déplacements domicile-travail, logements sociaux et vacants,
+participation électorale. `available_years_by_indicator` : millésimes disponibles pour chaque indicateur."""
+
+
+@protected_router.get("/sdg-indicators/commune/{code}", summary="Indicateurs de développement durable d'une commune",
+                      description=SDG_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_sdg(request: Request, code: str):
+    return sdg_indicators_service.by_commune(code)
+
+
+@protected_router.get("/sdg-indicators/epci/{epci}", summary="Indicateurs de développement durable d'un EPCI",
+                      description=SDG_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_sdg(request: Request, epci: str):
+    return sdg_indicators_service.by_epci(epci)
+
+
+@protected_router.get("/sdg-indicators/department/{dep}", summary="Indicateurs de développement durable d'un département",
+                      description=SDG_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_sdg(request: Request, dep: str):
+    return sdg_indicators_service.by_department(dep)
+
+
+@protected_router.get("/sdg-indicators/region/{reg}", summary="Indicateurs de développement durable d'une région",
+                      description=SDG_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_sdg(request: Request, reg: str):
+    return sdg_indicators_service.by_region(reg)
+
+
+@protected_router.get("/sdg-indicators/france", summary="Indicateurs de développement durable de la France métropolitaine",
+                      description=SDG_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_sdg(request: Request):
+    return sdg_indicators_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

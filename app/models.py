@@ -1401,3 +1401,16 @@ for _ind in ['homicide', 'attempted_homicide', 'intrafamily_violence', 'other_ph
     setattr(DelinquencyByTerritory, f"{_ind}_count", Column(f"{_ind}_count", Float))
     setattr(DelinquencyByTerritory, f"{_ind}_rate", Column(f"{_ind}_rate", Float))
     setattr(DelinquencyByTerritory, f"{_ind}_diffused", Column(f"{_ind}_diffused", Boolean))
+
+
+class SdgIndicatorsByTerritory(Base):
+    """Indicateurs de développement durable sélectionnés (INSEE / SDES, base ODD) — migration a3c5e7f9b1d2."""
+    __tablename__ = "sdg_indicators_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['young_neet_rate', 'young_no_diploma_rate', 'long_term_unemployed_share', 'employment_gap_women_men', 'employment_gap_women_men_25_54', 'ess_jobs_share', 'gp_accessibility', 'commute_minutes', 'commute_km', 'commute_car_share', 'commute_public_transport_share', 'commute_walk_share', 'commute_bike_share', 'commute_two_wheels_share', 'commute_no_transport_share', 'social_housing_share', 'vacant_housing_share', 'presidential_turnout']:
+    setattr(SdgIndicatorsByTerritory, _m, Column(_m, Float))
