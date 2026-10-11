@@ -80,7 +80,8 @@ def professionals(d, populations=None):
         parts.append(w)
     data = pd.concat(parts, ignore_index=True)
     if populations is not None:
-        reg = data[(data.geo_level == "REG") & (data.geo_code.str.len() == 2) & (data.geo_code.astype(int) > 10)]
+        metro = ["11", "24", "27", "28", "32", "44", "52", "53", "75", "76", "84", "93", "94"]
+        reg = data[(data.geo_level == "REG") & data.geo_code.isin(metro)]
         reg = reg.merge(populations, on="geo_code")
         fm = {"geo_level": "FRANCE", "geo_code": "FM", "year": int(reg["year"].max())}
         for v in PROFESSIONS.values():
@@ -170,7 +171,10 @@ def regional_populations():
     try:
         q = ("SELECT geo_code, pop, pop_lt15, pop_women - pop_lt15_women AS women_15p FROM population_by_territory "
              "WHERE geo_level = 'REG' AND year = 2023")
-        return pd.read_sql(q, conn)
+        with conn.cursor() as cur:
+            cur.execute(q)
+            return pd.DataFrame(cur.fetchall(), columns=["geo_code", "pop", "pop_lt15", "women_15p"]).astype(
+                {"pop": float, "pop_lt15": float, "women_15p": float})
     finally:
         conn.close()
 
