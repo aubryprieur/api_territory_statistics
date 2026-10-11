@@ -69,7 +69,7 @@ class PopulationStructureService(TerritoryStatsService):
         ["pop", "women_percentage"]
         + [f"age_{a}_percentage" for a in list(AGES) + AGE_AGGREGATES]
         + ["aging_index", "dependency_ratio"]
-        + [f"pcs_{p}_percentage" for p in PCS] + ["working_class_percentage"]
+        + [f"pcs_{p}_percentage" for p in PCS] + ["working_class_percentage", "upper_to_working_class_ratio"]
         + ["newcomers_percentage", "moved_within_commune_percentage", "same_dwelling_percentage",
            "from_abroad_percentage"]
     )
@@ -88,6 +88,17 @@ class PopulationStructureService(TerritoryStatsService):
         d["dependency_ratio"] = _ratio(total(c["pop_lt20"], c["pop_ge65"]), c["pop_20_64"])  # pour 100 20-64 ans
         d["women_ge80_percentage"] = pct(c["pop_ge80_women"], c["pop_ge80"])         # féminisation du grand âge
 
+        # --- Repères sur le vieillissement (tranches de 5 ans : 2023 seulement)
+        pyr = lambda *groups: total(*[c[f"pyr_{s}_{g}"] for g in groups for s in ("men", "women")])  # noqa: E731
+        ge60 = total(pyr("60_64"), c["pop_ge65"]) if pyr("60_64") is not None else None
+        d["pop_ge60"] = ge60
+        d["pop_60_74"] = pyr("60_64", "65_69", "70_74")
+        d["pop_ge75"] = pyr("75_79", "80_84", "85_89", "90_94", "ge95")
+        d["pop_ge85"] = pyr("85_89", "90_94", "ge95")
+        d["youth_index"] = _ratio(c["pop_lt20"], ge60)                                # moins de 20 ans pour 100 de 60 ans ou +
+        d["elderly_generations_index"] = _ratio(d["pop_60_74"], d["pop_ge75"])        # 60-74 ans pour 100 de 75 ans ou +
+        d["caregiver_ratio"] = _ratio(c["pop_55_64"], d["pop_ge85"], 1, 1)            # aidants potentiels par personne de 85 ans ou +
+
         # --- Pyramide des âges (2023) et tranches de l'enfance / jeunesse (% de la population)
         for s in ("men", "women"):
             for g in PYRAMID_GROUPS:
@@ -99,6 +110,8 @@ class PopulationStructureService(TerritoryStatsService):
         for p in PCS:
             d[f"pcs_{p}_percentage"] = pct(c[f"pcs_{p}"], c["pop_15p"])
         d["working_class_percentage"] = pct(total(c["pcs_5"], c["pcs_6"]), c["pop_15p"])  # employés + ouvriers
+        # cadres et professions intermédiaires pour 100 employés et ouvriers (« CSP+ / CSP- »)
+        d["upper_to_working_class_ratio"] = _ratio(total(c["pcs_3"], c["pcs_4"]), total(c["pcs_5"], c["pcs_6"]))
 
         # --- Mobilité résidentielle (% des habitants d'un an ou plus)
         mig = c["mig_total"]
@@ -175,4 +188,10 @@ class PopulationStructureService(TerritoryStatsService):
         result = super().get(level, code, start_year, end_year)
         if "error" not in result:
             result["history"] = self.history(level, str(code))
+            area = result["history"].get("area_km2")
+            # densité (hab./km²) à chaque millésime, superficie actuelle
+            for year_values in (result.get(self.DATA_KEY) or {}).values():
+                if isinstance(year_values, dict):
+                    p = year_values.get("pop")
+                    year_values["density"] = round(p / area, 1) if p is not None and area else None
         return result
