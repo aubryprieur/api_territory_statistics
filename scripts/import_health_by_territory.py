@@ -179,8 +179,8 @@ def regional_populations():
         conn.close()
 
 
-def check(pro, ins, ald_df):
-    for name, data in (("professionnels", pro), ("C2S", ins), ("ALD", ald_df)):
+def check(pro, ins):
+    for name, data in (("professionnels", pro), ("C2S", ins)):
         logger.info(f"🔎 {name} : lignes par niveau {data.groupby('geo_level').size().to_dict()} ; doublons {data.duplicated(KEY).sum()}")
     for level, code in (("COM", "59484"), ("EPCI", "245901160"), ("DEP", "59"), ("REG", "32"), ("FRANCE", "FM")):
         r = pro[(pro.geo_level == level) & (pro.geo_code == code)]
@@ -194,9 +194,6 @@ def check(pro, ins, ald_df):
             logger.info(f"🔎 C2S {level} {code} {x.year} : {x.c2s_free:,.0f} C2S gratuite + {x.c2s_paid:,.0f} participative "
                         f"sur {x.insured:,.0f} assurés ({x.c2s_free / x.insured * 100:.1f} % + {x.c2s_paid / x.insured * 100:.1f} %), "
                         f"{x.communes:.0f} commune(s)")
-    for code in ("59", "FE"):
-        r = ald_df[ald_df.geo_code == code].iloc[0]
-        logger.info(f"🔎 ALD {code} : diabète {r.diabetes_rate}, cancers {r.cancer_rate}, psychiatrie {r.psychiatric_rate} pour 100 000")
 
 
 def _connect():
@@ -222,17 +219,16 @@ def _copy(cur, table, df, columns):
     logger.info(f"✅ {table} : {cur.rowcount:,} lignes importées")
 
 
-def write(pro, ins, ald_df):
+def write(pro, ins):
     conn = _connect()
     try:
         with conn.cursor() as cur:
             _copy(cur, "health_professionals_by_territory", pro, PRO_COLUMNS)
             _copy(cur, "health_insurance_by_territory", ins, C2S_COLUMNS)
-            _copy(cur, "ald_by_territory", ald_df, ALD_COLUMNS)
         conn.commit()
         conn.autocommit = True
         with conn.cursor() as cur:
-            for t in ("health_professionals_by_territory", "health_insurance_by_territory", "ald_by_territory"):
+            for t in ("health_professionals_by_territory", "health_insurance_by_territory"):
                 cur.execute(f"ANALYZE {t}")
     except Exception:
         conn.rollback()
@@ -251,11 +247,11 @@ if __name__ == "__main__":
     pro = professionals(args.dir, regional_populations())
     logger.info("📖 Complémentaire santé solidaire")
     ins = insurance(args.dir)
-    logger.info("📖 Affections de longue durée")
-    ald_df = ald(args.dir)
-    check(pro, ins, ald_df)
+    # Affections de longue durée : pas de données communales, non affichées dans le dashboard → non importées
+    # (fonction ald() conservée ; elle nécessite xlrd pour lire les .xls)
+    check(pro, ins)
     if args.dry_run:
         logger.info("🧪 Dry-run : rien n'a été écrit en base")
     else:
-        write(pro, ins, ald_df)
+        write(pro, ins)
         logger.info("🏁 Import terminé")
