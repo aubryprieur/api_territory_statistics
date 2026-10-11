@@ -39,6 +39,7 @@ from .services.delinquency_service import DelinquencyService
 from .services.sdg_indicators_service import SdgIndicatorsService
 from .services.job_seekers_service import JobSeekersService
 from .services.social_housing_service import SocialHousingService
+from .services.health_service import AldService, HealthInsuranceService, HealthProfessionalsService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -155,6 +156,9 @@ delinquency_service = DelinquencyService()
 sdg_indicators_service = SdgIndicatorsService()
 job_seekers_service = JobSeekersService()
 social_housing_service = SocialHousingService()
+health_professionals_service = HealthProfessionalsService()
+health_insurance_service = HealthInsuranceService()
+ald_service = AldService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1608,6 +1612,90 @@ async def get_region_social_housing(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_social_housing(request: Request):
     return social_housing_service.france()
+
+
+HEALTH_PROFESSIONALS_DESCRIPTION = """Densité de professionnels de santé libéraux pour 100 000 habitants (16 professions ; pédiatres
+pour 100 000 enfants de moins de 15 ans, gynécologues et sages-femmes pour 100 000 femmes de 15 ans ou plus), 2025.
+Source : Observatoire des territoires (ANCT). France métropolitaine : moyenne des régions pondérée par la population."""
+
+HEALTH_INSURANCE_DESCRIPTION = """Bénéficiaires du régime général de l'assurance maladie et de la complémentaire santé solidaire
+(C2S sans participation, ex-CMU-C ; avec participation, ex-ACS) au 1er janvier 2022 et 2025, par âge et sexe. Seules les
+communes découpées en IRIS sont publiées ; EPCI, département, région, France : ensemble de ces communes (2025)."""
+
+ALD_DESCRIPTION = """Affections de longue durée (régime général, 2024) : effectifs et taux standardisés pour 100 000 personnes
+protégées, par département ; France entière : prévalence nationale. Pas de données communales."""
+
+
+@protected_router.get("/health-professionals/commune/{code}", summary="Professionnels de santé d'une commune", description=HEALTH_PROFESSIONALS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_health_professionals(request: Request, code: str):
+    return health_professionals_service.by_commune(code)
+
+
+@protected_router.get("/health-professionals/epci/{epci}", summary="Professionnels de santé d'un EPCI", description=HEALTH_PROFESSIONALS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_health_professionals(request: Request, epci: str):
+    return health_professionals_service.by_epci(epci)
+
+
+@protected_router.get("/health-professionals/department/{dep}", summary="Professionnels de santé d'un département", description=HEALTH_PROFESSIONALS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_health_professionals(request: Request, dep: str):
+    return health_professionals_service.by_department(dep)
+
+
+@protected_router.get("/health-professionals/region/{reg}", summary="Professionnels de santé d'une région", description=HEALTH_PROFESSIONALS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_health_professionals(request: Request, reg: str):
+    return health_professionals_service.by_region(reg)
+
+
+@protected_router.get("/health-professionals/france", summary="Professionnels de santé de la France", description=HEALTH_PROFESSIONALS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_health_professionals(request: Request):
+    return health_professionals_service.france()
+
+
+@protected_router.get("/health-insurance/commune/{code}", summary="Complémentaire santé solidaire d'une commune", description=HEALTH_INSURANCE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_health_insurance(request: Request, code: str):
+    return health_insurance_service.by_commune(code)
+
+
+@protected_router.get("/health-insurance/epci/{epci}", summary="Complémentaire santé solidaire d'un EPCI", description=HEALTH_INSURANCE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_health_insurance(request: Request, epci: str):
+    return health_insurance_service.by_epci(epci)
+
+
+@protected_router.get("/health-insurance/department/{dep}", summary="Complémentaire santé solidaire d'un département", description=HEALTH_INSURANCE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_health_insurance(request: Request, dep: str):
+    return health_insurance_service.by_department(dep)
+
+
+@protected_router.get("/health-insurance/region/{reg}", summary="Complémentaire santé solidaire d'une région", description=HEALTH_INSURANCE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_health_insurance(request: Request, reg: str):
+    return health_insurance_service.by_region(reg)
+
+
+@protected_router.get("/health-insurance/france", summary="Complémentaire santé solidaire de la France", description=HEALTH_INSURANCE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_health_insurance(request: Request):
+    return health_insurance_service.france()
+
+
+@protected_router.get("/ald/department/{dep}", summary="Affections de longue durée d'un département", description=ALD_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_ald(request: Request, dep: str):
+    return ald_service.by_department(dep)
+
+
+@protected_router.get("/ald/france", summary="Affections de longue durée de la France", description=ALD_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_ald(request: Request):
+    return ald_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

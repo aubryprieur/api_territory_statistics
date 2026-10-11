@@ -1442,3 +1442,42 @@ class SocialHousingByTerritory(Base):
 
 for _m in ['social_dwellings', 'new_dwellings', 'vacancy_rate', 'vacancy_3m_rate', 'mobility_rate', 'avg_rent_m2', 'rented', 'vacant', 'offered', 'density', 'in_qpv', 'individual', 'collective', 'rooms_1', 'rooms_2', 'rooms_3', 'rooms_4', 'rooms_5p', 'fin_plai', 'fin_plus_after_77', 'fin_plus_before_77', 'fin_pls', 'fin_pli', 'avg_age', 'age_lt10', 'age_ge60', 'sold', 'demolished', 'dpe_done', 'dpe_ab', 'dpe_fg']:
     setattr(SocialHousingByTerritory, _m, Column(_m, Float))
+
+
+class HealthProfessionalsByTerritory(Base):
+    """Densité de professionnels de santé libéraux pour 100 000 habitants (ANCT, 2025) — migration e2a4c6e8f0b1."""
+    __tablename__ = "health_professionals_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['gp_density', 'nurse_density', 'physio_density', 'dentist_density', 'midwife_density', 'psychologist_density', 'pediatrician_density', 'gynecologist_density', 'psychiatrist_density', 'ophthalmologist_density', 'cardiologist_density', 'dermatologist_density', 'gastroenterologist_density', 'pulmonologist_density', 'ent_density', 'radiologist_density']:
+    setattr(HealthProfessionalsByTerritory, _m, Column(_m, Float))
+
+
+class HealthInsuranceByTerritory(Base):
+    """Bénéficiaires du régime général et de la C2S (Cnam / Insee, communes à IRIS) — migration e2a4c6e8f0b1."""
+    __tablename__ = "health_insurance_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['insured', 'insured_men', 'insured_women', 'insured_lt18', 'insured_18_24', 'insured_25_49', 'insured_50_59', 'insured_60_74', 'insured_ge75', 'c2s_free', 'c2s_free_lt18', 'c2s_free_18_24', 'c2s_free_25_49', 'c2s_free_50_59', 'c2s_free_ge60', 'c2s_free_men', 'c2s_free_women', 'c2s_paid', 'c2s_paid_lt18', 'c2s_paid_ge60', 'communes']:
+    setattr(HealthInsuranceByTerritory, _m, Column(_m, Float))
+
+
+class AldByTerritory(Base):
+    """Affections de longue durée, régime général (Cnam) : départements et France entière ('FE') — migration e2a4c6e8f0b1."""
+    __tablename__ = "ald_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['stroke_count', 'stroke_rate', 'heart_failure_count', 'heart_failure_rate', 'diabetes_count', 'diabetes_rate', 'coronary_count', 'coronary_rate', 'respiratory_count', 'respiratory_rate', 'alzheimer_count', 'alzheimer_rate', 'parkinson_count', 'parkinson_rate', 'psychiatric_count', 'psychiatric_rate', 'cancer_count', 'cancer_rate']:
+    setattr(AldByTerritory, _m, Column(_m, Float))
