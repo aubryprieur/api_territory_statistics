@@ -37,6 +37,7 @@ from .services.economic_fabric_service import EconomicFabricService
 from .services.equipment_service import EquipmentService
 from .services.delinquency_service import DelinquencyService
 from .services.sdg_indicators_service import SdgIndicatorsService
+from .services.job_seekers_service import JobSeekersService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -151,6 +152,7 @@ economic_fabric_service = EconomicFabricService()
 equipment_service = EquipmentService()
 delinquency_service = DelinquencyService()
 sdg_indicators_service = SdgIndicatorsService()
+job_seekers_service = JobSeekersService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1522,6 +1524,47 @@ async def get_region_sdg(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_sdg(request: Request):
     return sdg_indicators_service.france()
+
+
+JOB_SEEKERS_DESCRIPTION = """Demandeurs d'emploi inscrits à France Travail en catégories A, B, C (Dares, données communales,
+moyenne du 4e trimestre, 2015 → 2024, effectifs arrondis à 5) : effectifs par sexe et âge, base 100 au premier millésime,
+demandeurs pour 100 actifs de 15-64 ans (années de recensement), parts des femmes, des moins de 25 ans et des 50 ans ou plus.
+EPCI, département et région : somme des communes ; France métropolitaine : total publié."""
+
+
+@protected_router.get("/job-seekers/commune/{code}", summary="Demandeurs d'emploi d'une commune",
+                      description=JOB_SEEKERS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_job_seekers(request: Request, code: str):
+    return job_seekers_service.by_commune(code)
+
+
+@protected_router.get("/job-seekers/epci/{epci}", summary="Demandeurs d'emploi d'un EPCI",
+                      description=JOB_SEEKERS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_job_seekers(request: Request, epci: str):
+    return job_seekers_service.by_epci(epci)
+
+
+@protected_router.get("/job-seekers/department/{dep}", summary="Demandeurs d'emploi d'un département",
+                      description=JOB_SEEKERS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_job_seekers(request: Request, dep: str):
+    return job_seekers_service.by_department(dep)
+
+
+@protected_router.get("/job-seekers/region/{reg}", summary="Demandeurs d'emploi d'une région",
+                      description=JOB_SEEKERS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_job_seekers(request: Request, reg: str):
+    return job_seekers_service.by_region(reg)
+
+
+@protected_router.get("/job-seekers/france", summary="Demandeurs d'emploi de la France métropolitaine",
+                      description=JOB_SEEKERS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_job_seekers(request: Request):
+    return job_seekers_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

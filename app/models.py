@@ -1414,3 +1414,18 @@ class SdgIndicatorsByTerritory(Base):
 
 for _m in ['young_neet_rate', 'young_no_diploma_rate', 'long_term_unemployed_share', 'employment_gap_women_men', 'employment_gap_women_men_25_54', 'ess_jobs_share', 'gp_accessibility', 'commute_minutes', 'commute_km', 'commute_car_share', 'commute_public_transport_share', 'commute_walk_share', 'commute_bike_share', 'commute_two_wheels_share', 'commute_no_transport_share', 'social_housing_share', 'vacant_housing_share', 'presidential_turnout']:
     setattr(SdgIndicatorsByTerritory, _m, Column(_m, Float))
+
+
+class JobSeekersByTerritory(Base):
+    """Demandeurs d'emploi inscrits à France Travail, catégories A, B, C (Dares, 4e trimestre) — migration b4d6f8a0c2e3."""
+    __tablename__ = "job_seekers_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)           # 2015 à 2024 (4e trimestre)
+    abc = Column(Float)
+    abc_women = Column(Float)
+    abc_men = Column(Float)
+    abc_lt25 = Column(Float)
+    abc_25_49 = Column(Float)
+    abc_ge50 = Column(Float)
