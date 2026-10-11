@@ -38,6 +38,7 @@ from .services.equipment_service import EquipmentService
 from .services.delinquency_service import DelinquencyService
 from .services.sdg_indicators_service import SdgIndicatorsService
 from .services.job_seekers_service import JobSeekersService
+from .services.social_housing_service import SocialHousingService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -153,6 +154,7 @@ equipment_service = EquipmentService()
 delinquency_service = DelinquencyService()
 sdg_indicators_service = SdgIndicatorsService()
 job_seekers_service = JobSeekersService()
+social_housing_service = SocialHousingService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1565,6 +1567,47 @@ async def get_region_job_seekers(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_job_seekers(request: Request):
     return job_seekers_service.france()
+
+
+SOCIAL_HOUSING_DESCRIPTION = """Parc locatif social (SDES, RPLS au 1er janvier) : séries 2013 → 2025 (parc, mises en service,
+vacance, mobilité, loyer moyen au m²) et structure du parc en 2025 (densité pour 100 résidences principales, QPV,
+individuel, taille, financement PLAI / PLUS / PLS / PLI, âge, étiquettes énergie, ventes et démolitions).
+Une commune absente n'a pas de logement social recensé."""
+
+
+@protected_router.get("/social-housing/commune/{code}", summary="Parc locatif social d'une commune",
+                      description=SOCIAL_HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_social_housing(request: Request, code: str):
+    return social_housing_service.by_commune(code)
+
+
+@protected_router.get("/social-housing/epci/{epci}", summary="Parc locatif social d'un EPCI",
+                      description=SOCIAL_HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_social_housing(request: Request, epci: str):
+    return social_housing_service.by_epci(epci)
+
+
+@protected_router.get("/social-housing/department/{dep}", summary="Parc locatif social d'un département",
+                      description=SOCIAL_HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_social_housing(request: Request, dep: str):
+    return social_housing_service.by_department(dep)
+
+
+@protected_router.get("/social-housing/region/{reg}", summary="Parc locatif social d'une région",
+                      description=SOCIAL_HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_social_housing(request: Request, reg: str):
+    return social_housing_service.by_region(reg)
+
+
+@protected_router.get("/social-housing/france", summary="Parc locatif social de la France métropolitaine",
+                      description=SOCIAL_HOUSING_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_social_housing(request: Request):
+    return social_housing_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

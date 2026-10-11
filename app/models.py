@@ -1429,3 +1429,16 @@ class JobSeekersByTerritory(Base):
     abc_lt25 = Column(Float)
     abc_25_49 = Column(Float)
     abc_ge50 = Column(Float)
+
+
+class SocialHousingByTerritory(Base):
+    """Parc locatif social (SDES, RPLS au 1er janvier, séries 2013-2025, structure 2025) — migration d1f3a5c7e9b2."""
+    __tablename__ = "social_housing_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)   # COM, ARM, EPCI, DEP, REG, FRANCE
+    geo_code = Column(String(10), primary_key=True)    # FRANCE : 'FM' (métropole)
+    year = Column(Integer, primary_key=True)           # 2013 à 2025 (au 1er janvier)
+
+
+for _m in ['social_dwellings', 'new_dwellings', 'vacancy_rate', 'vacancy_3m_rate', 'mobility_rate', 'avg_rent_m2', 'rented', 'vacant', 'offered', 'density', 'in_qpv', 'individual', 'collective', 'rooms_1', 'rooms_2', 'rooms_3', 'rooms_4', 'rooms_5p', 'fin_plai', 'fin_plus_after_77', 'fin_plus_before_77', 'fin_pls', 'fin_pli', 'avg_age', 'age_lt10', 'age_ge60', 'sold', 'demolished', 'dpe_done', 'dpe_ab', 'dpe_fg']:
+    setattr(SocialHousingByTerritory, _m, Column(_m, Float))
