@@ -8,8 +8,10 @@ from app.services.territory_stats_service import TerritoryStatsService, num
 
 INDICATORS = {
     "licence_rate": "Licenciés sportifs pour 100 habitants",
+    "licence_rate_0_14": "Licenciés de 0-14 ans pour 100 habitants de 0-14 ans",
     "licence_rate_15_29": "Licenciés de 15-29 ans pour 100 habitants de 15-29 ans",
     "licence_rate_30_59": "Licenciés de 30-59 ans pour 100 habitants de 30-59 ans",
+    "licence_rate_60p": "Licenciés de 60 ans ou plus pour 100 habitants de 60 ans ou plus",
     "girls_share_0_14": "Part des filles parmi les licenciés de 0-14 ans (%)",
     "women_share_15_29": "Part des femmes parmi les licenciés de 15-29 ans (%)",
     "women_share_30_59": "Part des femmes parmi les licenciés de 30-59 ans (%)",

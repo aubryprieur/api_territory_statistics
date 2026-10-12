@@ -1492,6 +1492,6 @@ class SportsByTerritory(Base):
     year = Column(Integer, primary_key=True)
 
 
-for _m in ['licence_rate', 'licence_rate_15_29', 'licence_rate_30_59', 'girls_share_0_14', 'women_share_15_29',
-           'women_share_30_59', 'women_share_60p']:
+for _m in ['licence_rate', 'licence_rate_0_14', 'licence_rate_15_29', 'licence_rate_30_59', 'licence_rate_60p',
+           'girls_share_0_14', 'women_share_15_29', 'women_share_30_59', 'women_share_60p']:  # 0-14 et 60+ : a4c6e8f0b2d4
     setattr(SportsByTerritory, _m, Column(_m, Float))

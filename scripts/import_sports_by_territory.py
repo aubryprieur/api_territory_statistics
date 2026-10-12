@@ -3,10 +3,12 @@ Import des licences sportives (INJEP — MEOS, recensement des licences et clubs
 des territoires — ANCT) dans sports_by_territory.
 
 Sources : data/sports/licsport*(communes|epci|departement(s)|regions).xlsx, onglet « Data » (ligne 5 = en-têtes :
-codgeo, libgeo, an, indicateur). Sept indicateurs :
+codgeo, libgeo, an, indicateur). Neuf indicateurs :
   licence_rate          licenciés pour 100 habitants
+  licence_rate_0_14     licenciés de 0-14 ans pour 100 habitants de 0-14 ans
   licence_rate_15_29    licenciés de 15-29 ans pour 100 habitants de 15-29 ans
   licence_rate_30_59    licenciés de 30-59 ans pour 100 habitants de 30-59 ans
+  licence_rate_60p      licenciés de 60 ans ou plus pour 100 habitants de 60 ans ou plus
   girls_share_0_14      part des filles parmi les licenciés de 0-14 ans
   women_share_15_29     part des femmes parmi les licenciés de 15-29 ans
   women_share_30_59     part des femmes parmi les licenciés de 30-59 ans
@@ -37,13 +39,14 @@ YEAR = 2023
 KEY = ["geo_level", "geo_code", "year"]
 ARM_PARENT = {"751": "75056", "693": "69123", "132": "13055"}
 METRO_REGIONS = ["11", "24", "27", "28", "32", "44", "52", "53", "75", "76", "84", "93", "94"]
-INDICATORS = {"p_licsport": "licence_rate", "p_licsport1529": "licence_rate_15_29", "p_licsport3059": "licence_rate_30_59",
+INDICATORS = {"p_licsport": "licence_rate", "p_licsport014": "licence_rate_0_14", "p_licsport1529": "licence_rate_15_29",
+              "p_licsport3059": "licence_rate_30_59", "p_licsport60": "licence_rate_60p",
               "p_licsport014_f": "girls_share_0_14", "p_licsport1529_f": "women_share_15_29",
               "p_licsport3059_f": "women_share_30_59", "p_licsport60_f": "women_share_60p"}
 MEASURES = list(INDICATORS.values())
 COLUMNS = KEY + MEASURES
 # pondération de la moyenne France métropolitaine (tranches de 5 ans de la pyramide 2023)
-WEIGHTS = {"licence_rate": "pop", "licence_rate_15_29": "pop_15_29", "licence_rate_30_59": "pop_30_59",
+WEIGHTS = {"licence_rate": "pop", "licence_rate_0_14": "pop_0_14", "licence_rate_60p": "pop_ge60", "licence_rate_15_29": "pop_15_29", "licence_rate_30_59": "pop_30_59",
            "girls_share_0_14": "pop_0_14", "women_share_15_29": "pop_15_29", "women_share_30_59": "pop_30_59",
            "women_share_60p": "pop_ge60"}
 LEVELS = {"communes": "COM", "epci": "EPCI", "departement": "DEP", "region": "REG"}
@@ -112,7 +115,7 @@ def regional_populations():
 # Valeurs nationales publiées par l'Observatoire des territoires (légende des cartes, non disponibles en tableur ;
 # relevées dans data/sports/Licenciés sportifs au niveau national.docx). Elles remplacent la moyenne pondérée des
 # régions (calculée et affichée pour contrôle).
-NATIONAL = {"licence_rate": 23.7, "licence_rate_15_29": 27.1, "licence_rate_30_59": 14.4, "girls_share_0_14": 41.4,
+NATIONAL = {"licence_rate": 23.7, "licence_rate_0_14": 63.5, "licence_rate_60p": 9.8, "licence_rate_15_29": 27.1, "licence_rate_30_59": 14.4, "girls_share_0_14": 41.4,
             "women_share_15_29": 35.3, "women_share_30_59": 33.7, "women_share_60p": 44.4}
 
 
