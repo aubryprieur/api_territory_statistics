@@ -1495,3 +1495,18 @@ class SportsByTerritory(Base):
 for _m in ['licence_rate', 'licence_rate_0_14', 'licence_rate_15_29', 'licence_rate_30_59', 'licence_rate_60p',
            'girls_share_0_14', 'women_share_15_29', 'women_share_30_59', 'women_share_60p']:  # 0-14 et 60+ : a4c6e8f0b2d4
     setattr(SportsByTerritory, _m, Column(_m, Float))
+
+
+class AssociationsByTerritory(Base):
+    """Associations (RNA Waldec, 1er octobre 2026) — migration b5d7f9a1c3e6. year 2026 : stock ; 2010-2025 : créations."""
+    __tablename__ = "associations_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['active', 'theme_sport', 'theme_culture', 'theme_leisure', 'theme_social', 'theme_education',
+           'theme_friendly', 'theme_civic', 'theme_environment', 'theme_economy', 'theme_religion', 'theme_other',
+           'created']:
+    setattr(AssociationsByTerritory, _m, Column(_m, Integer))

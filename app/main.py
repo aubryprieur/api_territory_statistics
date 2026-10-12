@@ -41,6 +41,7 @@ from .services.job_seekers_service import JobSeekersService
 from .services.social_housing_service import SocialHousingService
 from .services.health_service import AldService, HealthInsuranceService, HealthProfessionalsService
 from .services.sports_service import SportsService
+from .services.associations_service import AssociationsService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -161,6 +162,7 @@ health_professionals_service = HealthProfessionalsService()
 health_insurance_service = HealthInsuranceService()
 ald_service = AldService()
 sports_service = SportsService()
+associations_service = AssociationsService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1733,6 +1735,42 @@ async def get_region_sports(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_sports(request: Request):
     return sports_service.france()
+
+
+ASSOCIATIONS_DESCRIPTION = """Associations (RNA, export Waldec du 1er octobre 2026), rattachées à la commune de leur siège :
+associations en activité, pour 1 000 habitants, par grande catégorie (premier objet social) ; créations par année
+2010-2025 et moyenne des cinq dernières années. Alsace-Moselle non couverte (droit local) ; Grand Est et France
+métropolitaine calculés sans les départements 57, 67, 68."""
+
+
+@protected_router.get("/associations/commune/{code}", summary="Associations d'une commune", description=ASSOCIATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_associations(request: Request, code: str):
+    return associations_service.by_commune(code)
+
+
+@protected_router.get("/associations/epci/{epci}", summary="Associations d'un EPCI", description=ASSOCIATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_associations(request: Request, epci: str):
+    return associations_service.by_epci(epci)
+
+
+@protected_router.get("/associations/department/{dep}", summary="Associations d'un département", description=ASSOCIATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_associations(request: Request, dep: str):
+    return associations_service.by_department(dep)
+
+
+@protected_router.get("/associations/region/{reg}", summary="Associations d'une région", description=ASSOCIATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_associations(request: Request, reg: str):
+    return associations_service.by_region(reg)
+
+
+@protected_router.get("/associations/france", summary="Associations de la France métropolitaine", description=ASSOCIATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_associations(request: Request):
+    return associations_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
