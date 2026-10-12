@@ -42,6 +42,7 @@ from .services.social_housing_service import SocialHousingService
 from .services.health_service import AldService, HealthInsuranceService, HealthProfessionalsService
 from .services.sports_service import SportsService
 from .services.associations_service import AssociationsService
+from .services.construction_service import ConstructionService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -163,6 +164,7 @@ health_insurance_service = HealthInsuranceService()
 ald_service = AldService()
 sports_service = SportsService()
 associations_service = AssociationsService()
+construction_service = ConstructionService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1771,6 +1773,41 @@ async def get_region_associations(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_associations(request: Request):
     return associations_service.france()
+
+
+CONSTRUCTION_DESCRIPTION = """Construction neuve de logements (SDES, base Sitadel, 2013-2025) : logements autorisés et
+commencés par type (individuel pur, individuel groupé, collectif, résidence), pour 1 000 habitants ; moyennes sur les
+cinq dernières années publiées et répartition par type. Logements commencés publiés jusqu'en 2024."""
+
+
+@protected_router.get("/construction/commune/{code}", summary="Construction neuve d'une commune", description=CONSTRUCTION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_construction(request: Request, code: str):
+    return construction_service.by_commune(code)
+
+
+@protected_router.get("/construction/epci/{epci}", summary="Construction neuve d'un EPCI", description=CONSTRUCTION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_construction(request: Request, epci: str):
+    return construction_service.by_epci(epci)
+
+
+@protected_router.get("/construction/department/{dep}", summary="Construction neuve d'un département", description=CONSTRUCTION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_construction(request: Request, dep: str):
+    return construction_service.by_department(dep)
+
+
+@protected_router.get("/construction/region/{reg}", summary="Construction neuve d'une région", description=CONSTRUCTION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_construction(request: Request, reg: str):
+    return construction_service.by_region(reg)
+
+
+@protected_router.get("/construction/france", summary="Construction neuve de la France métropolitaine", description=CONSTRUCTION_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_construction(request: Request):
+    return construction_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

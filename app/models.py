@@ -1510,3 +1510,17 @@ for _m in ['active', 'theme_sport', 'theme_culture', 'theme_leisure', 'theme_soc
            'theme_friendly', 'theme_civic', 'theme_environment', 'theme_economy', 'theme_religion', 'theme_other',
            'created']:
     setattr(AssociationsByTerritory, _m, Column(_m, Integer))
+
+
+class ConstructionByTerritory(Base):
+    """Construction neuve de logements (SDES — Sitadel, 2013-2025) — migration c6e8f0a2b4d7."""
+    __tablename__ = "construction_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in [f"{k}_{t}" for k in ("authorised", "started")
+           for t in ("total", "ind_pure", "ind_group", "collective", "residence")]:
+    setattr(ConstructionByTerritory, _m, Column(_m, Integer))
