@@ -40,6 +40,7 @@ from .services.sdg_indicators_service import SdgIndicatorsService
 from .services.job_seekers_service import JobSeekersService
 from .services.social_housing_service import SocialHousingService
 from .services.health_service import AldService, HealthInsuranceService, HealthProfessionalsService
+from .services.sports_service import SportsService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -159,6 +160,7 @@ social_housing_service = SocialHousingService()
 health_professionals_service = HealthProfessionalsService()
 health_insurance_service = HealthInsuranceService()
 ald_service = AldService()
+sports_service = SportsService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1696,6 +1698,41 @@ async def get_department_ald(request: Request, dep: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_ald(request: Request):
     return ald_service.france()
+
+
+SPORTS_DESCRIPTION = """Licences sportives 2023 (INJEP, diffusion Observatoire des territoires) : licenciés pour 100 habitants
+(ensemble, 15-29 ans, 30-59 ans), part des filles et des femmes parmi les licenciés par âge. France métropolitaine :
+moyenne des régions pondérée par la population."""
+
+
+@protected_router.get("/sports/commune/{code}", summary="Licences sportives d'une commune", description=SPORTS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_sports(request: Request, code: str):
+    return sports_service.by_commune(code)
+
+
+@protected_router.get("/sports/epci/{epci}", summary="Licences sportives d'un EPCI", description=SPORTS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_sports(request: Request, epci: str):
+    return sports_service.by_epci(epci)
+
+
+@protected_router.get("/sports/department/{dep}", summary="Licences sportives d'un département", description=SPORTS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_sports(request: Request, dep: str):
+    return sports_service.by_department(dep)
+
+
+@protected_router.get("/sports/region/{reg}", summary="Licences sportives d'une région", description=SPORTS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_sports(request: Request, reg: str):
+    return sports_service.by_region(reg)
+
+
+@protected_router.get("/sports/france", summary="Licences sportives de la France métropolitaine", description=SPORTS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_sports(request: Request):
+    return sports_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

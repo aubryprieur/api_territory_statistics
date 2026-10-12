@@ -1481,3 +1481,17 @@ class AldByTerritory(Base):
 
 for _m in ['stroke_count', 'stroke_rate', 'heart_failure_count', 'heart_failure_rate', 'diabetes_count', 'diabetes_rate', 'coronary_count', 'coronary_rate', 'respiratory_count', 'respiratory_rate', 'alzheimer_count', 'alzheimer_rate', 'parkinson_count', 'parkinson_rate', 'psychiatric_count', 'psychiatric_rate', 'cancer_count', 'cancer_rate']:
     setattr(AldByTerritory, _m, Column(_m, Float))
+
+
+class SportsByTerritory(Base):
+    """Licences sportives (INJEP, 2023, diffusion Observatoire des territoires) — migration f3b5d7e9a1c2."""
+    __tablename__ = "sports_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['licence_rate', 'licence_rate_15_29', 'licence_rate_30_59', 'girls_share_0_14', 'women_share_15_29',
+           'women_share_30_59', 'women_share_60p']:
+    setattr(SportsByTerritory, _m, Column(_m, Float))
