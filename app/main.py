@@ -43,6 +43,7 @@ from .services.health_service import AldService, HealthInsuranceService, HealthP
 from .services.sports_service import SportsService
 from .services.associations_service import AssociationsService
 from .services.construction_service import ConstructionService
+from .services.business_creations_service import BusinessCreationsService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -165,6 +166,7 @@ ald_service = AldService()
 sports_service = SportsService()
 associations_service = AssociationsService()
 construction_service = ConstructionService()
+business_creations_service = BusinessCreationsService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1808,6 +1810,41 @@ async def get_region_construction(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_construction(request: Request):
     return construction_service.france()
+
+
+BUSINESS_CREATIONS_DESCRIPTION = """Créations d'entreprises (Insee, SIDE, 2019-2025), localisées à la commune du siège,
+micro-entrepreneurs compris : par an et pour 1 000 habitants, moyenne des cinq dernières années, part des entreprises
+individuelles, des créations avec salariés, et par grand secteur."""
+
+
+@protected_router.get("/business-creations/commune/{code}", summary="Créations d'entreprises d'une commune", description=BUSINESS_CREATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_business_creations(request: Request, code: str):
+    return business_creations_service.by_commune(code)
+
+
+@protected_router.get("/business-creations/epci/{epci}", summary="Créations d'entreprises d'un EPCI", description=BUSINESS_CREATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_business_creations(request: Request, epci: str):
+    return business_creations_service.by_epci(epci)
+
+
+@protected_router.get("/business-creations/department/{dep}", summary="Créations d'entreprises d'un département", description=BUSINESS_CREATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_business_creations(request: Request, dep: str):
+    return business_creations_service.by_department(dep)
+
+
+@protected_router.get("/business-creations/region/{reg}", summary="Créations d'entreprises d'une région", description=BUSINESS_CREATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_business_creations(request: Request, reg: str):
+    return business_creations_service.by_region(reg)
+
+
+@protected_router.get("/business-creations/france", summary="Créations d'entreprises de la France métropolitaine", description=BUSINESS_CREATIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_business_creations(request: Request):
+    return business_creations_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

@@ -1524,3 +1524,17 @@ class ConstructionByTerritory(Base):
 for _m in [f"{k}_{t}" for k in ("authorised", "started")
            for t in ("total", "ind_pure", "ind_group", "collective", "residence")]:
     setattr(ConstructionByTerritory, _m, Column(_m, Integer))
+
+
+class BusinessCreationsByTerritory(Base):
+    """Créations d'entreprises (Insee, SIDE, 2019-2025) — migration d7f9b1c3e5a8."""
+    __tablename__ = "business_creations_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['created', 'created_individual', 'created_company', 'created_employer', 'sector_industry',
+           'sector_construction', 'sector_trade', 'sector_business_services', 'sector_personal_services']:
+    setattr(BusinessCreationsByTerritory, _m, Column(_m, Integer))
