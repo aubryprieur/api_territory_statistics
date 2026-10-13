@@ -54,6 +54,30 @@ INDICATORS = {
     "workers_employees_share": ("iris_activity", ["act_employees", "act_workers"], ["active_15_64"],
                                 "Part des ouvriers et employés parmi les actifs", "ouvriers et employés actifs", "%"),
 }
+# Indicateurs de la table iris_indicators (hors recensement). additive : la commune est la somme de ses IRIS
+# (count / total) ; sinon valeur de référence communale (geo_level 'COM'). den : dénominateur pris dans une table iris_*
+# (colonne, millésime) quand la source ne le fournit pas.
+EXTERNAL = {
+    "median_income": {"label": "Revenu disponible médian par unité de consommation", "count_label": None, "unit": "€",
+                      "additive": False, "source": "Insee, Filosofi (revenus disponibles, données à l'IRIS)"},
+    "poverty_rate": {"label": "Taux de pauvreté (seuil de 60 % du niveau de vie médian)", "count_label": None, "unit": "%",
+                     "additive": False, "source": "Insee, Filosofi (revenus disponibles, données à l'IRIS)"},
+    "social_benefits_share": {"label": "Part des prestations sociales dans le revenu disponible", "count_label": None,
+                              "unit": "%", "additive": False,
+                              "source": "Insee, Filosofi (revenus disponibles, données à l'IRIS)"},
+    "c2s_free_rate": {"label": "Part des assurés bénéficiant de la complémentaire santé solidaire gratuite",
+                      "count_label": "bénéficiaires de la C2S gratuite", "unit": "%", "additive": True,
+                      "source": "Cnam, bénéficiaires du régime général au 1er janvier (diffusion Insee à l'IRIS)"},
+    "social_turnover_rate": {"label": "Taux de rotation dans le parc social", "count_label": "emménagements (estimés)",
+                             "unit": "%", "additive": True, "source": "SDES, RPLS au 1er janvier (diffusion Insee à l'IRIS)"},
+    "social_vacancy_rate": {"label": "Taux de vacance dans le parc social", "count_label": "logements vacants (estimés)",
+                            "unit": "%", "additive": True, "source": "SDES, RPLS au 1er janvier (diffusion Insee à l'IRIS)"},
+    "job_seekers_abc": {"label": "Demandeurs d'emploi (catégories A, B, C) pour 100 actifs de 15-64 ans",
+                        "count_label": "demandeurs d'emploi A, B, C", "unit": "%", "additive": True,
+                        "den": ("iris_activity", "active_15_64", 2022),
+                        "source": "France Travail / Insee, demandeurs d'emploi au 31 décembre (à l'IRIS) ; actifs : recensement 2022"},
+}
+
 # ménages sans voiture = ménages - ménages avec au moins une voiture
 SPECIAL = {"no_car_share": ("CASE WHEN households IS NULL OR hh_1p_car IS NULL THEN NULL ELSE households - hh_1p_car END",
                             "households")}
@@ -66,7 +90,42 @@ def _sum(cols):
 class IrisMapService:
 
     def indicators(self):
-        return {k: {"label": v[3], "count_label": v[4], "unit": v[5], "table": v[0]} for k, v in INDICATORS.items()}
+        out = {k: {"label": v[3], "count_label": v[4], "unit": v[5], "table": v[0]} for k, v in INDICATORS.items()}
+        out.update({k: {"label": v["label"], "count_label": v["count_label"], "unit": v["unit"], "table": "iris_indicators"}
+                    for k, v in EXTERNAL.items()})
+        return out
+
+    def _external_values(self, key, iris_codes, com_code):
+        meta = EXTERNAL[key]
+        db = SessionLocal()
+        try:
+            rows = db.execute(text(
+                "SELECT geo_level, geo_code, year, value, count, total FROM iris_indicators "
+                "WHERE indicator = :k AND ((geo_level = 'IRIS' AND geo_code = ANY(:codes)) "
+                "OR (geo_level = 'COM' AND geo_code = :com)) ORDER BY year"),
+                {"k": key, "codes": list(iris_codes), "com": com_code}).fetchall()
+            den = {}
+            if meta.get("den"):
+                table, col, year = meta["den"]
+                den = {r[0]: float(r[1]) for r in db.execute(text(
+                    f"SELECT iris_code, {col} FROM {table} WHERE year = :y AND iris_code = ANY(:codes)"),
+                    {"y": year, "codes": list(iris_codes)}).fetchall() if r[1] is not None}
+        finally:
+            db.close()
+        values, commune = {}, {}
+        for r in rows:
+            count = float(r.count) if r.count is not None else None
+            total = float(r.total) if r.total is not None else den.get(r.geo_code) if r.geo_level == "IRIS" else None
+            value = float(r.value) if r.value is not None else (
+                round(count / total * 100, 1) if count is not None and total else None)
+            item = {"value": round(value, 1) if value is not None and meta["unit"] != "€" else value,
+                    "count": round(count) if count is not None else None,
+                    "total": round(total) if total is not None else None}
+            if r.geo_level == "IRIS":
+                values.setdefault(r.geo_code, {})[r.year] = item
+            else:
+                commune[r.year] = item
+        return values, commune
 
     def geometries(self, com_code: str) -> list:
         db = SessionLocal()
@@ -101,27 +160,45 @@ class IrisMapService:
         return out
 
     def commune_map(self, com_code: str, indicator: str) -> Optional[dict]:
-        if indicator not in INDICATORS:
-            return {"error": f"Indicateur inconnu : {indicator}. Disponibles : {', '.join(INDICATORS)}"}
+        if indicator not in INDICATORS and indicator not in EXTERNAL:
+            return {"error": f"Indicateur inconnu : {indicator}. Disponibles : {', '.join(list(INDICATORS) + list(EXTERNAL))}"}
         features = self.geometries(com_code)
         if not features:
             return None
-        values = self._values(indicator, [f["iris_code"] for f in features])
+        external = indicator in EXTERNAL
+        if external:
+            values, commune_ref = self._external_values(indicator, [f["iris_code"] for f in features], com_code)
+        else:
+            values = self._values(indicator, [f["iris_code"] for f in features])
         years = sorted({y for v in values.values() for y in v})
+        if len(years) > 2:  # premier et dernier millésimes seulement (évolution)
+            years = [years[0], years[-1]]
+            values = {c: {y: v for y, v in d.items() if y in years} for c, d in values.items()}
         commune = {}
         for y in years:
+            if external and not EXTERNAL[indicator]["additive"]:
+                commune[y] = commune_ref.get(y, {"value": None, "count": None, "total": None})
+                continue
             cnt = sum((values.get(f["iris_code"], {}).get(y, {}) or {}).get("count") or 0 for f in features)
             tot = sum((values.get(f["iris_code"], {}).get(y, {}) or {}).get("total") or 0 for f in features)
             commune[y] = {"value": round(cnt / tot * 100, 1) if tot else None, "count": cnt, "total": tot}
         for f in features:
             f["values"] = values.get(f["iris_code"], {})
-        meta = INDICATORS[indicator]
+        if external:
+            m = EXTERNAL[indicator]
+            ind = {"key": indicator, "label": m["label"], "count_label": m["count_label"], "unit": m["unit"],
+                   "additive": m["additive"]}
+            source = m["source"] + " ; IGN-Insee, contours IRIS 2024"
+        else:
+            meta = INDICATORS[indicator]
+            ind = {"key": indicator, "label": meta[3], "count_label": meta[4], "unit": meta[5], "additive": True}
+            source = "Insee, recensements de la population (bases infracommunales IRIS) ; IGN-Insee, contours IRIS 2024"
         return {
             "commune": {"code": com_code, "values": commune},
-            "indicator": {"key": indicator, "label": meta[3], "count_label": meta[4], "unit": meta[5]},
+            "indicator": ind,
             "years": years,
             "latest_year": years[-1] if years else None,
             "irisee": any(f["iris_type"] != "commune" for f in features) and len(features) > 1,
             "features": features,
-            "source": "Insee, recensements de la population (bases infracommunales IRIS) ; IGN-Insee, contours IRIS 2024",
+            "source": source,
         }

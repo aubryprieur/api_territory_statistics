@@ -1566,3 +1566,16 @@ class IrisGeometry(Base):
     label_lon = Column(Float)
     label_lat = Column(Float)
     geometry = Column(Text, nullable=False)           # GeoJSON (Polygon / MultiPolygon)
+
+
+class IrisIndicator(Base):
+    """Indicateurs IRIS hors recensement (Filosofi, C2S, RPLS, DEFM), format long — migration a2c4e6f8b0d1."""
+    __tablename__ = "iris_indicators"
+
+    geo_level = Column(String(5), primary_key=True)    # IRIS | COM
+    geo_code = Column(String(9), primary_key=True)
+    year = Column(Integer, primary_key=True)
+    indicator = Column(String(40), primary_key=True)
+    value = Column(Float)
+    count = Column(Float)
+    total = Column(Float)
