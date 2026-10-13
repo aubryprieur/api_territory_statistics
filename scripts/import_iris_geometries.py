@@ -49,8 +49,16 @@ def main():
     if args.dry_run:
         logger.info("🧪 Dry-run : rien n'a été écrit en base")
         return
+    # Écriture au format texte de COPY sans guillemets CSV : les contours GeoJSON contiennent des « " » que
+    # to_csv entourerait de guillemets (JSON illisible ensuite). Échappement des seuls caractères spéciaux de COPY.
+    def cell(v):
+        if v is None or (isinstance(v, float) and v != v):
+            return "\\N"
+        return str(v).replace("\\", "\\\\").replace("\t", " ").replace("\n", " ").replace("\r", " ")
+
     buf = io.StringIO()
-    df[COLUMNS].to_csv(buf, sep="\t", header=False, index=False, na_rep="\\N")
+    for row in df[COLUMNS].itertuples(index=False):
+        buf.write("\t".join(cell(v) for v in row) + "\n")
     buf.seek(0)
     conn = _connect()
     try:
