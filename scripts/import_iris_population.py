@@ -26,6 +26,8 @@ from io import StringIO
 from urllib.parse import urlparse
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from iris_common import complete_columns, dry_run_summary  # noqa: E402
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -122,12 +124,7 @@ def load_file(path: str) -> pd.DataFrame:
 def prepare_dataframe(df: pd.DataFrame, year: int) -> pd.DataFrame:
     column_map = build_column_map(year)
 
-    missing = [c for c in column_map if c not in df.columns]
-    if missing:
-        raise ValueError(
-            f"Colonnes manquantes pour le millésime {year} : {missing}\n"
-            f"Colonnes disponibles : {list(df.columns)}"
-        )
+    df = complete_columns(df, column_map, year)  # anciens millésimes : alias, géographie, variables absentes
 
     df = df[list(column_map.keys())].copy()
     df.rename(columns=column_map, inplace=True)
@@ -194,6 +191,7 @@ def main():
     parser.add_argument("--year",    required=True,  type=int, help="Millésime (ex. 2022)")
     parser.add_argument("--replace", action="store_true",
                         help="Remplace le millésime s'il existe déjà")
+    parser.add_argument("--dry-run", action="store_true", help="Contrôles uniquement, aucune écriture en base")
     args = parser.parse_args()
 
     if not os.path.exists(args.file):
@@ -202,6 +200,9 @@ def main():
 
     df = load_file(args.file)
     df = prepare_dataframe(df, args.year)
+    if args.dry_run:
+        dry_run_summary(df, "iris_population")
+        return
 
     conn = psycopg2.connect(**DB_CONFIG)
     conn.autocommit = False
