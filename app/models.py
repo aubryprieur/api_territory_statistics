@@ -1552,3 +1552,17 @@ class TaxHouseholdsByTerritory(Base):
 for _m in ['households', 'rfr', 'net_tax', 'taxed_households', 'wage_households', 'pension_households',
            'hh_0_10k', 'hh_10_12k', 'hh_12_15k', 'hh_15_20k', 'hh_20_30k', 'hh_30_50k', 'hh_50_100k', 'hh_100k_plus']:
     setattr(TaxHouseholdsByTerritory, _m, Column(_m, Float))
+
+
+class IrisGeometry(Base):
+    """Contours IRIS simplifiés (découpage 2024, WGS84) — migration f9b1d3e5a7c0."""
+    __tablename__ = "iris_geometries"
+
+    iris_code = Column(String(9), primary_key=True)
+    com_code = Column(String(5), nullable=False)      # commune ou arrondissement (75101…)
+    com_parent = Column(String(5), nullable=False)    # commune entière (75056…)
+    iris_name = Column(String(255))
+    iris_type = Column(String(50))
+    label_lon = Column(Float)
+    label_lat = Column(Float)
+    geometry = Column(Text, nullable=False)           # GeoJSON (Polygon / MultiPolygon)
