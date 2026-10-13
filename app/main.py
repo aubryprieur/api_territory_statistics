@@ -44,6 +44,7 @@ from .services.sports_service import SportsService
 from .services.associations_service import AssociationsService
 from .services.construction_service import ConstructionService
 from .services.business_creations_service import BusinessCreationsService
+from .services.tax_households_service import TaxHouseholdsService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -167,6 +168,7 @@ sports_service = SportsService()
 associations_service = AssociationsService()
 construction_service = ConstructionService()
 business_creations_service = BusinessCreationsService()
+tax_households_service = TaxHouseholdsService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1845,6 +1847,41 @@ async def get_region_business_creations(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_business_creations(request: Request):
     return business_creations_service.france()
+
+
+TAX_HOUSEHOLDS_DESCRIPTION = """Foyers fiscaux (DGFiP, IRCOM, revenus 2021 et 2024) : part des foyers imposés, revenu fiscal
+de référence moyen, impôt net moyen, part des foyers avec salaires, avec retraites ou pensions, répartition par tranche
+de revenu fiscal de référence (communes d'environ 2 000 foyers ou plus)."""
+
+
+@protected_router.get("/tax-households/commune/{code}", summary="Foyers fiscaux d'une commune", description=TAX_HOUSEHOLDS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_tax_households(request: Request, code: str):
+    return tax_households_service.by_commune(code)
+
+
+@protected_router.get("/tax-households/epci/{epci}", summary="Foyers fiscaux d'un EPCI", description=TAX_HOUSEHOLDS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_tax_households(request: Request, epci: str):
+    return tax_households_service.by_epci(epci)
+
+
+@protected_router.get("/tax-households/department/{dep}", summary="Foyers fiscaux d'un département", description=TAX_HOUSEHOLDS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_tax_households(request: Request, dep: str):
+    return tax_households_service.by_department(dep)
+
+
+@protected_router.get("/tax-households/region/{reg}", summary="Foyers fiscaux d'une région", description=TAX_HOUSEHOLDS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_tax_households(request: Request, reg: str):
+    return tax_households_service.by_region(reg)
+
+
+@protected_router.get("/tax-households/france", summary="Foyers fiscaux de la France métropolitaine", description=TAX_HOUSEHOLDS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_tax_households(request: Request):
+    return tax_households_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

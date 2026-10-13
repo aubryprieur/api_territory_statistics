@@ -1538,3 +1538,17 @@ class BusinessCreationsByTerritory(Base):
 for _m in ['created', 'created_individual', 'created_company', 'created_employer', 'sector_industry',
            'sector_construction', 'sector_trade', 'sector_business_services', 'sector_personal_services']:
     setattr(BusinessCreationsByTerritory, _m, Column(_m, Integer))
+
+
+class TaxHouseholdsByTerritory(Base):
+    """Impôt sur le revenu par collectivité (DGFiP, IRCOM, revenus 2021 et 2024) — migration e8a0c2d4f6b9."""
+    __tablename__ = "tax_households_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['households', 'rfr', 'net_tax', 'taxed_households', 'wage_households', 'pension_households',
+           'hh_0_10k', 'hh_10_12k', 'hh_12_15k', 'hh_15_20k', 'hh_20_30k', 'hh_30_50k', 'hh_50_100k', 'hh_100k_plus']:
+    setattr(TaxHouseholdsByTerritory, _m, Column(_m, Float))
