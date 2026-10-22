@@ -47,6 +47,7 @@ from .services.business_creations_service import BusinessCreationsService
 from .services.tax_households_service import TaxHouseholdsService
 from .services.fragilities_service import FragilitiesService
 from .services.senior_fragilities_service import SeniorFragilitiesService
+from .services.elderly_care_service import ElderlyCareService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -175,6 +176,7 @@ business_creations_service = BusinessCreationsService()
 tax_households_service = TaxHouseholdsService()
 fragilities_service = FragilitiesService()
 senior_fragilities_service = SeniorFragilitiesService()
+elderly_care_service = ElderlyCareService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1959,6 +1961,41 @@ async def get_region_senior_fragilities(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_senior_fragilities(request: Request):
     return senior_fragilities_service.france()
+
+
+ELDERLY_CARE_DESCRIPTION = """Offre pour personnes âgées (INSEE, BPE 2025) : établissements d'hébergement (Ehpad, résidences
+autonomie…) et places, services de soins et d'aide à domicile implantés, places pour 1 000 personnes de 75 ans ou plus
+(recensement 2023). France = France métropolitaine."""
+
+
+@protected_router.get("/elderly-care/commune/{code}", summary="Offre pour personnes âgées d'une commune", description=ELDERLY_CARE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_elderly_care(request: Request, code: str):
+    return elderly_care_service.by_commune(code)
+
+
+@protected_router.get("/elderly-care/epci/{epci}", summary="Offre pour personnes âgées d'un EPCI", description=ELDERLY_CARE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_elderly_care(request: Request, epci: str):
+    return elderly_care_service.by_epci(epci)
+
+
+@protected_router.get("/elderly-care/department/{dep}", summary="Offre pour personnes âgées d'un département", description=ELDERLY_CARE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_elderly_care(request: Request, dep: str):
+    return elderly_care_service.by_department(dep)
+
+
+@protected_router.get("/elderly-care/region/{reg}", summary="Offre pour personnes âgées d'une région", description=ELDERLY_CARE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_elderly_care(request: Request, reg: str):
+    return elderly_care_service.by_region(reg)
+
+
+@protected_router.get("/elderly-care/france", summary="Offre pour personnes âgées en France métropolitaine", description=ELDERLY_CARE_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_elderly_care(request: Request):
+    return elderly_care_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

@@ -1610,3 +1610,17 @@ for _m in ['social_fragility_score', 'care_nonuse_score', 'at_risk_share', 'at_r
            'invalidity_inaptitude_rate', 'incomplete_career_rate', 'css_free_rate', 'no_care_rate', 'no_gp_rate',
            'ald_rate']:
     setattr(SeniorFragilitiesByTerritory, _m, Column(_m, Float))
+
+
+class ElderlyCareByTerritory(Base):
+    """BPE 2025 — hébergement (places) et services à domicile pour personnes âgées — migration d5f7b9c1e3a4."""
+    __tablename__ = "elderly_care_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['housing_facilities', 'housing_places', 'housing_no_capacity', 'home_nursing_services',
+           'home_help_services', 'pop_75p', 'places_per_1000_75p']:
+    setattr(ElderlyCareByTerritory, _m, Column(_m, Float))
