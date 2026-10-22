@@ -57,9 +57,9 @@ class CafBenefitsService(TerritoryStatsService):
              "denominator_year": DENOMINATOR_YEAR}
     EVOLUTION_METRICS = (
         [f"{b}_households" for b in ("all", "rsa", "ppa", "housing", "af", "asf", "paje", "cmg")]
-        + ["all_persons", "rsa_persons", "aah_beneficiaries"]
+        + ["all_persons", "rsa_persons", "aah_beneficiaries", "aeeh_beneficiaries"]
         + ["households_covered_rate", "population_covered_rate", "rsa_households_rate", "rsa_population_rate",
-           "ppa_households_rate", "housing_households_rate", "housing_population_rate", "aah_rate",
+           "ppa_households_rate", "housing_households_rate", "housing_population_rate", "aah_rate", "aeeh_rate",
            "asf_single_parent_rate", "rsa_share", "ppa_share", "housing_share"]
     )
 
@@ -80,6 +80,7 @@ class CafBenefitsService(TerritoryStatsService):
                 "population": num(pop.pop) if pop else None,
                 "population_20_64": num(pop.pop_20_64) if pop else None,
                 "children_0_2": num(pop.age_0_2) if pop else None,
+                "population_lt20": num(pop.pop_lt20) if pop else None,
                 "single_parent_families": num(fam.single_parent_families) if fam else None,
                 "families_with_children": families_with_children,
             }
@@ -101,6 +102,7 @@ class CafBenefitsService(TerritoryStatsService):
             d[f"{b}_households_rate"] = pct(d[f"{b}_households"], hh)
             d[f"{b}_population_rate"] = pct(d[f"{b}_persons"], pop)
         d["aah_rate"] = pct(d["aah_beneficiaries"], den.get("population_20_64"))   # pour 100 personnes de 20-64 ans
+        d["aeeh_rate"] = pct(d["aeeh_beneficiaries"], den.get("population_lt20"))  # pour 100 jeunes de moins de 20 ans
         d["asf_single_parent_rate"] = pct(d["asf_households"], den.get("single_parent_families"))
         d["af_families_rate"] = pct(d["af_households"], den.get("families_with_children"))
         d["ars_families_rate"] = pct(d["ars_households"], den.get("families_with_children"))  # ordre de grandeur
