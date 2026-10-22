@@ -1579,3 +1579,18 @@ class IrisIndicator(Base):
     value = Column(Float)
     count = Column(Float)
     total = Column(Float)
+
+
+class FragilitiesByTerritory(Base):
+    """Observatoire interrégimes des situations de fragilité (2025) et APL ANCT (2024) — migration b3d5f7a9c1e2."""
+    __tablename__ = "fragilities_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['no_gp_rate', 'ald_rate', 'invalidity_rate', 'c2s_rate', 'no_dentist_rate', 'no_colorectal_screening_rate',
+           'no_cervical_screening_rate', 'no_mammography_rate', 'no_gynecologist_rate', 'no_flu_vaccine_65p_rate',
+           'no_flu_vaccine_75p_rate', 'apl_dentists', 'apl_gp_under65']:
+    setattr(FragilitiesByTerritory, _m, Column(_m, Float))

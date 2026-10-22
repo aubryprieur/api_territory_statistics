@@ -45,6 +45,7 @@ from .services.associations_service import AssociationsService
 from .services.construction_service import ConstructionService
 from .services.business_creations_service import BusinessCreationsService
 from .services.tax_households_service import TaxHouseholdsService
+from .services.fragilities_service import FragilitiesService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -171,6 +172,7 @@ associations_service = AssociationsService()
 construction_service = ConstructionService()
 business_creations_service = BusinessCreationsService()
 tax_households_service = TaxHouseholdsService()
+fragilities_service = FragilitiesService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1884,6 +1886,41 @@ async def get_region_tax_households(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_tax_households(request: Request):
     return tax_households_service.france()
+
+
+FRAGILITIES_DESCRIPTION = """Observatoire interrégimes des situations de fragilité (2025) : recours aux soins (médecin
+traitant, dentiste, gynécologue), dépistages des cancers, vaccination antigrippale, ALD, invalidité, C2S ; APL dentistes
+et médecins de moins de 65 ans (ANCT, 2024). Pourcentages publiés ; valeur absente = secret statistique."""
+
+
+@protected_router.get("/fragilities/commune/{code}", summary="Fragilités sanitaires d'une commune", description=FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_fragilities(request: Request, code: str):
+    return fragilities_service.by_commune(code)
+
+
+@protected_router.get("/fragilities/epci/{epci}", summary="Fragilités sanitaires d'un EPCI", description=FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_fragilities(request: Request, epci: str):
+    return fragilities_service.by_epci(epci)
+
+
+@protected_router.get("/fragilities/department/{dep}", summary="Fragilités sanitaires d'un département", description=FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_fragilities(request: Request, dep: str):
+    return fragilities_service.by_department(dep)
+
+
+@protected_router.get("/fragilities/region/{reg}", summary="Fragilités sanitaires d'une région", description=FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_fragilities(request: Request, reg: str):
+    return fragilities_service.by_region(reg)
+
+
+@protected_router.get("/fragilities/france", summary="Fragilités sanitaires de la France métropolitaine", description=FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_fragilities(request: Request):
+    return fragilities_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
