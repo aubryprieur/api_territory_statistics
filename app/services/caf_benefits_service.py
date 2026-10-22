@@ -103,6 +103,7 @@ class CafBenefitsService(TerritoryStatsService):
         d["aah_rate"] = pct(d["aah_beneficiaries"], den.get("population_20_64"))   # pour 100 personnes de 20-64 ans
         d["asf_single_parent_rate"] = pct(d["asf_households"], den.get("single_parent_families"))
         d["af_families_rate"] = pct(d["af_households"], den.get("families_with_children"))
+        d["ars_families_rate"] = pct(d["ars_households"], den.get("families_with_children"))  # ordre de grandeur
         d["cmg_children_rate"] = pct(d["cmg_households"], den.get("children_0_2"))  # ordre de grandeur
         # Poids de chaque prestation parmi les foyers allocataires
         for b in ("rsa", "ppa", "housing", "af", "asf", "paje", "aah"):

@@ -48,6 +48,7 @@ from .services.tax_households_service import TaxHouseholdsService
 from .services.fragilities_service import FragilitiesService
 from .services.senior_fragilities_service import SeniorFragilitiesService
 from .services.elderly_care_service import ElderlyCareService
+from .services.pass_sport_service import PassSportService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -177,6 +178,7 @@ tax_households_service = TaxHouseholdsService()
 fragilities_service = FragilitiesService()
 senior_fragilities_service = SeniorFragilitiesService()
 elderly_care_service = ElderlyCareService()
+pass_sport_service = PassSportService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1996,6 +1998,41 @@ async def get_region_elderly_care(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_elderly_care(request: Request):
     return elderly_care_service.france()
+
+
+PASS_SPORT_DESCRIPTION = """pass Sport 2024 (ministère des Sports, campagne juin 2024 - février 2025), par commune de résidence du
+bénéficiaire : pass activés, dont 6-17 ans et filles, étudiants boursiers ; taux pour 100 jeunes de 6-17 ans
+(recensement). France = France métropolitaine."""
+
+
+@protected_router.get("/pass-sport/commune/{code}", summary="Pass Sport d'une commune", description=PASS_SPORT_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_pass_sport(request: Request, code: str):
+    return pass_sport_service.by_commune(code)
+
+
+@protected_router.get("/pass-sport/epci/{epci}", summary="Pass Sport d'un EPCI", description=PASS_SPORT_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_pass_sport(request: Request, epci: str):
+    return pass_sport_service.by_epci(epci)
+
+
+@protected_router.get("/pass-sport/department/{dep}", summary="Pass Sport d'un département", description=PASS_SPORT_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_pass_sport(request: Request, dep: str):
+    return pass_sport_service.by_department(dep)
+
+
+@protected_router.get("/pass-sport/region/{reg}", summary="Pass Sport d'une région", description=PASS_SPORT_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_pass_sport(request: Request, reg: str):
+    return pass_sport_service.by_region(reg)
+
+
+@protected_router.get("/pass-sport/france", summary="Pass Sport en France métropolitaine", description=PASS_SPORT_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_pass_sport(request: Request):
+    return pass_sport_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

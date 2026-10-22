@@ -1624,3 +1624,16 @@ class ElderlyCareByTerritory(Base):
 for _m in ['housing_facilities', 'housing_places', 'housing_no_capacity', 'home_nursing_services',
            'home_help_services', 'pop_75p', 'places_per_1000_75p']:
     setattr(ElderlyCareByTerritory, _m, Column(_m, Float))
+
+
+class PassSportByTerritory(Base):
+    """pass Sport 2024 — activations par commune de résidence — migration e6a8c0d2f4b5."""
+    __tablename__ = "pass_sport_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['activations', 'activations_6_17', 'girls_6_17', 'students', 'pop_6_17', 'rate_6_17', 'girls_share_6_17']:
+    setattr(PassSportByTerritory, _m, Column(_m, Float))
