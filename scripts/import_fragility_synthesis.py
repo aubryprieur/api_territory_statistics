@@ -246,9 +246,14 @@ def write(conn, syn, ref):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM fragility_synthesis")
             cur.execute("DELETE FROM fragility_reference")
+            # Écriture manuelle au format COPY texte (pas de guillemets CSV : le JSON doit rester intact)
+            def cell(v):
+                if v is None or (isinstance(v, float) and pd.isna(v)):
+                    return "\\N"
+                return str(v).replace("\\", "\\\\").replace("\t", " ").replace("\n", " ")
             buf = io.StringIO()
-            syn[["geo_code", "dens7", "dens7_label", "population", "data"]].to_csv(
-                buf, sep="\t", header=False, index=False, na_rep="\\N", quoting=3, escapechar="\\")
+            for r in syn[["geo_code", "dens7", "dens7_label", "population", "data"]].itertuples(index=False):
+                buf.write("\t".join(cell(v) for v in r) + "\n")
             buf.seek(0)
             cur.copy_expert("COPY fragility_synthesis (geo_code, dens7, dens7_label, population, data) "
                             "FROM STDIN WITH (FORMAT text, NULL '\\N')", buf)
