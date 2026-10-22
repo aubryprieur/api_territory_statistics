@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, Boolean, func, Index, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from app.database import Base
 
 class User(Base):
@@ -1637,3 +1638,27 @@ class PassSportByTerritory(Base):
 
 for _m in ['activations', 'activations_6_17', 'girls_6_17', 'students', 'pop_6_17', 'rate_6_17', 'girls_share_6_17']:
     setattr(PassSportByTerritory, _m, Column(_m, Float))
+
+
+class FragilitySynthesis(Base):
+    """Synthèse des fragilités par commune (rangs national et par densité) — migration f7b9d1e3a5c6."""
+    __tablename__ = "fragility_synthesis"
+
+    geo_code = Column(String(10), primary_key=True)
+    dens7 = Column(String(2))
+    dens7_label = Column(String(60))
+    population = Column(Float)
+    data = Column(JSONB, nullable=False)
+
+
+class FragilityReference(Base):
+    """Repères de la synthèse des fragilités par indicateur et périmètre (FR ou densité) — migration f7b9d1e3a5c6."""
+    __tablename__ = "fragility_reference"
+
+    indicator = Column(String(40), primary_key=True)
+    scope = Column(String(4), primary_key=True)
+    year = Column(Integer)
+    n = Column(Integer)
+    median = Column(Float)
+    alert_value = Column(Float)
+    france_value = Column(Float)

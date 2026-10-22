@@ -49,6 +49,7 @@ from .services.fragilities_service import FragilitiesService
 from .services.senior_fragilities_service import SeniorFragilitiesService
 from .services.elderly_care_service import ElderlyCareService
 from .services.pass_sport_service import PassSportService
+from .services.fragility_synthesis_service import FragilitySynthesisService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -179,6 +180,7 @@ fragilities_service = FragilitiesService()
 senior_fragilities_service = SeniorFragilitiesService()
 elderly_care_service = ElderlyCareService()
 pass_sport_service = PassSportService()
+fragility_synthesis_service = FragilitySynthesisService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -2033,6 +2035,14 @@ async def get_region_pass_sport(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_pass_sport(request: Request):
     return pass_sport_service.france()
+
+
+@protected_router.get("/fragility-synthesis/commune/{code}", summary="Synthèse des fragilités d'une commune",
+                      description="""38 indicateurs en 8 enjeux : valeur, effectif, valeur France, rang parmi toutes les
+communes et parmi les communes de même densité (grille INSEE à 7 niveaux), niveau de chaque enjeu.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_fragility_synthesis(request: Request, code: str):
+    return fragility_synthesis_service.by_commune(code)
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
