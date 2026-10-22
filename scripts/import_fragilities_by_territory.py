@@ -8,8 +8,9 @@ Source : data/health/fragilites/ — un fichier par indicateur et par niveau («
 (ANCT, en-tête ligne 5 : codgeo, libgeo, an, valeur ; dernière année gardée).
 
 Une ligne par (geo_level, geo_code) ; year = 2025 (millésime Géofragilité ; APL 2024, voir apl_year).
-Seuls des pourcentages sont publiés (pas d'effectifs) : la France métropolitaine (FM) est la moyenne des 13 régions
-métropolitaines pondérée par la population du recensement 2023 (lue en base pendant l'import ; absente en --dry-run).
+Ligne France (geo_code FM) : valeurs nationales relevées sur les cartes du site (data/health/fragilites/france.csv,
+colonnes indicator ; … ; valeur_france ; perimetre — France entière pour Géofragilité, métropole pour l'APL ANCT).
+Une case vide retombe sur la moyenne des 13 régions métropolitaines pondérée par la population 2023 (lue en base).
 Fichiers MSA seuls non retenus (secret statistique pour 50 à 99 % des communes) : on garde l'interrégime quand il
 existe, sinon le régime général (RG).
 
@@ -100,13 +101,31 @@ def read(d):
     return data.reindex(columns=COLUMNS)
 
 
-def france(data, pops):
+def france_reference(d):
+    """Valeurs nationales publiées sur le site (france.csv), {indicateur: float}."""
+    path = os.path.join(d, "france.csv")
+    if not os.path.exists(path):
+        return {}
+    ref = pd.read_csv(path, sep=";", dtype=str)
+    out = {}
+    for _, r in ref.iterrows():
+        v = str(r.get("valeur_france") or "").strip().replace(",", ".")
+        if r["indicator"] in MEASURES and v and v.lower() != "nan":
+            out[r["indicator"]] = float(v)
+    return out
+
+
+def france(data, pops, ref):
     reg = data[(data.geo_level == "REG") & data.geo_code.isin(METRO_REGIONS)].copy()
     reg["w"] = reg["geo_code"].map(pops)
     row = {"geo_level": "FRANCE", "geo_code": "FM", "year": YEAR}
     for m in MEASURES:
+        if m in ref:
+            row[m] = ref[m]
+            continue
         r = reg[reg[m].notna() & reg["w"].notna()]
         row[m] = round((r[m] * r["w"]).sum() / r["w"].sum(), 2) if len(r) else None
+        logger.info(f"ℹ️ {m} : pas de valeur nationale dans france.csv, moyenne pondérée des régions = {row[m]}")
     return pd.DataFrame([row])[COLUMNS]
 
 
@@ -159,13 +178,16 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     data = read(DIR)
+    ref = france_reference(DIR)
+    logger.info(f"🇫🇷 Valeurs nationales lues dans france.csv : {len(ref)}/{len(MEASURES)}")
     if args.dry_run:
+        data = pd.concat([data, france(data, {}, ref)], ignore_index=True)
         check(data)
-        logger.info("🧪 Dry-run : rien n'a été écrit en base (France métropolitaine calculée à l'import réel)")
+        logger.info("🧪 Dry-run : rien n'a été écrit en base")
     else:
         conn = _connect()
         try:
-            data = pd.concat([data, france(data, region_populations(conn))], ignore_index=True)
+            data = pd.concat([data, france(data, region_populations(conn), ref)], ignore_index=True)
             check(data)
             write(conn, data)
         finally:
