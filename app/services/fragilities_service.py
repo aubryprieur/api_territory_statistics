@@ -4,7 +4,7 @@ Assurance maladie, Assurance retraite, MSA), millésime 2025, et APL de l'ANCT (
 (scripts/import_fragilities_by_territory.py).
 
 Pourcentages publiés tels quels (pas d'effectifs) ; valeur absente = secret statistique (petits effectifs).
-France métropolitaine : moyenne des régions pondérée par la population (approximation).
+Ligne France (FM) : valeurs nationales publiées (france.csv) — France entière pour l'Observatoire, métropole pour l'APL.
 """
 from app.models import FragilitiesByTerritory
 from app.services.territory_stats_service import TerritoryStatsService, num
