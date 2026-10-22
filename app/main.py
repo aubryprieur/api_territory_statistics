@@ -46,6 +46,7 @@ from .services.construction_service import ConstructionService
 from .services.business_creations_service import BusinessCreationsService
 from .services.tax_households_service import TaxHouseholdsService
 from .services.fragilities_service import FragilitiesService
+from .services.senior_fragilities_service import SeniorFragilitiesService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
 from .services.employment_service import EmploymentService
@@ -173,6 +174,7 @@ construction_service = ConstructionService()
 business_creations_service = BusinessCreationsService()
 tax_households_service = TaxHouseholdsService()
 fragilities_service = FragilitiesService()
+senior_fragilities_service = SeniorFragilitiesService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
 employment_service = EmploymentService()
@@ -1921,6 +1923,42 @@ async def get_region_fragilities(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_fragilities(request: Request):
     return fragilities_service.france()
+
+
+SENIOR_FRAGILITIES_DESCRIPTION = """Observatoire interrégimes des situations de fragilité, retraités et assurés de 55 ans ou
+plus (interrégime, 2025) : score et part de retraités à risque de fragilité sociale, minimum vieillesse, CSG, réversion,
+invalidité/inaptitude, carrière incomplète, C2S non participative, non-recours aux soins, médecin traitant, ALD ; nombre de
+retraités et évolution depuis 2017. Valeur absente = secret statistique. France = France entière."""
+
+
+@protected_router.get("/senior-fragilities/commune/{code}", summary="Fragilités des retraités et seniors d'une commune", description=SENIOR_FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_senior_fragilities(request: Request, code: str):
+    return senior_fragilities_service.by_commune(code)
+
+
+@protected_router.get("/senior-fragilities/epci/{epci}", summary="Fragilités des retraités et seniors d'un EPCI", description=SENIOR_FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_senior_fragilities(request: Request, epci: str):
+    return senior_fragilities_service.by_epci(epci)
+
+
+@protected_router.get("/senior-fragilities/department/{dep}", summary="Fragilités des retraités et seniors d'un département", description=SENIOR_FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_senior_fragilities(request: Request, dep: str):
+    return senior_fragilities_service.by_department(dep)
+
+
+@protected_router.get("/senior-fragilities/region/{reg}", summary="Fragilités des retraités et seniors d'une région", description=SENIOR_FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_senior_fragilities(request: Request, reg: str):
+    return senior_fragilities_service.by_region(reg)
+
+
+@protected_router.get("/senior-fragilities/france", summary="Fragilités des retraités et seniors en France", description=SENIOR_FRAGILITIES_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_senior_fragilities(request: Request):
+    return senior_fragilities_service.france()
 
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,

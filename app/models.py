@@ -1594,3 +1594,19 @@ for _m in ['no_gp_rate', 'ald_rate', 'invalidity_rate', 'c2s_rate', 'no_dentist_
            'no_cervical_screening_rate', 'no_mammography_rate', 'no_gynecologist_rate', 'no_flu_vaccine_65p_rate',
            'no_flu_vaccine_75p_rate', 'apl_dentists', 'apl_gp_under65']:
     setattr(FragilitiesByTerritory, _m, Column(_m, Float))
+
+
+class SeniorFragilitiesByTerritory(Base):
+    """Observatoire des situations de fragilité — retraités et seniors interrégime (2025) — migration c4e6a8b0d2f3."""
+    __tablename__ = "senior_fragilities_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['social_fragility_score', 'care_nonuse_score', 'at_risk_share', 'at_risk_count', 'retirees_count',
+           'retirees_change_rate', 'min_old_age_rate', 'csg_exempt_rate', 'csg_low_rate', 'survivor_pension_rate',
+           'invalidity_inaptitude_rate', 'incomplete_career_rate', 'css_free_rate', 'no_care_rate', 'no_gp_rate',
+           'ald_rate']:
+    setattr(SeniorFragilitiesByTerritory, _m, Column(_m, Float))
