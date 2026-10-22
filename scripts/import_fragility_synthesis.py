@@ -231,6 +231,16 @@ def check(syn, ref):
             logger.info(f"     {k:<30} valeur {v[0]:>9}  effectif {v[1]}  rang France {v[2]:>5}  rang densité {v[3]}")
 
 
+def _connect():
+    import psycopg2
+    from app.database import engine
+    url = engine.url
+    params = dict(host=url.host, port=url.port or 5432, dbname=url.database, user=url.username, password=url.password)
+    if url.host not in (None, "localhost", "127.0.0.1"):
+        params["sslmode"] = "require"
+    return psycopg2.connect(**params)
+
+
 def write(conn, syn, ref):
     try:
         with conn.cursor() as cur:
@@ -251,6 +261,9 @@ def write(conn, syn, ref):
                             buf)
             logger.info(f"✅ fragility_reference : {cur.rowcount:,} lignes")
         conn.commit()
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM fragility_synthesis")
+            logger.info(f"🔎 Contrôle après écriture : {cur.fetchone()[0]:,} communes en base")
     except Exception:
         conn.rollback()
         raise
@@ -269,7 +282,12 @@ if __name__ == "__main__":
         if args.dry_run:
             logger.info("🧪 Dry-run : rien n'a été écrit en base")
         else:
-            write(session.connection().connection, syn, ref)
+            session.close()
+            conn = _connect()
+            try:
+                write(conn, syn, ref)
+            finally:
+                conn.close()
             logger.info("🏁 Import terminé")
     finally:
         session.close()
