@@ -57,10 +57,10 @@ class FragilitySynthesisService:
                     "density_n": dens.n if dens else None, "france_n": fr.n if fr else None,
                 })
                 r = item["rank_density"] if item["rank_density"] is not None else item["rank_france"]
-                item["alert"] = r is not None and r >= ALERT_THRESHOLD
-                item["strength"] = r is not None and r <= STRENGTH_THRESHOLD and not ind["need"]
+                judged = ind["direction"] != "neutral"
+                item["alert"] = judged and r is not None and r >= ALERT_THRESHOLD
+                item["strength"] = judged and r is not None and r <= STRENGTH_THRESHOLD and not ind["need"]
                 if ind["context"]:
-                    item["alert"] = item["strength"] = False
                     context.append(item)
                 else:
                     indicators.append(item)
@@ -69,9 +69,22 @@ class FragilitySynthesisService:
                 items = [i for i in indicators if i["theme"] == key]
                 avail = [i for i in items if i["value"] is not None]
                 alerts = [i for i in avail if i["alert"]]
-                themes.append({"key": key, "label": label, "expected": len(items), "available": len(avail),
-                               "alerts": len(alerts), "strengths": sum(1 for i in avail if i["strength"]),
+                themes.append({"key": key, "label": label, "kind": "core", "expected": len(items),
+                               "available": len(avail), "alerts": len(alerts),
+                               "strengths": sum(1 for i in avail if i["strength"]),
                                "level": theme_level(len(avail), len(alerts), len(items))})
+            # Enjeux complémentaires (onglets de contexte) : niveau calculé sur leurs indicateurs jugés (hors structure),
+            # sans entrer dans le décompte de la synthèse (certains indicateurs sont partagés avec les enjeux principaux)
+            by_key = {i["key"]: i for i in indicators + context}
+            for key, (label, tab) in CONTEXT_GROUPS.items():
+                items = [by_key[k] for k in CONTEXT_GROUP_KEYS.get(key, []) if k in by_key]
+                judged = [i for i in items if i["direction"] != "neutral"]
+                avail = [i for i in judged if i["value"] is not None]
+                alerts = [i for i in avail if i["alert"]]
+                level = theme_level(len(avail), len(alerts), len(judged)) if judged else "context"
+                themes.append({"key": key, "label": label, "kind": "context", "tab": tab, "expected": len(judged),
+                               "available": len(avail), "alerts": len(alerts),
+                               "strengths": sum(1 for i in avail if i["strength"]), "level": level})
             return {
                 "territory": {"level": "COM", "code": code},
                 "density": {"code": row.dens7, "label": row.dens7_label},
