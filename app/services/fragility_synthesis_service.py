@@ -10,7 +10,8 @@ les moins touchées), niveau fort / modéré / faible / non évaluable.
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import SessionLocal
-from app.fragility_catalog import ALERT_THRESHOLD, CONTEXT_INDICATORS, INDICATORS, STRENGTH_THRESHOLD, THEMES
+from app.fragility_catalog import (ALERT_THRESHOLD, CONTEXT_GROUP_KEYS, CONTEXT_GROUPS, CONTEXT_INDICATORS, INDICATORS,
+                                   STRENGTH_THRESHOLD, THEMES)
 from app.models import FragilityReference, FragilitySynthesis
 
 SOURCE = ("Calcul à partir des données de l'API (INSEE, Cnaf, Dares, DGFiP, Observatoire des situations de fragilité, "
@@ -80,6 +81,8 @@ class FragilitySynthesisService:
                 "themes": themes,
                 "indicators": indicators,
                 "context_indicators": context,
+                "context_groups": [{"key": k, "label": lbl, "tab": tab, "indicators": CONTEXT_GROUP_KEYS.get(k, [])}
+                                   for k, (lbl, tab) in CONTEXT_GROUPS.items()],
             }
         except SQLAlchemyError as e:
             return {"error": str(e)}

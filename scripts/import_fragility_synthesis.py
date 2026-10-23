@@ -82,6 +82,8 @@ def load_sources(session):
     from app.services.job_seekers_service import JobSeekersService
     from app.services.family_service import FamilyService
     from app.services.household_service import HouseholdService
+    from app.services.population_structure_service import PopulationStructureService
+    from app.services.immigration_service import ImmigrationService
 
     generic = {
         "revenues": RevenuesService(), "tax_households": TaxHouseholdsService(), "fragilities": FragilitiesService(),
@@ -89,6 +91,7 @@ def load_sources(session):
         "sdg": SdgIndicatorsService(), "sports": SportsService(), "childcare": ChildcareOfferService(),
         "senior_fragilities": SeniorFragilitiesService(), "elderly_care": ElderlyCareService(),
         "housing": HousingService(), "delinquency": DelinquencyService(),
+        "population_structure": PopulationStructureService(), "immigration": ImmigrationService(),
     }
     src = {}
     for name, svc in generic.items():
@@ -110,7 +113,8 @@ def load_sources(session):
 
     # CAF : RSA, prime d'activité (population couverte / population), ARS (foyers / familles avec enfants)
     caf_svc = CafBenefitsService()
-    caf = load_rows(session, caf_svc.MODEL, caf_svc.year_data, ["rsa_persons", "ppa_persons", "ars_households"])
+    caf = load_rows(session, caf_svc.MODEL, caf_svc.year_data,
+                    ["rsa_persons", "ppa_persons", "ars_households", "all_persons", "housing_persons"])
     ft = m.FamilyByTerritory.__tablename__
     fam = pd.read_sql(
         f"""SELECT geo_level, geo_code, total_families - families_0_children AS families_with_children
@@ -122,7 +126,20 @@ def load_sources(session):
     caf["ppa_population_rate"] = (100 * caf.ppa_persons / caf["pop"]).where(caf["pop"] > 0).round(2)
     caf["ars_families_rate"] = (100 * caf.ars_households / caf.families_with_children).where(
         caf.families_with_children > 0).round(2)
+    caf["caf_coverage_rate"] = (100 * caf.all_persons / caf["pop"]).where(caf["pop"] > 0).round(2)
+    caf["housing_benefit_rate"] = (100 * caf.housing_persons / caf["pop"]).where(caf["pop"] > 0).round(2)
     src["caf"] = caf
+
+    # Associations en activité (RNA, stock) pour 1 000 habitants (recensement 2023)
+    from app.services.associations_service import STOCK_YEAR
+    asso = pd.read_sql(
+        f"""SELECT geo_level, geo_code, year, active AS associations_active
+            FROM {m.AssociationsByTerritory.__tablename__}
+            WHERE geo_level IN ('COM', 'FRANCE') AND year = {STOCK_YEAR}""", session.bind)
+    asso = asso.merge(pop[["geo_level", "geo_code", "pop"]], on=["geo_level", "geo_code"], how="left")
+    asso["associations_rate"] = (1000 * asso.associations_active / asso["pop"]).where(asso["pop"] > 0).round(2)
+    src["associations"] = asso
+    logger.info(f"📖 associations {STOCK_YEAR} : {len(asso):,} lignes")
 
     # Demandeurs d'emploi ABC pour 100 actifs de 15-64 ans (même millésime que le recensement)
     js_svc = JobSeekersService()
@@ -160,7 +177,8 @@ def pick_year(df, field):
 
 
 def rank(series, direction):
-    s = series if direction == "up" else -series
+    """0-100 ; « up » et « neutral » : 100 = valeur la plus élevée ; « down » : 100 = valeur la plus faible."""
+    s = -series if direction == "down" else series
     return ((s.rank(method="average") - 0.5) / s.notna().sum() * 100).round(1)
 
 
@@ -188,7 +206,7 @@ def build(src, pop, density):
         frame = pd.DataFrame({"v": values}).join(base[["dens7"]], how="left")
         frame["p_fr"] = rank(frame.v, ind["direction"])
         frame["p_dens"] = frame.groupby("dens7")["v"].transform(lambda s: rank(s, ind["direction"]))
-        q = 0.8 if ind["direction"] == "up" else 0.2
+        q = 0.2 if ind["direction"] == "down" else 0.8
         refs.append({"indicator": ind["key"], "scope": "FR", "year": year, "n": len(frame),
                      "median": round(frame.v.median(), 2), "alert_value": round(frame.v.quantile(q), 2),
                      "france_value": france_value})
