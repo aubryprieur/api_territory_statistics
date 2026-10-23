@@ -108,4 +108,18 @@ INDICATORS = [
 ]
 
 INDICATOR_KEYS = [i["key"] for i in INDICATORS]
-BY_KEY = {i["key"]: i for i in INDICATORS}
+
+# Indicateurs de contexte : rangs calculés et affichés dans les onglets thématiques (_fragility_ranks), mais hors
+# synthèse (ni enjeu, ni alerte, ni point fort).
+CONTEXT_INDICATORS = [
+    _i("higher_education_share", "15 ans ou plus non scolarisés diplômés du supérieur", "context", "down",
+       "education", field="higher_education_percentage", tab="diplomas"),
+]
+for _c in CONTEXT_INDICATORS:
+    _c["context"] = True
+for _c in INDICATORS:
+    _c["context"] = False
+
+ALL_INDICATORS = INDICATORS + CONTEXT_INDICATORS
+BY_KEY = {i["key"]: i for i in ALL_INDICATORS}
+

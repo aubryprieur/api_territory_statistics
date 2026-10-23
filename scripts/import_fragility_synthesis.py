@@ -28,7 +28,7 @@ import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.fragility_catalog import INDICATORS  # noqa: E402
+from app.fragility_catalog import ALL_INDICATORS as INDICATORS  # noqa: E402 (synthèse + contexte)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)

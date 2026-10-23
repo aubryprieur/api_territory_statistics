@@ -10,7 +10,7 @@ les moins touchées), niveau fort / modéré / faible / non évaluable.
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import SessionLocal
-from app.fragility_catalog import ALERT_THRESHOLD, INDICATORS, STRENGTH_THRESHOLD, THEMES
+from app.fragility_catalog import ALERT_THRESHOLD, CONTEXT_INDICATORS, INDICATORS, STRENGTH_THRESHOLD, THEMES
 from app.models import FragilityReference, FragilitySynthesis
 
 SOURCE = ("Calcul à partir des données de l'API (INSEE, Cnaf, Dares, DGFiP, Observatoire des situations de fragilité, "
@@ -41,7 +41,8 @@ class FragilitySynthesisService:
                     db.query(FragilityReference).filter(FragilityReference.scope.in_(scopes)).all()}
             data = row.data or {}
             indicators = []
-            for ind in INDICATORS:
+            context = []
+            for ind in INDICATORS + CONTEXT_INDICATORS:
                 fr = refs.get((ind["key"], "FR"))
                 dens = refs.get((ind["key"], row.dens7)) if row.dens7 else None
                 v = data.get(ind["key"])
@@ -57,7 +58,11 @@ class FragilitySynthesisService:
                 r = item["rank_density"] if item["rank_density"] is not None else item["rank_france"]
                 item["alert"] = r is not None and r >= ALERT_THRESHOLD
                 item["strength"] = r is not None and r <= STRENGTH_THRESHOLD and not ind["need"]
-                indicators.append(item)
+                if ind["context"]:
+                    item["alert"] = item["strength"] = False
+                    context.append(item)
+                else:
+                    indicators.append(item)
             themes = []
             for key, label in THEMES.items():
                 items = [i for i in indicators if i["theme"] == key]
@@ -74,6 +79,7 @@ class FragilitySynthesisService:
                 "source": SOURCE,
                 "themes": themes,
                 "indicators": indicators,
+                "context_indicators": context,
             }
         except SQLAlchemyError as e:
             return {"error": str(e)}
