@@ -1,5 +1,5 @@
 """
-Synthèse des fragilités : pour chaque commune et chacun des 38 indicateurs du catalogue (app/fragility_catalog.py),
+Synthèse des fragilités : pour chaque commune et chacun des 39 indicateurs du catalogue (app/fragility_catalog.py),
 valeur, effectif, rang parmi toutes les communes et rang parmi les communes de même densité (grille de densité INSEE à
 7 niveaux, data/geography/grille_densite_2025.xlsx). Tables fragility_synthesis et fragility_reference.
 

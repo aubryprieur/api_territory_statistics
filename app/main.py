@@ -2038,7 +2038,7 @@ async def get_france_pass_sport(request: Request):
 
 
 @protected_router.get("/fragility-synthesis/commune/{code}", summary="Synthèse des fragilités d'une commune",
-                      description="""38 indicateurs en 8 enjeux : valeur, effectif, valeur France, rang parmi toutes les
+                      description="""39 indicateurs en 9 enjeux : valeur, effectif, valeur France, rang parmi toutes les
 communes et parmi les communes de même densité (grille INSEE à 7 niveaux), niveau de chaque enjeu.""")
 @limiter.limit(DEFAULT_RATE)
 async def get_commune_fragility_synthesis(request: Request, code: str):

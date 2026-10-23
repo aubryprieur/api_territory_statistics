@@ -1,5 +1,5 @@
 """
-Catalogue de la synthèse des fragilités (onglet Synthèse du dashboard commune) : 8 enjeux, 38 indicateurs, tous des
+Catalogue de la synthèse des fragilités (onglet Synthèse du dashboard commune) : 9 enjeux, 39 indicateurs, tous des
 taux ou des valeurs relatives (jamais des effectifs : un effectif dépend de la taille de la commune).
 
 Chaque indicateur : key, label, theme, direction ("up" = plus élevé = plus fragile ; "down" = l'inverse), unit
@@ -11,7 +11,8 @@ Partagé par l'import (calcul des rangs) et le service (niveau de chaque enjeu).
 THEMES = {
     "poverty": "Pauvreté et ressources",
     "employment": "Emploi et insertion",
-    "youth": "Jeunesse et éducation",
+    "youth": "Jeunesse",
+    "diplomas": "Diplômes et formation",
     "families": "Familles",
     "seniors": "Seniors",
     "health": "Santé et accès aux soins",
@@ -58,17 +59,19 @@ INDICATORS = [
        "employment", field="fixed_term_percentage", tab="employment"),
     # Jeunesse et éducation
     _i("schooling_rate_15_17", "Taux de scolarisation des 15-17 ans", "youth", "down", "education", tab="schooling"),
-    _i("young_no_diploma_rate", "20-24 ans sortis du système scolaire sans diplôme", "youth", "up", "sdg",
+    _i("young_no_diploma_rate", "20-24 ans sortis du système scolaire sans diplôme", "diplomas", "up", "sdg",
        tab="diplomas"),
-    _i("young_neet_rate", "18-24 ans ni en emploi ni en études", "youth", "up", "sdg", tab="diplomas"),
+    _i("young_neet_rate", "18-24 ans ni en emploi ni en études", "diplomas", "up", "sdg", tab="diplomas"),
     _i("youth_unemployment_rate", "Taux de chômage des 15-24 ans", "youth", "up", "employment",
        field="unemployment_rate_15_24", count="unemployed_15_24", tab="employment"),
-    _i("no_diploma_share", "15 ans ou plus non scolarisés sans diplôme", "youth", "up", "education",
+    _i("no_diploma_share", "15 ans ou plus non scolarisés sans diplôme", "diplomas", "up", "education",
        field="no_diploma_percentage", tab="diplomas"),
     _i("licence_rate_0_14", "Licenciés sportifs de moins de 15 ans (pour 100)", "youth", "down", "sports",
        unit="pour 100", tab="local_life"),
     _i("young_with_parents_share", "20-24 ans vivant ni seuls ni en couple (principalement chez leurs parents)",
        "youth", "up", "cfm", count="young_with_parents", tab="youth", need=True),
+    _i("higher_education_share", "15 ans ou plus non scolarisés diplômés du supérieur", "diplomas", "down",
+       "education", field="higher_education_percentage", tab="diplomas"),
     # Familles
     _i("single_parent_share", "Familles monoparentales", "families", "up", "family",
        field="single_parent_families_percentage", count="single_parent_families", tab="families"),
@@ -111,10 +114,7 @@ INDICATOR_KEYS = [i["key"] for i in INDICATORS]
 
 # Indicateurs de contexte : rangs calculés et affichés dans les onglets thématiques (_fragility_ranks), mais hors
 # synthèse (ni enjeu, ni alerte, ni point fort).
-CONTEXT_INDICATORS = [
-    _i("higher_education_share", "15 ans ou plus non scolarisés diplômés du supérieur", "context", "down",
-       "education", field="higher_education_percentage", tab="diplomas"),
-]
+CONTEXT_INDICATORS = []
 for _c in CONTEXT_INDICATORS:
     _c["context"] = True
 for _c in INDICATORS:
