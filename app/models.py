@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, Boolean, func, Index, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from app.database import Base
 
 class User(Base):
@@ -1662,3 +1662,18 @@ class FragilityReference(Base):
     median = Column(Float)
     alert_value = Column(Float)
     france_value = Column(Float)
+
+
+class GridFilosofi1km(Base):
+    """Filosofi 2021, carreaux de 1 km (France métropolitaine) — migration a8c0e2f4b6d8."""
+    __tablename__ = "grid_filosofi_1km"
+
+    idcar = Column(String(40), primary_key=True)
+    x = Column(Integer, nullable=False)
+    y = Column(Integer, nullable=False)
+    imputed = Column(Integer)
+    communes = Column(ARRAY(String(5)), nullable=False)
+
+
+for _m in ['ind', 'men', 'men_pauv', 'men_fmp', 'log_soc', 'ind_snv', 'ind_0_3', 'ind_80p']:
+    setattr(GridFilosofi1km, _m, Column(_m, Float))
