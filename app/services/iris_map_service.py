@@ -1,6 +1,6 @@
 """
 Cartes IRIS : contours (iris_geometries) et indicateurs par IRIS pour une commune, aux millésimes disponibles
-(2017, 2022), avec la valeur de la commune calculée sur la somme de ses IRIS (même source, même millésime).
+(2017, 2022, 2023 ; la carte compare le premier et le dernier), avec la valeur de la commune calculée sur la somme de ses IRIS (même source, même millésime).
 
 Chaque indicateur est un rapport numérateur / dénominateur sur une table iris_* (colonnes additives) : la valeur
 communale est donc la somme des numérateurs sur la somme des dénominateurs, ce qui rend l'écart IRIS / commune
@@ -53,6 +53,25 @@ INDICATORS = {
                             "Taux d'activité des femmes de 15-64 ans", "femmes actives", "%"),
     "workers_employees_share": ("iris_activity", ["act_employees", "act_workers"], ["active_15_64"],
                                 "Part des ouvriers et employés parmi les actifs", "ouvriers et employés actifs", "%"),
+    "foreigner_share": ("iris_population", ["pop_foreign"], ["pop"], "Part des étrangers", "étrangers", "%"),
+    "overcrowding_rate": ("iris_housing", ["rp_mild_overuse", "rp_heavy_overuse"],
+                          ["rp_standard_occ", "rp_mild_underuse", "rp_heavy_underuse", "rp_extreme_underuse",
+                           "rp_mild_overuse", "rp_heavy_overuse"],
+                          "Part des résidences principales suroccupées", "logements suroccupés", "%"),
+    "vacancy_rate": ("iris_housing", ["vacant"], ["housing_total"], "Part des logements vacants", "logements vacants", "%"),
+    "schooling_15_17_rate": ("iris_education", ["scol_15_17"], ["pop_15_17"], "Taux de scolarisation des 15-17 ans",
+                             "jeunes de 15-17 ans scolarisés", "%"),
+    "schooling_18_24_rate": ("iris_education", ["scol_18_24"], ["pop_18_24"], "Taux de scolarisation des 18-24 ans",
+                             "jeunes de 18-24 ans scolarisés", "%"),
+    "women_employment_rate": ("iris_activity", ["employed_women_15_64"], ["pop_women_15_64"],
+                              "Taux d'emploi des femmes de 15-64 ans", "femmes en emploi", "%"),
+    # 2023 : CDD, intérim, emplois aidés et apprentissage sont publiés ensemble (sal_cdd) ; la somme reste comparable
+    "precarious_share": ("iris_activity", ["sal_cdd", "sal_interim", "sal_aided", "sal_appr"], ["salaried_15p"],
+                         "Part des salariés hors CDI (CDD, intérim, emplois aidés, apprentissage)",
+                         "salariés en contrat précaire", "%"),
+    "transit_commute_share": ("iris_activity", ["transport_transit"], ["employed_15p"],
+                              "Part des actifs occupés allant travailler en transports en commun",
+                              "actifs en transports en commun", "%"),
 }
 # Indicateurs de la table iris_indicators (hors recensement). additive : la commune est la somme de ses IRIS
 # (count / total) ; sinon valeur de référence communale (geo_level 'COM'). den : dénominateur pris dans une table iris_*
@@ -74,8 +93,8 @@ EXTERNAL = {
                             "unit": "%", "additive": True, "source": "SDES, RPLS au 1er janvier (diffusion Insee à l'IRIS)"},
     "job_seekers_abc": {"label": "Demandeurs d'emploi (catégories A, B, C) pour 100 actifs de 15-64 ans",
                         "count_label": "demandeurs d'emploi A, B, C", "unit": "%", "additive": True,
-                        "den": ("iris_activity", "active_15_64", 2022),
-                        "source": "France Travail / Insee, demandeurs d'emploi au 31 décembre (à l'IRIS) ; actifs : recensement 2022"},
+                        "den": ("iris_activity", "active_15_64", 2023),
+                        "source": "France Travail / Insee, demandeurs d'emploi au 31 décembre (à l'IRIS) ; actifs : recensement 2023"},
 }
 
 # ménages sans voiture = ménages - ménages avec au moins une voiture

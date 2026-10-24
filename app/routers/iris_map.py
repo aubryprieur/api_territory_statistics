@@ -1,7 +1,7 @@
 """
 app/routers/iris_map.py
 -----------------------
-Cartes IRIS : contours simplifiés et indicateurs par IRIS d'une commune (2017, 2022).
+Cartes IRIS : contours simplifiés et indicateurs par IRIS d'une commune (2017, 2022, 2023).
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter

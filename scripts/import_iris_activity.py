@@ -204,7 +204,7 @@ def load_file(path: str) -> pd.DataFrame:
     if ext in (".xlsx", ".xls"):
         df = pd.read_excel(path, dtype=str, engine="openpyxl")
     else:
-        for sep, enc in [(";", "latin-1"), (";", "utf-8"), (",", "utf-8")]:
+        for sep, enc in [(";", "utf-8"), (";", "latin-1"), (",", "utf-8")]:
             try:
                 df = pd.read_csv(path, sep=sep, encoding=enc, dtype=str, low_memory=False)
                 break
