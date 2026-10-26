@@ -88,7 +88,7 @@ INDICATORS = [
     _i("alone_80p_share", "80 ans ou plus vivant seuls", "seniors", "up", "household",
        field="living_alone_rate_80_plus", count="living_alone_80_plus", tab="households"),
     _i("age_75p_share", "Part des 75 ans ou plus dans la population", "seniors", "up", "population",
-       count="pop_75p", tab="synthese", need=True),
+       count="pop_75p", tab="seniors", need=True),
     _i("elderly_places_rate", "Places d'hébergement pour 1 000 personnes de 75 ans ou plus", "seniors", "down",
        "elderly_care", field="places_per_1000_75p", unit="‰", tab="seniors"),
     # Santé et accès aux soins
@@ -126,13 +126,26 @@ CONTEXT_GROUPS = {
 }
 
 CONTEXT_INDICATORS = [
-    # Population
-    _i("age_lt20_share", "Part des moins de 20 ans", "population", "neutral", "population_structure",
-       field="age_lt20_percentage", tab="synthese"),
-    _i("age_ge65_share", "Part des 65 ans ou plus", "population", "neutral", "population_structure",
-       field="age_ge65_percentage", tab="synthese"),
-    _i("youth_index", "Indice de jeunesse (moins de 20 ans pour 100 personnes de 60 ans ou plus)", "population",
-       "neutral", "population_structure", unit="indice", tab="synthese"),
+    # Population : dynamique démographique (les indicateurs d'âge sont rattachés aux enjeux Jeunesse et Seniors)
+    _i("population_growth_rate", "Variation annuelle de la population entre les deux derniers recensements",
+       "population", "neutral", "history", field="annual_growth_rate", unit="%/an", tab="synthese"),
+    _i("natural_growth_rate", "Part due au solde naturel (naissances - décès)", "population", "neutral", "history",
+       field="annual_natural_rate", unit="%/an", tab="synthese"),
+    _i("migration_growth_rate", "Part due au solde migratoire apparent (arrivées - départs)", "population",
+       "neutral", "history", field="annual_migration_rate", unit="%/an", tab="synthese"),
+    _i("births_change", "Évolution des naissances (moyenne des 3 dernières années / 3 premières)", "population",
+       "neutral", "births", tab="synthese"),
+    _i("dependency_ratio", "Rapport de dépendance (moins de 20 ans et 65 ans ou plus pour 100 personnes de 20-64 ans)",
+       "population", "neutral", "population_structure", unit="pour 100", tab="synthese"),
+    _i("newcomers_share", "Nouveaux arrivants (habitants venus d'une autre commune dans l'année)", "population",
+       "neutral", "population_structure", field="newcomers_percentage", tab="synthese"),
+    # Âges : repères de contexte affichés dans les onglets Enfance-jeunesse et Seniors (thème = onglet)
+    _i("age_lt20_share", "Part des moins de 20 ans", "youth", "neutral", "population_structure",
+       field="age_lt20_percentage", tab="youth"),
+    _i("youth_index", "Indice de jeunesse (moins de 20 ans pour 100 personnes de 60 ans ou plus)", "youth",
+       "neutral", "population_structure", unit="indice", tab="youth"),
+    _i("age_ge65_share", "Part des 65 ans ou plus", "seniors", "neutral", "population_structure",
+       field="age_ge65_percentage", tab="seniors"),
     # Ménages
     _i("one_person_share", "Ménages d'une personne", "households", "neutral", "household",
        field="one_person_percentage", tab="households"),
@@ -180,7 +193,8 @@ BY_KEY = {i["key"]: i for i in ALL_INDICATORS}
 
 # Indicateurs repris dans chaque groupe de contexte (encadré de l'onglet et repère de la Synthèse), dans l'ordre
 CONTEXT_GROUP_KEYS = {
-    "population": ["age_lt20_share", "age_ge65_share", "age_75p_share", "youth_index"],
+    "population": ["population_growth_rate", "natural_growth_rate", "migration_growth_rate", "births_change",
+                   "dependency_ratio", "newcomers_share"],
     "households": ["one_person_share", "alone_65p_share", "alone_80p_share", "single_parent_share"],
     "immigration": ["immigrant_share", "foreigner_share", "immigrant_unemployment_rate"],
     "early_childhood": ["childcare_coverage_rate", "eaje_coverage_rate", "childminder_coverage_rate",

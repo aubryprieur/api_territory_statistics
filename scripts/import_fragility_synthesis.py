@@ -163,6 +163,48 @@ def load_sources(session):
     c["year"] = 2022
     src["cfm"] = c
     logger.info(f"📖 {CFM} : {len(c):,} lignes")
+
+    # Évolution de la population entre les deux derniers recensements (série historique) : taux de variation annuel
+    # moyen et parts dues aux soldes naturel et migratoire (mêmes formules que PopulationStructureService.history)
+    from app.services.population_structure_service import _census_date
+    ht = m.PopulationHistoryByTerritory.__tablename__
+    h = pd.read_sql(
+        f"""SELECT geo_level, geo_code, year, population, births, deaths FROM {ht}
+            WHERE geo_level IN ('COM', 'FRANCE')
+              AND year IN (SELECT DISTINCT year FROM {ht} ORDER BY year DESC LIMIT 2)""", session.bind)
+    y0, y1 = sorted(h.year.unique())[-2:]
+    a = h[h.year == y0].set_index(["geo_level", "geo_code"])
+    b = h[h.year == y1].set_index(["geo_level", "geo_code"])
+    hist = b[["births", "deaths"]].join(a[["population"]].rename(columns={"population": "p0"}), how="inner")
+    hist["p1"] = b.population
+    span = (_census_date(int(y1)) - _census_date(int(y0))).days / 365.25
+    ok = (hist.p0 > 0) & (hist.p1 > 0)
+    tvam = ((hist.p1 / hist.p0) ** (1 / span) - 1) * 100
+    nat = (hist.births - hist.deaths) / ((hist.p0 + hist.p1) / 2 * span) * 100
+    hist["annual_growth_rate"] = tvam.where(ok).round(2)
+    hist["annual_natural_rate"] = nat.where(ok).round(2)
+    hist["annual_migration_rate"] = (tvam - nat).where(ok).round(2)
+    hist = hist.reset_index()
+    hist["year"] = int(y1)
+    src["history"] = hist
+    logger.info(f"📖 {ht} {y0}-{y1} : {len(hist):,} territoires")
+
+    # Naissances domiciliées (état civil) : moyenne des 3 dernières années rapportée à celle des 3 premières
+    # (lisse les petites communes). France : métropole (FM), comme la série historique.
+    bt = m.Birth.__tablename__
+    br = pd.read_sql(
+        f"""SELECT CASE WHEN geo_object = 'COM' THEN 'COM' ELSE 'FRANCE' END AS geo_level, geo AS geo_code,
+                   time_period AS year, obs_value FROM {bt}
+            WHERE geo_object = 'COM' OR (geo_object = 'FRANCE' AND geo = 'FM')""", session.bind)
+    years = sorted(br.year.unique())
+    first3, last3 = years[:3], years[-3:]
+    wide = br.pivot_table(index=["geo_level", "geo_code"], columns="year", values="obs_value", aggfunc="sum")
+    base = wide.reindex(columns=first3).fillna(0).mean(axis=1)
+    recent = wide.reindex(columns=last3).fillna(0).mean(axis=1)
+    births = pd.DataFrame({"births_change": (100 * (recent / base - 1)).where(base > 0).round(2)}).reset_index()
+    births["year"] = int(last3[-1])
+    src["births"] = births
+    logger.info(f"📖 {bt} {first3[0]}-{first3[-1]} → {last3[0]}-{last3[-1]} : {len(births):,} territoires")
     return src, pop
 
 
