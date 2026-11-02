@@ -1651,6 +1651,19 @@ class EnergyPovertyByTerritory(Base):
     energy_poverty_households = Column(Float)    # ménages concernés
 
 
+class MunicipalElectionsByTerritory(Base):
+    """Élections municipales, 1er tour (ministère de l'Intérieur) — migration c1e3a5b7d9f2."""
+    __tablename__ = "municipal_elections_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+
+
+for _m in ['registered', 'voters', 'expressed', 'blank', 'null', 'turnout_rate', 'blank_null_rate']:
+    setattr(MunicipalElectionsByTerritory, _m, Column(_m, Float))
+
+
 class FragilitySynthesis(Base):
     """Synthèse des fragilités par commune (rangs national et par densité) — migration f7b9d1e3a5c6."""
     __tablename__ = "fragility_synthesis"

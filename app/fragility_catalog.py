@@ -184,6 +184,8 @@ CONTEXT_INDICATORS = [
        unit="‰", count="associations_active", tab="local_life"),
     _i("presidential_turnout", "Participation au 1er tour de l'élection présidentielle", "local_life", "down", "sdg",
        tab="local_life"),
+    _i("municipal_turnout", "Participation au 1er tour des élections municipales", "local_life", "down",
+       "municipal_elections", field="turnout_rate", count="voters", tab="local_life"),
 ]
 for _c in CONTEXT_INDICATORS:
     _c["context"] = True
@@ -205,5 +207,5 @@ CONTEXT_GROUP_KEYS = {
     "rights": ["caf_coverage_rate", "rsa_population_rate", "ppa_population_rate", "housing_benefit_rate",
                "ars_families_rate", "c2s_rate"],
     "local_life": ["licence_rate", "licence_rate_0_14", "licence_rate_60p", "associations_rate",
-                   "presidential_turnout"],
+                   "presidential_turnout", "municipal_turnout"],
 }

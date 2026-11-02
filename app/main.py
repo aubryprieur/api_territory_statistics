@@ -50,6 +50,7 @@ from .services.senior_fragilities_service import SeniorFragilitiesService
 from .services.elderly_care_service import ElderlyCareService
 from .services.pass_sport_service import PassSportService
 from .services.energy_poverty_service import EnergyPovertyService
+from .services.municipal_elections_service import MunicipalElectionsService
 from .services.fragility_synthesis_service import FragilitySynthesisService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
@@ -184,6 +185,7 @@ senior_fragilities_service = SeniorFragilitiesService()
 elderly_care_service = ElderlyCareService()
 pass_sport_service = PassSportService()
 energy_poverty_service = EnergyPovertyService()
+municipal_elections_service = MunicipalElectionsService()
 fragility_synthesis_service = FragilitySynthesisService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
@@ -2074,6 +2076,40 @@ async def get_region_energy_poverty(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_energy_poverty(request: Request):
     return energy_poverty_service.france()
+
+
+MUNICIPAL_ELECTIONS_DESCRIPTION = """Élections municipales, 1er tour (ministère de l'Intérieur) : inscrits, votants, exprimés, blancs et nuls,
+taux de participation (votants / inscrits). EPCI, départements, régions et France métropolitaine : sommes des communes."""
+
+
+@protected_router.get("/municipal-elections/commune/{code}", summary="Municipales (1er tour) d'une commune", description=MUNICIPAL_ELECTIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_municipal_elections(request: Request, code: str):
+    return municipal_elections_service.by_commune(code)
+
+
+@protected_router.get("/municipal-elections/epci/{epci}", summary="Municipales (1er tour) d'un EPCI", description=MUNICIPAL_ELECTIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_municipal_elections(request: Request, epci: str):
+    return municipal_elections_service.by_epci(epci)
+
+
+@protected_router.get("/municipal-elections/department/{dep}", summary="Municipales (1er tour) d'un département", description=MUNICIPAL_ELECTIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_municipal_elections(request: Request, dep: str):
+    return municipal_elections_service.by_department(dep)
+
+
+@protected_router.get("/municipal-elections/region/{reg}", summary="Municipales (1er tour) d'une région", description=MUNICIPAL_ELECTIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_municipal_elections(request: Request, reg: str):
+    return municipal_elections_service.by_region(reg)
+
+
+@protected_router.get("/municipal-elections/france", summary="Municipales (1er tour) en France métropolitaine", description=MUNICIPAL_ELECTIONS_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_municipal_elections(request: Request):
+    return municipal_elections_service.france()
 
 
 @protected_router.get("/fragility-synthesis/commune/{code}", summary="Synthèse des fragilités d'une commune",
