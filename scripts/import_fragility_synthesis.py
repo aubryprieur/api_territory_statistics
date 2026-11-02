@@ -233,24 +233,28 @@ def load_sources(session):
     st = m.SchoolByYear.__tablename__
     sc = pd.read_sql(f"SELECT commune_code, school_type, year, ips, remoteness FROM {st} WHERE commune_code IS NOT NULL",
                      session.bind)
-    parts, school_years = [], []
-    for key, stype, col in (("ips_ecole", "ecole", "ips"), ("ips_college", "college", "ips"),
-                            ("ips_lycee", "lycee", "ips"), ("remoteness_college", "college", "remoteness")):
-        t = sc[(sc.school_type == stype) & sc[col].notna()]
-        if t.empty:
-            continue
-        t = t[t.year == t.year.max()]
-        com = t.groupby("commune_code")[col].mean().round(1).rename(key).reset_index().rename(
-            columns={"commune_code": "geo_code"})
-        com["geo_level"] = "COM"
-        fr = pd.DataFrame([{"geo_level": "FRANCE", "geo_code": "FM", key: round(t[col].mean(), 1)}])
-        part = pd.concat([com, fr], ignore_index=True)
-        parts.append(part.set_index(["geo_level", "geo_code"]))
-        school_years.append(int(t.year.max()))
-        logger.info(f"📖 {st} {key} ({int(t.year.max())}) : {len(com):,} communes")
-    schools = pd.concat(parts, axis=1).reset_index()
-    schools["year"] = max(school_years)  # rentrée la plus récente (affichée comme millésime)
-    src["schools"] = schools
+    # une source par type d'établissement, chacune avec sa dernière rentrée (écoles et collèges/lycées diffèrent)
+    for stype, keys in (("ecole", (("ips_ecole", "ips"),)), ("college", (("ips_college", "ips"), ("remoteness_college", "remoteness"))),
+                        ("lycee", (("ips_lycee", "ips"),))):
+        t = sc[sc.school_type == stype]
+        cols = []
+        for key, col in keys:
+            tt = t[t[col].notna()]
+            if tt.empty:
+                continue
+            tt = tt[tt.year == tt.year.max()]
+            com = tt.groupby("commune_code")[col].mean().round(1).rename(key).reset_index().rename(
+                columns={"commune_code": "geo_code"})
+            com["geo_level"] = "COM"
+            fr = pd.DataFrame([{"geo_level": "FRANCE", "geo_code": "FM", key: round(tt[col].mean(), 1)}])
+            part = pd.concat([com, fr], ignore_index=True)
+            part["year"] = int(tt.year.max())
+            cols.append(part)
+            logger.info(f"📖 {st} {key} ({int(tt.year.max())}) : {len(com):,} communes")
+        df = cols[0]
+        for other in cols[1:]:
+            df = df.merge(other.drop(columns="year"), on=["geo_level", "geo_code"], how="outer")
+        src[f"schools_{stype}"] = df
     return src, pop
 
 
