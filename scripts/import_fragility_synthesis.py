@@ -86,6 +86,8 @@ def load_sources(session):
     from app.services.immigration_service import ImmigrationService
     from app.services.energy_poverty_service import EnergyPovertyService
     from app.services.municipal_elections_service import MunicipalElectionsService
+    from app.services.economic_fabric_service import EconomicFabricService
+    from app.services.social_housing_service import SocialHousingService
 
     generic = {
         "revenues": RevenuesService(), "tax_households": TaxHouseholdsService(), "fragilities": FragilitiesService(),
@@ -95,6 +97,7 @@ def load_sources(session):
         "housing": HousingService(), "delinquency": DelinquencyService(),
         "population_structure": PopulationStructureService(), "immigration": ImmigrationService(),
         "energy_poverty": EnergyPovertyService(), "municipal_elections": MunicipalElectionsService(),
+        "economic_fabric": EconomicFabricService(), "social_housing": SocialHousingService(),
     }
     src = {}
     for name, svc in generic.items():
@@ -208,6 +211,46 @@ def load_sources(session):
     births["year"] = int(last3[-1])
     src["births"] = births
     logger.info(f"📖 {bt} {first3[0]}-{first3[-1]} → {last3[0]}-{last3[-1]} : {len(births):,} territoires")
+
+    # Créations d'entreprises (SIDE) : moyenne annuelle des 5 dernières années pour 1 000 habitants (recensement 2023)
+    # et part des entreprises individuelles (mêmes règles que BusinessCreationsService)
+    from app.services.business_creations_service import WINDOW
+    ct = m.BusinessCreationsByTerritory.__tablename__
+    cr = pd.read_sql(
+        f"""SELECT geo_level, geo_code, sum(created) AS created, sum(created_individual) AS created_individual,
+                   count(DISTINCT year) AS n_years, max(year) AS year
+            FROM {ct} WHERE geo_level IN ('COM', 'FRANCE')
+              AND year > (SELECT max(year) FROM {ct}) - {WINDOW}
+            GROUP BY geo_level, geo_code""", session.bind)
+    cr = cr.merge(pop[["geo_level", "geo_code", "pop"]], on=["geo_level", "geo_code"], how="left")
+    cr["business_creation_rate"] = (1000 * cr.created / cr.n_years / cr["pop"]).where(cr["pop"] > 0).round(2)
+    cr["individual_creations_share"] = (100 * cr.created_individual / cr.created).where(cr.created > 0).round(2)
+    src["business_creations"] = cr
+    logger.info(f"📖 {ct} ({WINDOW} dernières années) : {len(cr):,} territoires")
+
+    # Établissements scolaires : moyenne de l'IPS des écoles, collèges, lycées de la commune et de l'indice
+    # d'éloignement des collèges (dernière rentrée disponible) ; France = moyenne de tous les établissements
+    st = m.SchoolByYear.__tablename__
+    sc = pd.read_sql(f"SELECT commune_code, school_type, year, ips, remoteness FROM {st} WHERE commune_code IS NOT NULL",
+                     session.bind)
+    parts, school_years = [], []
+    for key, stype, col in (("ips_ecole", "ecole", "ips"), ("ips_college", "college", "ips"),
+                            ("ips_lycee", "lycee", "ips"), ("remoteness_college", "college", "remoteness")):
+        t = sc[(sc.school_type == stype) & sc[col].notna()]
+        if t.empty:
+            continue
+        t = t[t.year == t.year.max()]
+        com = t.groupby("commune_code")[col].mean().round(1).rename(key).reset_index().rename(
+            columns={"commune_code": "geo_code"})
+        com["geo_level"] = "COM"
+        fr = pd.DataFrame([{"geo_level": "FRANCE", "geo_code": "FM", key: round(t[col].mean(), 1)}])
+        part = pd.concat([com, fr], ignore_index=True)
+        parts.append(part.set_index(["geo_level", "geo_code"]))
+        school_years.append(int(t.year.max()))
+        logger.info(f"📖 {st} {key} ({int(t.year.max())}) : {len(com):,} communes")
+    schools = pd.concat(parts, axis=1).reset_index()
+    schools["year"] = max(school_years)  # rentrée la plus récente (affichée comme millésime)
+    src["schools"] = schools
     return src, pop
 
 

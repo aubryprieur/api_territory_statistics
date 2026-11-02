@@ -12,7 +12,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import SessionLocal
 from app.fragility_catalog import (ALERT_THRESHOLD, CONTEXT_GROUP_KEYS, CONTEXT_GROUPS, CONTEXT_INDICATORS, INDICATORS,
-                                   STRENGTH_THRESHOLD, THEMES)
+                                   STRENGTH_THRESHOLD, TAB_KEYS, THEMES)
+
+JUDGED = ("up", "down")  # neutral (structure) et two_sided (écart à la médiane) : hors alertes et niveaux d'enjeu
 from app.models import FragilityReference, FragilitySynthesis, GeoCode
 
 SOURCE = ("Calcul à partir des données de l'API (INSEE, Cnaf, Dares, DGFiP, Observatoire des situations de fragilité, "
@@ -82,7 +84,7 @@ class FragilitySynthesisService:
                 fr = refs.get((ind["key"], "FR"))
                 dens = refs.get((ind["key"], row.dens7)) if row.dens7 else None
                 v = data.get(ind["key"])
-                item = {k: ind[k] for k in ("key", "label", "theme", "direction", "unit", "tab", "need")}
+                item = {k: ind[k] for k in ("key", "label", "theme", "direction", "unit", "tab", "need", "sides")}
                 item.update({
                     "year": fr.year if fr else None,
                     "value": v[0] if v else None, "count": v[1] if v else None,
@@ -95,7 +97,7 @@ class FragilitySynthesisService:
                 item.update({"rank_epci": ek[0] if ek else None, "epci_position": ek[1] if ek else None,
                              "epci_n": ek[2] if ek else None, "epci_median": ek[3] if ek else None})
                 r = item["rank_density"] if item["rank_density"] is not None else item["rank_france"]
-                judged = ind["direction"] != "neutral"
+                judged = ind["direction"] in JUDGED
                 item["alert"] = judged and r is not None and r >= ALERT_THRESHOLD
                 item["strength"] = judged and r is not None and r <= STRENGTH_THRESHOLD and not ind["need"]
                 if ind["context"]:
@@ -116,7 +118,7 @@ class FragilitySynthesisService:
             by_key = {i["key"]: i for i in indicators + context}
             for key, (label, tab) in CONTEXT_GROUPS.items():
                 items = [by_key[k] for k in CONTEXT_GROUP_KEYS.get(key, []) if k in by_key]
-                judged = [i for i in items if i["direction"] != "neutral"]
+                judged = [i for i in items if i["direction"] in JUDGED]
                 avail = [i for i in judged if i["value"] is not None]
                 alerts = [i for i in avail if i["alert"]]
                 level = theme_level(len(avail), len(alerts), len(judged)) if judged else "context"
@@ -135,6 +137,7 @@ class FragilitySynthesisService:
                 "context_indicators": context,
                 "context_groups": [{"key": k, "label": lbl, "tab": tab, "indicators": CONTEXT_GROUP_KEYS.get(k, [])}
                                    for k, (lbl, tab) in CONTEXT_GROUPS.items()],
+                "tab_keys": TAB_KEYS,
             }
         except SQLAlchemyError as e:
             return {"error": str(e)}

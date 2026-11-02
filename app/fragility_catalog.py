@@ -24,11 +24,11 @@ ALERT_THRESHOLD = 80     # rang ≥ 80 : parmi les 20 % de communes les plus tou
 STRENGTH_THRESHOLD = 20  # rang ≤ 20 : parmi les 20 % de communes les moins touchées
 
 
-def _i(key, label, theme, direction, source, field=None, unit="%", count=None, tab=None, need=False):
+def _i(key, label, theme, direction, source, field=None, unit="%", count=None, tab=None, need=False, sides=None):
     """need=True : indicateur de besoin (75 ans ou plus, familles nombreuses, HLM, jeunes chez leurs parents) —
     compté en alerte quand il est élevé, mais jamais présenté comme un point fort quand il est faible."""
     return {"key": key, "label": label, "theme": theme, "direction": direction, "source": source,
-            "field": field or key, "unit": unit, "count": count, "tab": tab, "need": need}
+            "field": field or key, "unit": unit, "count": count, "tab": tab, "need": need, "sides": sides}
 
 
 INDICATORS = [
@@ -114,45 +114,52 @@ INDICATORS = [
 
 INDICATOR_KEYS = [i["key"] for i in INDICATORS]
 
-# Indicateurs de contexte : rangs calculés et affichés en tête des onglets thématiques (_fragility_ranks) et dans les
-# « Repères » de l'onglet Synthèse, mais hors synthèse (ni enjeu, ni alerte, ni point fort).
-# direction "neutral" : indicateur de structure, classé du plus faible (0) au plus élevé (100), sans jugement.
+# Indicateurs de contexte : rangs calculés et affichés en tête des onglets (_fragility_ranks) et dans les « Repères » de
+# l'onglet Synthèse, mais hors décompte des enjeux de fragilité (ni alerte ni niveau d'enjeu principal).
+# Lecture « intensité de l'enjeu » (dashboard, bleu → rouge) :
+#   "up"         : valeur élevée = enjeu plus marqué ; "down" : valeur faible = enjeu plus marqué
+#   "neutral"    : indicateur de structure ; valeur élevée = public concerné plus nombreux, donc enjeu plus marqué
+#                  (rang 100 = valeur la plus élevée), sans jugement positif ou négatif
+#   "two_sided"  : les deux extrêmes sont des enjeux (forte baisse / forte hausse) ; intensité = écart à la médiane,
+#                  sens indiqué par sides = (libellé valeur basse, libellé valeur haute)
 CONTEXT_GROUPS = {
     "population": ("Population", "synthese"),
     "households": ("Ménages", "households"),
     "immigration": ("Immigrés et étrangers", "immigration"),
     "early_childhood": ("Petite enfance", "children_comparison"),
     "schooling": ("Scolarité", "schooling"),
+    "economy": ("Tissu économique", "local_economy"),
     "rights": ("Accès aux droits", "caf_benefits"),
     "local_life": ("Vie locale", "local_life"),
 }
 
+GROWTH = ("forte baisse", "forte hausse")
+
 CONTEXT_INDICATORS = [
-    # Population : dynamique démographique (les indicateurs d'âge sont rattachés aux enjeux Jeunesse et Seniors)
+    # Population : dynamique démographique
     _i("population_growth_rate", "Variation annuelle de la population entre les deux derniers recensements",
-       "population", "neutral", "history", field="annual_growth_rate", unit="%/an", tab="synthese"),
-    _i("natural_growth_rate", "Part due au solde naturel (naissances - décès)", "population", "neutral", "history",
-       field="annual_natural_rate", unit="%/an", tab="synthese"),
+       "population", "two_sided", "history", field="annual_growth_rate", unit="%/an", tab="synthese", sides=GROWTH),
+    _i("natural_growth_rate", "Part due au solde naturel (naissances - décès)", "population", "two_sided", "history",
+       field="annual_natural_rate", unit="%/an", tab="synthese", sides=GROWTH),
     _i("migration_growth_rate", "Part due au solde migratoire apparent (arrivées - départs)", "population",
-       "neutral", "history", field="annual_migration_rate", unit="%/an", tab="synthese"),
-    _i("births_change", "Évolution des naissances (moyenne des 3 dernières années / 3 premières)", "population",
-       "neutral", "births", tab="synthese"),
+       "two_sided", "history", field="annual_migration_rate", unit="%/an", tab="synthese", sides=GROWTH),
     _i("dependency_ratio", "Rapport de dépendance (moins de 20 ans et 65 ans ou plus pour 100 personnes de 20-64 ans)",
        "population", "neutral", "population_structure", unit="pour 100", tab="synthese"),
     _i("newcomers_share", "Nouveaux arrivants (habitants venus d'une autre commune dans l'année)", "population",
        "neutral", "population_structure", field="newcomers_percentage", tab="synthese"),
-    # Âges : repères de contexte affichés dans les onglets Enfance-jeunesse et Seniors (thème = onglet)
-    _i("age_lt20_share", "Part des moins de 20 ans", "youth", "neutral", "population_structure",
-       field="age_lt20_percentage", tab="youth"),
-    _i("youth_index", "Indice de jeunesse (moins de 20 ans pour 100 personnes de 60 ans ou plus)", "youth",
-       "neutral", "population_structure", unit="indice", tab="youth"),
-    _i("age_ge65_share", "Part des 65 ans ou plus", "seniors", "neutral", "population_structure",
-       field="age_ge65_percentage", tab="seniors"),
     # Ménages
     _i("one_person_share", "Ménages d'une personne", "households", "neutral", "household",
        field="one_person_percentage", tab="households"),
     _i("alone_65p_share", "65 ans ou plus vivant seuls", "households", "up", "household",
        field="living_alone_rate_65_plus", tab="households"),
+    _i("recent_movers_share", "Ménages emménagés depuis moins de 2 ans", "households", "neutral", "housing",
+       field="recent_movers_percentage", tab="households"),
+    # Familles
+    _i("couples_with_children_share", "Couples avec enfants (part des ménages)", "families", "neutral", "family",
+       field="couples_with_children_percentage", tab="families"),
+    # Logement
+    _i("social_housing_mobility_rate", "Taux de mobilité dans le parc social (emménagements dans l'année)",
+       "housing", "down", "social_housing", field="mobility_rate", tab="housing"),
     # Immigrés et étrangers
     _i("immigrant_share", "Part des immigrés dans la population", "immigration", "neutral", "immigration",
        field="immigrant_rate", tab="immigration"),
@@ -161,20 +168,67 @@ CONTEXT_INDICATORS = [
     _i("immigrant_unemployment_rate", "Taux de chômage des immigrés", "immigration", "up", "immigration",
        field="imm_unemployment_rate", tab="immigration"),
     # Petite enfance (avec childcare_coverage_rate de l'enjeu Familles)
+    _i("age_0_2_share", "Part des moins de 3 ans dans la population", "early_childhood", "neutral",
+       "population_structure", field="age_0_2_percentage", tab="children_comparison"),
+    _i("age_3_5_share", "Part des 3-5 ans dans la population", "early_childhood", "neutral", "population_structure",
+       field="age_3_5_percentage", tab="children_comparison"),
+    _i("births_change", "Évolution des naissances (moyenne des 3 dernières années / 3 premières)", "early_childhood",
+       "two_sided", "births", tab="children_comparison", sides=GROWTH),
     _i("eaje_coverage_rate", "Places en accueil collectif (crèches) pour 100 enfants de moins de 3 ans",
        "early_childhood", "down", "childcare", field="rate_eaje", unit="pour 100", tab="children_comparison"),
     _i("childminder_coverage_rate", "Places chez les assistantes maternelles pour 100 enfants de moins de 3 ans",
        "early_childhood", "down", "childcare", field="rate_childminder", unit="pour 100", tab="children_comparison"),
+    # Enfance, jeunesse
+    _i("age_6_10_share", "Part des 6-10 ans dans la population", "youth", "neutral", "population_structure",
+       field="age_6_10_percentage", tab="youth"),
+    _i("age_11_14_share", "Part des 11-14 ans dans la population", "youth", "neutral", "population_structure",
+       field="age_11_14_percentage", tab="youth"),
+    _i("age_15_17_share", "Part des 15-17 ans dans la population", "youth", "neutral", "population_structure",
+       field="age_15_17_percentage", tab="youth"),
+    _i("age_18_24_share", "Part des 18-24 ans dans la population", "youth", "neutral", "population_structure",
+       field="age_18_24_percentage", tab="youth"),
+    _i("licence_rate_15_29", "Licenciés sportifs de 15-29 ans pour 100 habitants du même âge", "youth", "down",
+       "sports", unit="pour 100", tab="youth"),
     # Scolarité (avec schooling_rate_15_17 de l'enjeu Jeunesse)
     _i("schooling_rate_2", "Taux de scolarisation à 2 ans", "schooling", "neutral", "education", tab="schooling"),
     _i("schooling_rate_3_5", "Taux de scolarisation des 3-5 ans", "schooling", "down", "education", tab="schooling"),
     _i("schooling_rate_18_24", "Taux de scolarisation des 18-24 ans", "schooling", "neutral", "education",
        tab="schooling"),
+    _i("remoteness_college", "Indice d'éloignement des collèges de la commune", "schooling", "up", "schools",
+       unit="indice", tab="schooling"),
+    _i("ips_ecole", "Indice de position sociale (IPS) des écoles de la commune", "schooling", "down", "schools",
+       unit="indice", tab="schooling"),
+    _i("ips_college", "Indice de position sociale (IPS) des collèges de la commune", "schooling", "down", "schools",
+       unit="indice", tab="schooling"),
+    _i("ips_lycee", "Indice de position sociale (IPS) des lycées de la commune", "schooling", "down", "schools",
+       unit="indice", tab="schooling"),
+    # Emploi et activité
+    _i("youth_employment_rate", "Taux d'emploi des 15-24 ans", "employment", "down", "employment",
+       field="employment_rate_15_24", tab="employment"),
+    _i("part_time_share", "Salariés à temps partiel", "employment", "up", "employment",
+       field="salaried_part_time_percentage", tab="employment"),
+    _i("upper_to_working_ratio", "Cadres et professions intermédiaires pour 100 employés et ouvriers", "employment",
+       "down", "population_structure", field="upper_to_working_class_ratio", unit="pour 100", tab="employment"),
+    # Tissu économique
+    _i("employment_concentration", "Concentration d'emploi (emplois pour 100 actifs occupés résidents)", "economy",
+       "two_sided", "employment", unit="pour 100", tab="local_economy",
+       sides=("commune surtout résidentielle", "pôle d'emploi")),
+    _i("presential_posts_share", "Postes salariés de l'économie présentielle", "economy", "neutral",
+       "economic_fabric", tab="local_economy"),
+    _i("business_creation_rate", "Créations d'entreprises par an pour 1 000 habitants", "economy", "down",
+       "business_creations", unit="‰", tab="local_economy"),
+    _i("individual_creations_share", "Part des entreprises individuelles parmi les créations", "economy", "neutral",
+       "business_creations", tab="local_economy"),
     # Accès aux droits (avec RSA, prime d'activité, C2S, ARS)
     _i("caf_coverage_rate", "Population couverte par la CAF", "rights", "neutral", "caf", count="all_persons",
        tab="caf_benefits"),
     _i("housing_benefit_rate", "Population couverte par une aide au logement", "rights", "up", "caf",
        count="housing_persons", tab="caf_benefits"),
+    # Seniors
+    _i("aging_index", "Indice de vieillissement (65 ans ou plus pour 100 moins de 20 ans)", "seniors", "neutral",
+       "population_structure", unit="indice", tab="seniors"),
+    _i("elderly_generations_index", "Indice d'évolution des générations âgées (60-74 ans pour 100 de 75 ans ou plus)",
+       "seniors", "neutral", "population_structure", unit="indice", tab="seniors"),
     # Vie locale (avec licence_rate_0_14 de l'enjeu Jeunesse)
     _i("licence_rate", "Licenciés sportifs pour 100 habitants", "local_life", "down", "sports", unit="pour 100",
        tab="local_life"),
@@ -186,6 +240,11 @@ CONTEXT_INDICATORS = [
        tab="local_life"),
     _i("municipal_turnout", "Participation au 1er tour des élections municipales", "local_life", "down",
        "municipal_elections", field="turnout_rate", count="voters", tab="local_life"),
+    # Délinquance (faits constatés : reflètent aussi l'activité des services et le recours à la plainte)
+    _i("sexual_violence_rate", "Victimes de violences sexuelles pour 1 000 habitants", "safety", "up", "delinquency",
+       unit="‰", count="sexual_violence_count", tab="delinquency"),
+    _i("drug_use_rate", "Mis en cause pour usage de stupéfiants pour 1 000 habitants", "safety", "up", "delinquency",
+       unit="‰", count="drug_use_count", tab="delinquency"),
 ]
 for _c in CONTEXT_INDICATORS:
     _c["context"] = True
@@ -195,17 +254,40 @@ for _c in INDICATORS:
 ALL_INDICATORS = INDICATORS + CONTEXT_INDICATORS
 BY_KEY = {i["key"]: i for i in ALL_INDICATORS}
 
-# Indicateurs repris dans chaque groupe de contexte (encadré de l'onglet et repère de la Synthèse), dans l'ordre
-CONTEXT_GROUP_KEYS = {
-    "population": ["population_growth_rate", "natural_growth_rate", "migration_growth_rate", "births_change",
-                   "dependency_ratio", "newcomers_share"],
-    "households": ["one_person_share", "alone_65p_share", "alone_80p_share", "single_parent_share"],
+# Indicateurs affichés dans l'encart « Position parmi les communes » de chaque onglet du dashboard (et dans le repère
+# de l'onglet dans la Synthèse), dans l'ordre. Un indicateur de fragilité peut être présenté dans un onglet autre que
+# celui de son enjeu : il continue de compter dans son enjeu (ex. chômage des 15-24 ans : onglet Emploi, enjeu Jeunesse).
+TAB_KEYS = {
+    "synthese": ["population_growth_rate", "natural_growth_rate", "migration_growth_rate", "dependency_ratio",
+                 "newcomers_share"],
+    "households": ["one_person_share", "alone_65p_share", "alone_80p_share", "recent_movers_share"],
+    "families": ["single_parent_share", "large_families_share", "couples_with_children_share", "ars_families_rate"],
+    "housing": ["overcrowding_rate", "vacancy_rate", "no_car_share", "social_tenants_share", "energy_poverty_rate",
+                "social_housing_mobility_rate"],
+    "children_comparison": ["age_0_2_share", "age_3_5_share", "births_change", "childcare_coverage_rate",
+                            "eaje_coverage_rate", "childminder_coverage_rate", "schooling_rate_2"],
+    "youth": ["age_6_10_share", "age_11_14_share", "age_15_17_share", "age_18_24_share", "licence_rate_15_29",
+              "young_with_parents_share"],
+    "schooling": ["schooling_rate_2", "schooling_rate_3_5", "schooling_rate_15_17", "schooling_rate_18_24",
+                  "remoteness_college", "ips_ecole", "ips_college", "ips_lycee"],
+    "diplomas": ["no_diploma_share", "higher_education_share", "young_no_diploma_rate", "young_neet_rate"],
+    "employment": ["unemployment_rate", "employment_rate", "women_employment_rate", "job_seekers_rate",
+                   "youth_employment_rate", "youth_unemployment_rate", "fixed_term_share", "part_time_share",
+                   "upper_to_working_ratio"],
+    "local_economy": ["employment_concentration", "presential_posts_share", "business_creation_rate",
+                      "individual_creations_share"],
+    "revenues_poverty": ["poverty_rate", "median_living_standard", "social_benefits_share", "taxed_households_share",
+                         "c2s_rate"],
     "immigration": ["immigrant_share", "foreigner_share", "immigrant_unemployment_rate"],
-    "early_childhood": ["childcare_coverage_rate", "eaje_coverage_rate", "childminder_coverage_rate",
-                        "schooling_rate_2"],
-    "schooling": ["schooling_rate_2", "schooling_rate_3_5", "schooling_rate_15_17", "schooling_rate_18_24"],
-    "rights": ["caf_coverage_rate", "rsa_population_rate", "ppa_population_rate", "housing_benefit_rate",
-               "ars_families_rate", "c2s_rate"],
-    "local_life": ["licence_rate", "licence_rate_0_14", "licence_rate_60p", "associations_rate",
-                   "presidential_turnout", "municipal_turnout"],
+    "caf_benefits": ["caf_coverage_rate", "rsa_population_rate", "ppa_population_rate", "housing_benefit_rate",
+                     "ars_families_rate", "c2s_rate"],
+    "health": ["gp_accessibility", "no_gp_rate", "ald_rate", "no_dentist_rate", "no_colorectal_screening_rate"],
+    "seniors": ["seniors_at_risk_share", "min_old_age_rate", "alone_80p_share", "age_75p_share", "elderly_places_rate",
+                "aging_index", "elderly_generations_index"],
+    "local_life": ["licence_rate", "licence_rate_0_14", "licence_rate_60p", "associations_rate", "presidential_turnout",
+                   "municipal_turnout"],
+    "delinquency": ["intrafamily_violence_rate", "sexual_violence_rate", "drug_use_rate"],
 }
+
+# Niveau d'un enjeu de contexte (tuile de la Synthèse) : indicateurs jugés (up / down) de l'onglet correspondant
+CONTEXT_GROUP_KEYS = {g: TAB_KEYS[tab] for g, (_, tab) in CONTEXT_GROUPS.items()}
