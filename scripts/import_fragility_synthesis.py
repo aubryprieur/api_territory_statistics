@@ -84,6 +84,7 @@ def load_sources(session):
     from app.services.household_service import HouseholdService
     from app.services.population_structure_service import PopulationStructureService
     from app.services.immigration_service import ImmigrationService
+    from app.services.energy_poverty_service import EnergyPovertyService
 
     generic = {
         "revenues": RevenuesService(), "tax_households": TaxHouseholdsService(), "fragilities": FragilitiesService(),
@@ -92,6 +93,7 @@ def load_sources(session):
         "senior_fragilities": SeniorFragilitiesService(), "elderly_care": ElderlyCareService(),
         "housing": HousingService(), "delinquency": DelinquencyService(),
         "population_structure": PopulationStructureService(), "immigration": ImmigrationService(),
+        "energy_poverty": EnergyPovertyService(),
     }
     src = {}
     for name, svc in generic.items():

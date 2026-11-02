@@ -1640,6 +1640,17 @@ for _m in ['activations', 'activations_6_17', 'girls_6_17', 'students', 'pop_6_1
     setattr(PassSportByTerritory, _m, Column(_m, Float))
 
 
+class EnergyPovertyByTerritory(Base):
+    """Précarité énergétique logement (Géodip, ONPE) — migration b9d1f3a5c7e9."""
+    __tablename__ = "energy_poverty_by_territory"
+
+    geo_level = Column(String(10), primary_key=True)
+    geo_code = Column(String(10), primary_key=True)
+    year = Column(Integer, primary_key=True)
+    energy_poverty_rate = Column(Float)          # % des ménages
+    energy_poverty_households = Column(Float)    # ménages concernés
+
+
 class FragilitySynthesis(Base):
     """Synthèse des fragilités par commune (rangs national et par densité) — migration f7b9d1e3a5c6."""
     __tablename__ = "fragility_synthesis"

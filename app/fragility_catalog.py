@@ -1,5 +1,5 @@
 """
-Catalogue de la synthèse des fragilités (onglet Synthèse du dashboard commune) : 9 enjeux, 39 indicateurs, tous des
+Catalogue de la synthèse des fragilités (onglet Synthèse du dashboard commune) : 9 enjeux, 40 indicateurs, tous des
 taux ou des valeurs relatives (jamais des effectifs : un effectif dépend de la taille de la commune).
 
 Chaque indicateur : key, label, theme, direction ("up" = plus élevé = plus fragile ; "down" = l'inverse), unit
@@ -105,6 +105,8 @@ INDICATORS = [
     _i("no_car_share", "Ménages sans voiture", "housing", "up", "housing", field="no_car_percentage", tab="housing"),
     _i("social_tenants_share", "Ménages locataires d'un logement HLM", "housing", "up", "housing",
        field="tenants_social_percentage", tab="housing", need=True),
+    _i("energy_poverty_rate", "Ménages en précarité énergétique logement", "housing", "up", "energy_poverty",
+       count="energy_poverty_households", tab="housing"),
     # Tranquillité publique
     _i("intrafamily_violence_rate", "Victimes de violences physiques intrafamiliales pour 1 000 habitants", "safety",
        "up", "delinquency", unit="‰", count="intrafamily_violence_count", tab="delinquency"),

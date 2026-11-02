@@ -49,6 +49,7 @@ from .services.fragilities_service import FragilitiesService
 from .services.senior_fragilities_service import SeniorFragilitiesService
 from .services.elderly_care_service import ElderlyCareService
 from .services.pass_sport_service import PassSportService
+from .services.energy_poverty_service import EnergyPovertyService
 from .services.fragility_synthesis_service import FragilitySynthesisService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
@@ -182,6 +183,7 @@ fragilities_service = FragilitiesService()
 senior_fragilities_service = SeniorFragilitiesService()
 elderly_care_service = ElderlyCareService()
 pass_sport_service = PassSportService()
+energy_poverty_service = EnergyPovertyService()
 fragility_synthesis_service = FragilitySynthesisService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
@@ -2039,8 +2041,43 @@ async def get_france_pass_sport(request: Request):
     return pass_sport_service.france()
 
 
+ENERGY_POVERTY_DESCRIPTION = """Précarité énergétique logement (Géodip, ONPE, 2022) : part et nombre de ménages dont les dépenses
+théoriques d'énergie pour le logement dépassent 8 % des ressources et dont le niveau de vie est parmi les 30 % les plus
+modestes. France = France métropolitaine (pas d'estimation outre-mer)."""
+
+
+@protected_router.get("/energy-poverty/commune/{code}", summary="Précarité énergétique d'une commune", description=ENERGY_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_energy_poverty(request: Request, code: str):
+    return energy_poverty_service.by_commune(code)
+
+
+@protected_router.get("/energy-poverty/epci/{epci}", summary="Précarité énergétique d'un EPCI", description=ENERGY_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_energy_poverty(request: Request, epci: str):
+    return energy_poverty_service.by_epci(epci)
+
+
+@protected_router.get("/energy-poverty/department/{dep}", summary="Précarité énergétique d'un département", description=ENERGY_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_department_energy_poverty(request: Request, dep: str):
+    return energy_poverty_service.by_department(dep)
+
+
+@protected_router.get("/energy-poverty/region/{reg}", summary="Précarité énergétique d'une région", description=ENERGY_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_region_energy_poverty(request: Request, reg: str):
+    return energy_poverty_service.by_region(reg)
+
+
+@protected_router.get("/energy-poverty/france", summary="Précarité énergétique en France métropolitaine", description=ENERGY_POVERTY_DESCRIPTION)
+@limiter.limit(DEFAULT_RATE)
+async def get_france_energy_poverty(request: Request):
+    return energy_poverty_service.france()
+
+
 @protected_router.get("/fragility-synthesis/commune/{code}", summary="Synthèse des fragilités d'une commune",
-                      description="""39 indicateurs en 9 enjeux : valeur, effectif, valeur France, rang parmi toutes les
+                      description="""40 indicateurs en 9 enjeux : valeur, effectif, valeur France, rang parmi toutes les
 communes et parmi les communes de même densité (grille INSEE à 7 niveaux), niveau de chaque enjeu.""")
 @limiter.limit(DEFAULT_RATE)
 async def get_commune_fragility_synthesis(request: Request, code: str):
