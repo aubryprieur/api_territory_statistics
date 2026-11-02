@@ -51,6 +51,7 @@ from .services.elderly_care_service import ElderlyCareService
 from .services.pass_sport_service import PassSportService
 from .services.energy_poverty_service import EnergyPovertyService
 from .services.municipal_elections_service import MunicipalElectionsService
+from .services.population_projection_service import PopulationProjectionService
 from .services.fragility_synthesis_service import FragilitySynthesisService
 from .services.childcare_service import ChildcareService
 from .services.public_safety_service import PublicSafetyService
@@ -186,6 +187,7 @@ elderly_care_service = ElderlyCareService()
 pass_sport_service = PassSportService()
 energy_poverty_service = EnergyPovertyService()
 municipal_elections_service = MunicipalElectionsService()
+population_projection_service = PopulationProjectionService()
 fragility_synthesis_service = FragilitySynthesisService()
 childcare_service = ChildcareService()
 public_safety_service = PublicSafetyService()
@@ -2110,6 +2112,15 @@ async def get_region_municipal_elections(request: Request, reg: str):
 @limiter.limit(DEFAULT_RATE)
 async def get_france_municipal_elections(request: Request):
     return municipal_elections_service.france()
+
+
+@protected_router.get("/population-projection/commune/{code}", summary="Projections démographiques d'une commune",
+                      description="""Projection par cohortes 2023 → 2033 (vieillissement, mortalité nationale, migrations par âge
+observées entre les recensements 2017 et 2022, natalité 2021-2023 de la commune) : naissances, moins de 3 ans, 3-5 ans,
+6-10, 11-14, 15-17, 18-24, 60-74, 75-84, 85 ans ou plus ; scénarios tendance, sans migrations, natalité basse / haute.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_commune_population_projection(request: Request, code: str):
+    return population_projection_service.by_commune(code)
 
 
 @protected_router.get("/fragility-synthesis/commune/{code}", summary="Synthèse des fragilités d'une commune",

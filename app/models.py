@@ -1664,6 +1664,16 @@ for _m in ['registered', 'voters', 'expressed', 'blank', 'null', 'turnout_rate',
     setattr(MunicipalElectionsByTerritory, _m, Column(_m, Float))
 
 
+class PopulationProjection(Base):
+    """Projections démographiques par commune (cohortes, horizon 10 ans) — migration d2f4b6c8e0a1."""
+    __tablename__ = "population_projection"
+
+    geo_code = Column(String(10), primary_key=True)
+    base_year = Column(Integer, nullable=False)
+    population = Column(Float)
+    data = Column(JSONB, nullable=False)
+
+
 class FragilitySynthesis(Base):
     """Synthèse des fragilités par commune (rangs national et par densité) — migration f7b9d1e3a5c6."""
     __tablename__ = "fragility_synthesis"
