@@ -18,6 +18,7 @@ Méthode :
   3. Projection annuelle 2023 → 2033 : vieillissement, décès (table la plus récente), migrations par âge, naissances =
      taux de natalité de la commune (naissances 2021-2023 / femmes de 15-49 ans) x femmes de 15-49 ans projetées
      (naissances 2023 observées).
+  Pyramide projetée : effectifs par sexe et tranche de 5 ans en 2033 (scénario tendance).
   Scénarios : tendance ; sans migrations ; natalité basse / haute (± variation annuelle des naissances 2014-2023 de la
   commune, entre 10 % et 35 %).
   Test : taux de natalité 2014-2016 appliqué aux naissances 2017-2023 connues (écart en %).
@@ -224,6 +225,8 @@ def build(conn=None):
             for g, (lo, hi) in OUT_GROUPS.items():
                 series[g].append(pop[:, :, lo:hi + 1].sum(axis=(1, 2)))
         out[name] = ({g: np.stack(v, axis=1) for g, v in series.items()}, np.stack(bser, axis=1))
+        if name == "trend":   # pyramide projetée à l'horizon : effectifs par sexe et tranche de 5 ans
+            pyr_end = np.stack([pop[:, :, lo:hi + 1].sum(axis=2) for lo, hi, _ in PYR], axis=2)  # [N, 2, groupes]
     logger.info(f"🔢 Projections calculées pour {len(codes):,} communes ({time.time() - t0:.0f} s)")
 
     rows = []
@@ -246,6 +249,8 @@ def build(conn=None):
             "births_test_error_pct": None if not np.isfinite(test_err[i]) else round(float(test_err[i]), 1),
             "migration_source": "commune" if known[i] else "département",
             "migration_annual_pct": {f"{lo}_{hi}": round(float(mig[i, lo]) * 100, 2) for lo, hi in MIG_GROUPS},
+            "pyramid": {"year": HORIZON, "groups": [g for _, _, g in PYR],
+                        "men": rint(pyr_end[i, 0]), "women": rint(pyr_end[i, 1])},
         }
         rows.append({"geo_code": c, "population_2023": round(float(pop0[i].sum())), "data": json.dumps(data, separators=(",", ":"))})
     return pd.DataFrame(rows)
