@@ -2130,6 +2130,17 @@ async def get_epci_population_projection(request: Request, epci: str):
     return population_projection_service.by_epci(epci)
 
 
+@protected_router.get("/equipment/points", summary="Équipements géolocalisés d'une emprise (BPE 2025)",
+                      description="""Équipements de la Base permanente des équipements situés dans une emprise WGS84
+(west, south, east, north), pour un groupe de types (group=youth : accueils de loisirs, centres sociaux, collèges, lycées,
+bibliothèques, gymnases, terrains de grands jeux, plateaux et terrains de jeux extérieurs, bassins de natation, cinémas) :
+catégorie, nom, commune, coordonnées, quartier prioritaire, qualité de géolocalisation. 20 000 points au plus.""")
+@limiter.limit(DEFAULT_RATE)
+async def get_equipment_points(request: Request, west: float, south: float, east: float, north: float, group: str = "youth"):
+    from app.services.equipment_points_service import EquipmentPointsService
+    return EquipmentPointsService().by_bbox(west, south, east, north, group)
+
+
 @protected_router.get("/fragility-synthesis/commune/{code}", summary="Synthèse des fragilités d'une commune",
                       description="""40 indicateurs en 9 enjeux : valeur, effectif, valeur France, rang parmi toutes les
 communes et parmi les communes de même densité (grille INSEE à 7 niveaux), niveau de chaque enjeu.""")
