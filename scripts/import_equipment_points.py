@@ -83,7 +83,8 @@ def write(out):
             buf = io.StringIO()
             o = out[cols].copy()
             for c in ("commune_name", "name"):
-                o[c] = o[c].astype("string").str.replace("\t", " ").str.replace("\n", " ").str.replace("\\", "/")
+                o[c] = (o[c].astype("string").str.replace("\t", " ", regex=False).str.replace("\n", " ", regex=False)
+                        .str.replace("\\", "/", regex=False))
             o.to_csv(buf, sep="\t", header=False, index=False, na_rep="\\N")
             buf.seek(0)
             cur.copy_expert(f"COPY equipment_points ({', '.join(cols)}) FROM STDIN WITH (FORMAT text, NULL '\\N')", buf)
