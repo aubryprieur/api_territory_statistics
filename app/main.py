@@ -2123,6 +2123,13 @@ async def get_commune_population_projection(request: Request, code: str):
     return population_projection_service.by_commune(code)
 
 
+@protected_router.get("/population-projection/epci/{epci}", summary="Projections démographiques d'un EPCI (2023-2033)",
+                      description="Somme des projections par cohortes de ses communes (mêmes scénarios, naissances et pyramide 2033).")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_population_projection(request: Request, epci: str):
+    return population_projection_service.by_epci(epci)
+
+
 @protected_router.get("/fragility-synthesis/commune/{code}", summary="Synthèse des fragilités d'une commune",
                       description="""40 indicateurs en 9 enjeux : valeur, effectif, valeur France, rang parmi toutes les
 communes et parmi les communes de même densité (grille INSEE à 7 niveaux), niveau de chaque enjeu.""")
