@@ -12,6 +12,11 @@ Millésime : pour chaque indicateur, le plus récent couvrant au moins la moiti�
 Rang (0 à 100) : position de la commune parmi les communes ayant une valeur, orientée pour que 100 = plus touchée
 (plus élevé pour les indicateurs « up », plus faible pour les « down ») ; une commune compte pour une.
 
+EPCI (table fragility_synthesis_epci) : mêmes indicateurs et mêmes millésimes, valeurs officielles des tables à
+l'échelle EPCI (ou agrégation des communes pour la base CFM, les naissances et les établissements scolaires) ; rang
+parmi tous les EPCI et parmi les EPCI de même nature (CC, CA, ME = communautés urbaines et métropoles). Nature lue dans
+data/geography/EPCI_*.xlsx (colonne NATURE_EPCI, fichier INSEE « Intercommunalité - Métropole »), à défaut déduite du nom.
+
 Usage (DATABASE_URL de Heroku exporté) :
     python scripts/import_fragility_synthesis.py --dry-run
     python scripts/import_fragility_synthesis.py
@@ -36,12 +41,15 @@ logger = logging.getLogger(__name__)
 DENSITY = "data/geography/grille_densite_2025.xlsx"
 CFM = "data/families/commune/base-cc-coupl-fam-men-2022.CSV"
 CENSUS_YEAR = 2023
-LEVELS = ("COM", "FRANCE")
+LEVELS = ("COM", "EPCI", "FRANCE")
+EPCI_FILES = "data/geography/EPCI_*.xlsx"  # EPCI_nature.xlsx (EPCI, LIBEPCI, NATURE_EPCI) ou fichier INSEE EPCI_au_01-01-AAAA.xlsx
+NATURE_LABELS = {"CC": "Communautés de communes", "CA": "Communautés d'agglomération",
+                 "ME": "Communautés urbaines et métropoles"}
 
 
 # ------------------------------------------------------------------------------------------------- lecture
 def load_rows(session, model, fn, fields, last_years=3):
-    """Lignes COM et FRANCE des derniers millésimes d'une table, passées dans la fonction de calcul du service."""
+    """Lignes COM, EPCI et FRANCE des derniers millésimes d'une table, passées dans la fonction de calcul du service."""
     years = sorted(y for (y,) in session.query(model.year).filter(model.geo_level == "COM").distinct())[-last_years:]
     t0 = time.time()
     recs = []
@@ -64,8 +72,26 @@ def fields_for(source):
     return list(dict.fromkeys(out))
 
 
+def commune_epci(session):
+    """Correspondance commune -> EPCI (geo_codes), hors communes sans EPCI."""
+    from app.models import GeoCode
+    rows = session.query(GeoCode.codgeo, GeoCode.epci, GeoCode.libepci).all()
+    df = pd.DataFrame(rows, columns=["geo_code", "epci", "libepci"])
+    df["geo_code"] = df.geo_code.str.zfill(5)
+    return df[df.epci.notna() & ~df.epci.isin(["ZZZZZZZZZ", "ZZZZZZZZ", ""])]
+
+
+def epci_sum(df, cmap, cols, by=()):
+    """Lignes EPCI = somme des lignes communales (cols), par EPCI et éventuellement par année."""
+    com = df[df.geo_level == "COM"]
+    com = com.assign(geo_code=com.geo_code.astype(str).str.zfill(5)).merge(cmap[["geo_code", "epci"]], on="geo_code")
+    out = com.groupby(["epci", *by], as_index=False)[cols].sum(min_count=1)
+    return out.rename(columns={"epci": "geo_code"}).assign(geo_level="EPCI")
+
+
 def load_sources(session):
     from app import models as m
+    cmap = commune_epci(session)
     from app.services.revenues_service import RevenuesService
     from app.services.tax_households_service import TaxHouseholdsService
     from app.services.fragilities_service import FragilitiesService
@@ -111,7 +137,7 @@ def load_sources(session):
     pop = pd.read_sql(
         f"""SELECT geo_level, geo_code, year, pop,
                    pop_ge80 + COALESCE(pyr_men_75_79, 0) + COALESCE(pyr_women_75_79, 0) AS pop_75p
-            FROM population_by_territory WHERE geo_level IN ('COM', 'FRANCE') AND year = {CENSUS_YEAR}""",
+            FROM population_by_territory WHERE geo_level IN ('COM', 'EPCI', 'FRANCE') AND year = {CENSUS_YEAR}""",
         session.bind)
     pop["age_75p_share"] = (100 * pop.pop_75p / pop["pop"]).where(pop["pop"] > 0).round(2)
     src["population"] = pop
@@ -124,7 +150,7 @@ def load_sources(session):
     ft = m.FamilyByTerritory.__tablename__
     fam = pd.read_sql(
         f"""SELECT geo_level, geo_code, total_families - families_0_children AS families_with_children
-            FROM {ft} WHERE geo_level IN ('COM', 'FRANCE')
+            FROM {ft} WHERE geo_level IN ('COM', 'EPCI', 'FRANCE')
               AND year = (SELECT max(year) FROM {ft} WHERE year <= {CENSUS_YEAR})""", session.bind)
     caf = (caf.merge(pop[["geo_level", "geo_code", "pop"]], on=["geo_level", "geo_code"], how="left")
            .merge(fam, on=["geo_level", "geo_code"], how="left"))
@@ -141,7 +167,7 @@ def load_sources(session):
     asso = pd.read_sql(
         f"""SELECT geo_level, geo_code, year, active AS associations_active
             FROM {m.AssociationsByTerritory.__tablename__}
-            WHERE geo_level IN ('COM', 'FRANCE') AND year = {STOCK_YEAR}""", session.bind)
+            WHERE geo_level IN ('COM', 'EPCI', 'FRANCE') AND year = {STOCK_YEAR}""", session.bind)
     asso = asso.merge(pop[["geo_level", "geo_code", "pop"]], on=["geo_level", "geo_code"], how="left")
     asso["associations_rate"] = (1000 * asso.associations_active / asso["pop"]).where(asso["pop"] > 0).round(2)
     src["associations"] = asso
@@ -152,7 +178,7 @@ def load_sources(session):
     js = load_rows(session, js_svc.MODEL, js_svc.year_data, ["abc"], last_years=6)
     act = pd.read_sql(
         f"""SELECT geo_level, geo_code, year, active_15_64 FROM {m.EmploymentByTerritory.__tablename__}
-            WHERE geo_level IN ('COM', 'FRANCE')""", session.bind)
+            WHERE geo_level IN ('COM', 'EPCI', 'FRANCE')""", session.bind)
     js = js.merge(act, on=["geo_level", "geo_code", "year"], how="inner")
     js["job_seekers_rate"] = (100 * js.abc / js.active_15_64).where(js.active_15_64 > 0).round(2)
     src["job_seekers"] = js
@@ -162,7 +188,8 @@ def load_sources(session):
                     usecols=["CODGEO", "P22_POPMEN2024", "P22_POP2024_PSEUL", "P22_POP2024_COUPLE"])
     c["young_with_parents"] = c.P22_POPMEN2024 - c.P22_POP2024_PSEUL - c.P22_POP2024_COUPLE
     tot = c[["P22_POPMEN2024", "young_with_parents"]].sum()
-    c = pd.concat([c.assign(geo_level="COM").rename(columns={"CODGEO": "geo_code"}),
+    c = c.assign(geo_level="COM").rename(columns={"CODGEO": "geo_code"})
+    c = pd.concat([c, epci_sum(c, cmap, ["P22_POPMEN2024", "young_with_parents"]),
                    pd.DataFrame([{"geo_level": "FRANCE", "geo_code": "FM", **tot.to_dict()}])], ignore_index=True)
     c["young_with_parents_share"] = (100 * c.young_with_parents / c.P22_POPMEN2024).where(
         c.P22_POPMEN2024 > 0).round(2)
@@ -176,7 +203,7 @@ def load_sources(session):
     ht = m.PopulationHistoryByTerritory.__tablename__
     h = pd.read_sql(
         f"""SELECT geo_level, geo_code, year, population, births, deaths FROM {ht}
-            WHERE geo_level IN ('COM', 'FRANCE')
+            WHERE geo_level IN ('COM', 'EPCI', 'FRANCE')
               AND year IN (SELECT DISTINCT year FROM {ht} ORDER BY year DESC LIMIT 2)""", session.bind)
     y0, y1 = sorted(h.year.unique())[-2:]
     a = h[h.year == y0].set_index(["geo_level", "geo_code"])
@@ -202,6 +229,7 @@ def load_sources(session):
         f"""SELECT CASE WHEN geo_object = 'COM' THEN 'COM' ELSE 'FRANCE' END AS geo_level, geo AS geo_code,
                    time_period AS year, obs_value FROM {bt}
             WHERE geo_object = 'COM' OR (geo_object = 'FRANCE' AND geo = 'FM')""", session.bind)
+    br = pd.concat([br, epci_sum(br, cmap, ["obs_value"], by=("year",))], ignore_index=True)
     years = sorted(br.year.unique())
     first3, last3 = years[:3], years[-3:]
     wide = br.pivot_table(index=["geo_level", "geo_code"], columns="year", values="obs_value", aggfunc="sum")
@@ -219,7 +247,7 @@ def load_sources(session):
     cr = pd.read_sql(
         f"""SELECT geo_level, geo_code, sum(created) AS created, sum(created_individual) AS created_individual,
                    count(DISTINCT year) AS n_years, max(year) AS year
-            FROM {ct} WHERE geo_level IN ('COM', 'FRANCE')
+            FROM {ct} WHERE geo_level IN ('COM', 'EPCI', 'FRANCE')
               AND year > (SELECT max(year) FROM {ct}) - {WINDOW}
             GROUP BY geo_level, geo_code""", session.bind)
     cr = cr.merge(pop[["geo_level", "geo_code", "pop"]], on=["geo_level", "geo_code"], how="left")
@@ -246,6 +274,10 @@ def load_sources(session):
             com = tt.groupby("commune_code")[col].mean().round(1).rename(key).reset_index().rename(
                 columns={"commune_code": "geo_code"})
             com["geo_level"] = "COM"
+            ep = (tt.assign(geo_code=tt.commune_code.str.zfill(5)).merge(cmap[["geo_code", "epci"]], on="geo_code")
+                  .groupby("epci")[col].mean().round(1).rename(key).reset_index().rename(columns={"epci": "geo_code"}))
+            ep["geo_level"] = "EPCI"
+            com = pd.concat([com, ep], ignore_index=True)
             fr = pd.DataFrame([{"geo_level": "FRANCE", "geo_code": "FM", key: round(tt[col].mean(), 1)}])
             part = pd.concat([com, fr], ignore_index=True)
             part["year"] = int(tt.year.max())
@@ -255,7 +287,7 @@ def load_sources(session):
         for other in cols[1:]:
             df = df.merge(other.drop(columns="year"), on=["geo_level", "geo_code"], how="outer")
         src[f"schools_{stype}"] = df
-    return src, pop
+    return src, pop, cmap
 
 
 # ------------------------------------------------------------------------------------------------- calcul
@@ -274,10 +306,10 @@ def rank(series, direction):
     return ((s.rank(method="average") - 0.5) / s.notna().sum() * 100).round(1)
 
 
-def build(src, pop, density):
+def build(src, pop, density, natures):
     com_pop = pop[pop.geo_level == "COM"].set_index("geo_code")["pop"]
     base = density.copy()
-    per_commune, refs = {}, []
+    per_commune, refs, per_epci = {}, [], {}
     for ind in INDICATORS:
         df = src[ind["source"]]
         field = ind["field"]
@@ -311,7 +343,8 @@ def build(src, pop, density):
             per_commune.setdefault(code, {})[ind["key"]] = [
                 round(float(r.v), 2), None if cnt is None or pd.isna(cnt) else round(float(cnt)),
                 float(r.p_fr), None if pd.isna(r.p_dens) else float(r.p_dens)]
-        logger.info(f"   {ind['key']:<30} {year}  {len(frame):>6,} communes  France {france_value}")
+        n_epci = build_epci_indicator(ind, d, natures, per_epci, refs, year, france_value)
+        logger.info(f"   {ind['key']:<30} {year}  {len(frame):>6,} communes  {n_epci:>5,} EPCI  France {france_value}")
     rows = []
     for code, data in per_commune.items():
         dens = base.loc[code] if code in base.index else None
@@ -320,7 +353,83 @@ def build(src, pop, density):
                      "dens7_label": None if dens is None else dens.dens7_label,
                      "population": None if code not in com_pop.index or pd.isna(com_pop.get(code)) else float(com_pop.get(code)),
                      "data": json.dumps(data, separators=(",", ":"))})
-    return pd.DataFrame(rows), pd.DataFrame(refs)
+    epci_pop = pop[pop.geo_level == "EPCI"].drop_duplicates("geo_code").set_index("geo_code")["pop"]
+    erows = []
+    for code, data in per_epci.items():
+        nat = natures.get(code)
+        pe = epci_pop.get(code)
+        erows.append({"geo_code": code, "nature": nat, "nature_label": NATURE_LABELS.get(nat),
+                      "population": None if pe is None or pd.isna(pe) else float(pe),
+                      "data": json.dumps(data, separators=(",", ":"))})
+    return pd.DataFrame(rows), pd.DataFrame(refs), pd.DataFrame(erows)
+
+
+def build_epci_indicator(ind, d, natures, per_epci, refs, year, france_value):
+    """Valeurs EPCI d'un indicateur (même millésime que les communes) : rang parmi tous les EPCI et parmi ceux de même
+    nature ; repères EFR et E + nature dans fragility_reference."""
+    ep = d[d.geo_level == "EPCI"].drop_duplicates("geo_code").set_index("geo_code")
+    if ep.empty:
+        return 0
+    values = pd.to_numeric(ep[ind["field"]], errors="coerce").dropna()
+    if values.empty:
+        return 0
+    counts = pd.to_numeric(ep[ind["count"]], errors="coerce") if ind["count"] and ind["count"] in ep else None
+    frame = pd.DataFrame({"v": values})
+    frame["nature"] = [natures.get(c) for c in frame.index]
+    frame["p_fr"] = rank(frame.v, ind["direction"])
+    frame["p_nat"] = frame.groupby("nature")["v"].transform(lambda x: rank(x, ind["direction"]))
+    q = 0.2 if ind["direction"] == "down" else 0.8
+    refs.append({"indicator": ind["key"], "scope": "EFR", "year": year, "n": len(frame),
+                 "median": round(frame.v.median(), 2), "alert_value": round(frame.v.quantile(q), 2),
+                 "france_value": france_value})
+    for nat, g in frame.dropna(subset=["nature"]).groupby("nature"):
+        refs.append({"indicator": ind["key"], "scope": f"E{nat}", "year": year, "n": len(g),
+                     "median": round(g.v.median(), 2), "alert_value": round(g.v.quantile(q), 2),
+                     "france_value": None})
+    for code, r in frame.iterrows():
+        cnt = counts.get(code) if counts is not None else None
+        per_epci.setdefault(code, {})[ind["key"]] = [
+            round(float(r.v), 2), None if cnt is None or pd.isna(cnt) else round(float(cnt)),
+            float(r.p_fr), None if pd.isna(r.p_nat) else float(r.p_nat)]
+    return len(frame)
+
+
+def nature_from_name(name):
+    n = (name or "").lower()
+    if n.startswith("communauté de communes") or n.startswith("cc "):
+        return "CC"
+    if n.startswith("communauté d'agglomération") or n.startswith("ca "):
+        return "CA"
+    if n.startswith("communauté urbaine") or "métropole" in n:
+        return "ME"
+    return None
+
+
+def read_natures(cmap):
+    """Nature des EPCI : fichier INSEE si présent (NATURE_EPCI : CC, CA, CU, METRO, MET69), sinon déduite du nom."""
+    import glob
+    files = sorted(glob.glob(EPCI_FILES))
+    natures = {}
+    if files:
+        book = pd.read_excel(files[-1], sheet_name=None, header=None, dtype=str)
+        raw = book.get("EPCI", next(iter(book.values())))
+        hdr = raw.index[raw.apply(lambda r: "NATURE_EPCI" in r.values, axis=1)][0]
+        df = raw.iloc[hdr + 1:]
+        df.columns = raw.iloc[hdr]
+        conv = {"CC": "CC", "CA": "CA", "CU": "ME", "METRO": "ME", "MET69": "ME"}
+        natures = {r.EPCI: conv.get(r.NATURE_EPCI) for r in df.itertuples() if r.EPCI}
+        logger.info(f"📖 {files[-1]} : {len(natures):,} EPCI")
+    else:
+        logger.warning(f"   ⚠️ Fichier {EPCI_FILES} absent : nature des EPCI déduite du nom (approximative)")
+    names = cmap.drop_duplicates("epci").set_index("epci")["libepci"]
+    missing = 0
+    for code, name in names.items():
+        if natures.get(code) is None:
+            natures[code] = nature_from_name(name)
+            missing += natures[code] is None
+    if missing:
+        logger.warning(f"   ⚠️ {missing} EPCI sans nature (exclus des rangs par nature)")
+    return natures
 
 
 def read_density():
@@ -328,6 +437,16 @@ def read_density():
     d = d.rename(columns={"CODGEO": "geo_code", "DENS7": "dens7", "LIBDENS7": "dens7_label"})
     logger.info(f"📖 Grille de densité : {len(d):,} communes")
     return d.set_index("geo_code")[["dens7", "dens7_label"]]
+
+
+def check_epci(esyn):
+    logger.info(f"🔎 {len(esyn):,} EPCI ; par nature : {esyn.nature.value_counts(dropna=False).to_dict()}")
+    q = esyn[esyn.geo_code == "200093201"]  # Métropole Européenne de Lille
+    if not q.empty:
+        r = q.iloc[0]
+        logger.info(f"🔎 200093201 {r.nature_label} ({r.population}) :")
+        for k, v in list(json.loads(r.data).items())[:12]:
+            logger.info(f"     {k:<30} valeur {v[0]:>9}  rang tous EPCI {v[2]:>5}  rang même nature {v[3]}")
 
 
 def check(syn, ref):
@@ -351,10 +470,11 @@ def _connect():
     return psycopg2.connect(**params)
 
 
-def write(conn, syn, ref):
+def write(conn, syn, ref, esyn):
     try:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM fragility_synthesis")
+            cur.execute("DELETE FROM fragility_synthesis_epci")
             cur.execute("DELETE FROM fragility_reference")
             # Écriture manuelle au format COPY texte (pas de guillemets CSV : le JSON doit rester intact)
             def cell(v):
@@ -368,6 +488,13 @@ def write(conn, syn, ref):
             cur.copy_expert("COPY fragility_synthesis (geo_code, dens7, dens7_label, population, data) "
                             "FROM STDIN WITH (FORMAT text, NULL '\\N')", buf)
             logger.info(f"✅ fragility_synthesis : {cur.rowcount:,} lignes")
+            buf = io.StringIO()
+            for r in esyn[["geo_code", "nature", "nature_label", "population", "data"]].itertuples(index=False):
+                buf.write("\t".join(cell(v) for v in r) + "\n")
+            buf.seek(0)
+            cur.copy_expert("COPY fragility_synthesis_epci (geo_code, nature, nature_label, population, data) "
+                            "FROM STDIN WITH (FORMAT text, NULL '\\N')", buf)
+            logger.info(f"✅ fragility_synthesis_epci : {cur.rowcount:,} lignes")
             cols = ["indicator", "scope", "year", "n", "median", "alert_value", "france_value"]
             buf = io.StringIO()
             ref[cols].to_csv(buf, sep="\t", header=False, index=False, na_rep="\\N")
@@ -391,16 +518,17 @@ if __name__ == "__main__":
     from app.database import SessionLocal
     session = SessionLocal()
     try:
-        src, pop = load_sources(session)
-        syn, ref = build(src, pop, read_density())
+        src, pop, cmap = load_sources(session)
+        syn, ref, esyn = build(src, pop, read_density(), read_natures(cmap))
         check(syn, ref)
+        check_epci(esyn)
         if args.dry_run:
             logger.info("🧪 Dry-run : rien n'a été écrit en base")
         else:
             session.close()
             conn = _connect()
             try:
-                write(conn, syn, ref)
+                write(conn, syn, ref, esyn)
             finally:
                 conn.close()
             logger.info("🏁 Import terminé")

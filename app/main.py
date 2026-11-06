@@ -2130,6 +2130,76 @@ communes et parmi les communes de même densité (grille INSEE à 7 niveaux), ni
 async def get_commune_fragility_synthesis(request: Request, code: str):
     return fragility_synthesis_service.by_commune(code)
 
+@protected_router.get("/fragility-synthesis/epci/{epci}", summary="Synthèse des fragilités d'un EPCI",
+                      description="""Mêmes indicateurs que pour les communes, valeur de l'EPCI (valeurs officielles à
+l'échelle EPCI), rang parmi tous les EPCI (rank_france) et parmi les EPCI de même nature (rank_density : communautés de
+communes, d'agglomération, communautés urbaines et métropoles), et valeurs des communes membres (communes).""")
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_fragility_synthesis(request: Request, epci: str):
+    return fragility_synthesis_service.by_epci(epci)
+
+
+# Jeux de données communaux disponibles pour les cartes des communes d'un EPCI : nom -> service.by_commune
+EPCI_COMMUNE_DATASETS = {
+    "households": household_service.get_households_by_commune,
+    "families": family_service.get_families_by_commune,
+    "housing": housing_service.by_commune,
+    "population-structure": population_structure_service.by_commune,
+    "education-training": education_training_service.by_commune,
+    "employment-activity": employment_activity_service.by_commune,
+    "childcare-offer": childcare_offer_service.by_commune,
+    "caf-benefits": caf_benefits_service.by_commune,
+    "revenues-poverty": revenues_poverty_service.by_commune,
+    "immigration": immigration_service.by_commune,
+    "economic-fabric": economic_fabric_service.by_commune,
+    "delinquency": delinquency_service.by_commune,
+    "sdg-indicators": sdg_indicators_service.by_commune,
+    "job-seekers": job_seekers_service.by_commune,
+    "social-housing": social_housing_service.by_commune,
+    "health-professionals": health_professionals_service.by_commune,
+    "health-insurance": health_insurance_service.by_commune,
+    "sports": sports_service.by_commune,
+    "associations": associations_service.by_commune,
+    "construction": construction_service.by_commune,
+    "business-creations": business_creations_service.by_commune,
+    "tax-households": tax_households_service.by_commune,
+    "fragilities": fragilities_service.by_commune,
+    "senior-fragilities": senior_fragilities_service.by_commune,
+    "elderly-care": elderly_care_service.by_commune,
+    "pass-sport": pass_sport_service.by_commune,
+    "energy-poverty": energy_poverty_service.by_commune,
+    "municipal-elections": municipal_elections_service.by_commune,
+}
+
+
+@protected_router.get("/epci-communes/{epci}/{dataset}", summary="Données des communes d'un EPCI pour un jeu de données",
+                      description="""Pour chaque commune membre de l'EPCI : séries par millésime du jeu de données
+(même contenu que la route communale correspondante, clés *_data). Sert aux cartes de comparaison des communes du
+tableau de bord EPCI. Jeux : """ + ", ".join(EPCI_COMMUNE_DATASETS))
+@limiter.limit(DEFAULT_RATE)
+async def get_epci_communes_dataset(request: Request, epci: str, dataset: str):
+    fn = EPCI_COMMUNE_DATASETS.get(dataset)
+    if fn is None:
+        raise HTTPException(status_code=404, detail=f"Jeu de données inconnu : {dataset}")
+    from app.database import SessionLocal
+    from app.models import GeoCode
+    db = SessionLocal()
+    try:
+        members = db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == str(epci)).order_by(GeoCode.codgeo).all()
+    finally:
+        db.close()
+    if not members:
+        return {"error": f"Aucune commune pour l'EPCI {epci}"}
+    out = {}
+    for code, _ in members:
+        res = fn(code)
+        if isinstance(res, dict) and not res.get("error"):
+            out[code] = {k: v for k, v in res.items()
+                         if (k.endswith("_data") and isinstance(v, dict)) or k in ("latest_year", "available_years")}
+    return {"epci": str(epci), "dataset": dataset,
+            "communes": [{"code": c, "name": n} for c, n in members], "values": out}
+
+
 @protected_router.get("/public-safety/commune/{code}",
    response_model=PublicSafetyResponse,
    summary="Obtenir les indicateurs de sécurité d'une commune",

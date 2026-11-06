@@ -15,7 +15,7 @@ from app.fragility_catalog import (ALERT_THRESHOLD, CONTEXT_GROUP_KEYS, CONTEXT_
                                    STRENGTH_THRESHOLD, TAB_KEYS, THEMES)
 
 JUDGED = ("up", "down")  # neutral (structure) et two_sided (écart à la médiane) : hors alertes et niveaux d'enjeu
-from app.models import FragilityReference, FragilitySynthesis, GeoCode
+from app.models import FragilityReference, FragilitySynthesis, FragilitySynthesisEpci, GeoCode
 
 SOURCE = ("Calcul à partir des données de l'API (INSEE, Cnaf, Dares, DGFiP, Observatoire des situations de fragilité, "
           "DREES, INJEP, SSMSI) ; grille communale de densité INSEE à 7 niveaux (2025)")
@@ -65,7 +65,101 @@ def epci_ranks(db, code, keys):
     return info, out
 
 
+def _themes(indicators, context):
+    themes = []
+    for key, label in THEMES.items():
+        items = [i for i in indicators if i["theme"] == key]
+        avail = [i for i in items if i["value"] is not None]
+        alerts = [i for i in avail if i["alert"]]
+        themes.append({"key": key, "label": label, "kind": "core", "expected": len(items),
+                       "available": len(avail), "alerts": len(alerts),
+                       "strengths": sum(1 for i in avail if i["strength"]),
+                       "level": theme_level(len(avail), len(alerts), len(items))})
+    by_key = {i["key"]: i for i in indicators + context}
+    for key, (label, tab) in CONTEXT_GROUPS.items():
+        items = [by_key[k] for k in CONTEXT_GROUP_KEYS.get(key, []) if k in by_key]
+        judged = [i for i in items if i["direction"] in JUDGED]
+        avail = [i for i in judged if i["value"] is not None]
+        alerts = [i for i in avail if i["alert"]]
+        level = theme_level(len(avail), len(alerts), len(judged)) if judged else "context"
+        themes.append({"key": key, "label": label, "kind": "context", "tab": tab, "expected": len(judged),
+                       "available": len(avail), "alerts": len(alerts),
+                       "strengths": sum(1 for i in avail if i["strength"]), "level": level})
+    return themes
+
+
+def epci_communes_values(db, epci, keys):
+    """Valeurs des communes d'un EPCI pour chaque indicateur (cartes communales du tableau de bord EPCI)."""
+    members = {c: n for c, n in db.query(GeoCode.codgeo, GeoCode.libgeo).filter(GeoCode.epci == epci).all()}
+    rows = db.query(FragilitySynthesis.geo_code, FragilitySynthesis.data).filter(
+        FragilitySynthesis.geo_code.in_(list(members))).all()
+    out = {k: {} for k in keys}
+    for code, data in rows:
+        for k in keys:
+            v = (data or {}).get(k)
+            if v and v[0] is not None:
+                out[k][code] = v[0]
+    return [{"code": c, "name": n} for c, n in sorted(members.items())], out
+
+
 class FragilitySynthesisService:
+    def by_epci(self, code):
+        """Synthèse d'un EPCI : mêmes indicateurs que les communes, rang parmi tous les EPCI (rank_france) et parmi
+        les EPCI de même nature (rank_density, pour réutiliser l'affichage communal) ; valeurs des communes membres."""
+        code = str(code)
+        db = SessionLocal()
+        try:
+            row = db.query(FragilitySynthesisEpci).filter(FragilitySynthesisEpci.geo_code == code).first()
+            if row is None:
+                return {"error": f"Aucune synthèse des fragilités pour l'EPCI {code}"}
+            scopes = ["FR", "EFR"] + ([f"E{row.nature}"] if row.nature else [])
+            refs = {(r.indicator, r.scope): r for r in
+                    db.query(FragilityReference).filter(FragilityReference.scope.in_(scopes)).all()}
+            data = row.data or {}
+            geo = db.query(GeoCode.libepci).filter(GeoCode.epci == code).first()
+            all_inds = INDICATORS + CONTEXT_INDICATORS
+            members, communes = epci_communes_values(db, code, [i["key"] for i in all_inds])
+            indicators, context = [], []
+            for ind in all_inds:
+                fr = refs.get((ind["key"], "FR"))
+                efr = refs.get((ind["key"], "EFR"))
+                nat = refs.get((ind["key"], f"E{row.nature}")) if row.nature else None
+                v = data.get(ind["key"])
+                item = {k: ind[k] for k in ("key", "label", "theme", "direction", "unit", "tab", "need", "sides")}
+                item.update({
+                    "year": (efr or fr).year if (efr or fr) else None,
+                    "value": v[0] if v else None, "count": v[1] if v else None,
+                    "rank_france": v[2] if v else None, "rank_density": v[3] if v else None,
+                    "france_value": fr.france_value if fr else None,
+                    "density_median": nat.median if nat else None,
+                    "density_n": nat.n if nat else None, "france_n": efr.n if efr else None,
+                    "communes": communes.get(ind["key"], {}),
+                })
+                r = item["rank_density"] if item["rank_density"] is not None else item["rank_france"]
+                judged = ind["direction"] in JUDGED
+                item["alert"] = judged and r is not None and r >= ALERT_THRESHOLD
+                item["strength"] = judged and r is not None and r <= STRENGTH_THRESHOLD and not ind["need"]
+                (context if ind["context"] else indicators).append(item)
+            return {
+                "territory": {"level": "EPCI", "code": code, "name": geo[0] if geo else None},
+                "density": {"code": row.nature, "label": row.nature_label},
+                "comparison": "epci",
+                "communes": members,
+                "population": row.population,
+                "thresholds": {"alert": ALERT_THRESHOLD, "strength": STRENGTH_THRESHOLD},
+                "source": SOURCE + " ; nature des EPCI : INSEE, intercommunalités au 1er janvier",
+                "themes": _themes(indicators, context),
+                "indicators": indicators,
+                "context_indicators": context,
+                "context_groups": [{"key": k, "label": lbl, "tab": tab, "indicators": CONTEXT_GROUP_KEYS.get(k, [])}
+                                   for k, (lbl, tab) in CONTEXT_GROUPS.items()],
+                "tab_keys": TAB_KEYS,
+            }
+        except SQLAlchemyError as e:
+            return {"error": str(e)}
+        finally:
+            db.close()
+
     def by_commune(self, code):
         code = str(code).zfill(5)
         db = SessionLocal()

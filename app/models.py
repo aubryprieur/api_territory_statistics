@@ -1685,6 +1685,17 @@ class FragilitySynthesis(Base):
     data = Column(JSONB, nullable=False)
 
 
+class FragilitySynthesisEpci(Base):
+    """Synthèse des fragilités par EPCI (rangs parmi tous les EPCI et parmi ceux de même nature) — migration e3a5c7d9f1b2."""
+    __tablename__ = "fragility_synthesis_epci"
+
+    geo_code = Column(String(10), primary_key=True)
+    nature = Column(String(4))
+    nature_label = Column(String(60))
+    population = Column(Float)
+    data = Column(JSONB, nullable=False)
+
+
 class FragilityReference(Base):
     """Repères de la synthèse des fragilités par indicateur et périmètre (FR ou densité) — migration f7b9d1e3a5c6."""
     __tablename__ = "fragility_reference"
