@@ -80,6 +80,48 @@ INDICATORS = {
                       "enfants de moins de 2 ans", "%"),
     "age_2_5_share": ("iris_population", ["pop_2_5"], ["pop"], "Part des enfants de 2 à 5 ans",
                       "enfants de 2 à 5 ans", "%"),
+    # Diagnostic de quartier (indicateurs IRIS complémentaires, novembre 2026)
+    "age_6_17_share": ("iris_population", ["pop_6_10", "pop_11_17"], ["pop"], "Part des 6-17 ans", "jeunes de 6 à 17 ans", "%"),
+    "age_25_39_share": ("iris_population", ["pop_25_39"], ["pop"], "Part des 25-39 ans", "personnes de 25 à 39 ans", "%"),
+    "aging_index": ("iris_population", ["pop_ge65"], ["pop_lt20"],
+                    "Indice de vieillissement (65 ans ou plus pour 100 moins de 20 ans)", "65 ans ou plus", ""),
+    "pop_growth": ("iris_population", ["pop"], ["pop"],  # calcul propre (_growth_values) : variation annuelle 2017-2023
+                   "Évolution annuelle de la population", "habitants", "%/an"),
+    "couples_no_children_share": ("iris_families", ["couples_no_children"], ["families"],
+                                  "Part des couples sans enfant", "couples sans enfant", "%"),
+    "large_family_share_with_children": ("iris_families", ["families_3_children", "families_4p_children"],
+                                         ["families"],  # remplacé dans SPECIAL (familles avec enfants)
+                                         "Part des familles de 3 enfants ou plus parmi les familles avec enfants",
+                                         "familles nombreuses", "%"),
+    "one_person_households_share": ("iris_families", ["pop_15p_alone"], ["pop_15p_alone"],  # CROSS : / ménages (logement)
+                                    "Part des ménages d'une personne", "ménages d'une personne", "%"),
+    "owners_share": ("iris_housing", ["rp_owners"], ["main_res"], "Part des propriétaires occupants",
+                     "résidences principales occupées par leur propriétaire", "%"),
+    "apartments_share": ("iris_housing", ["apartments"], ["housing_total"], "Part des appartements", "appartements", "%"),
+    "small_dwellings_share": ("iris_housing", ["rp_1room", "rp_2rooms"], ["main_res"],
+                              "Part des petits logements (1 ou 2 pièces)", "logements de 1 ou 2 pièces", "%"),
+    "settled_10y_share": ("iris_housing", ["hh_moved_10py"], ["households"],
+                          "Part des ménages installés depuis 10 ans ou plus", "ménages installés depuis 10 ans ou plus", "%"),
+    "anchoring_ratio": ("iris_housing", ["hh_moved_10py"], ["hh_moved_u2y"],
+                        "Ratio d'ancrage (ménages installés depuis 10 ans ou plus pour 100 arrivés depuis moins de 2 ans)",
+                        "ménages installés depuis 10 ans ou plus", ""),
+    "underoccupation_rate": ("iris_housing", ["rp_mild_underuse", "rp_heavy_underuse", "rp_extreme_underuse"],
+                             ["rp_standard_occ", "rp_mild_underuse", "rp_heavy_underuse", "rp_extreme_underuse",
+                              "rp_mild_overuse", "rp_heavy_overuse"],
+                             "Part des résidences principales sous-occupées", "logements sous-occupés", "%"),
+    "two_cars_share": ("iris_housing", ["hh_2p_cars"], ["households"], "Part des ménages avec deux voitures ou plus",
+                       "ménages avec deux voitures ou plus", "%"),
+    "employment_rate": ("iris_activity", ["employed_15_64"], ["pop_15_64"], "Taux d'emploi des 15-64 ans",
+                        "actifs occupés de 15-64 ans", "%"),
+    "part_time_share": ("iris_activity", ["salaried_15p_pt"], ["salaried_15p"], "Part des salariés à temps partiel",
+                        "salariés à temps partiel", "%"),
+    "work_other_commune_share": ("iris_activity", ["employed_15p"], ["employed_15p"],  # SPECIAL
+                                 "Part des actifs occupés travaillant hors de leur commune de résidence",
+                                 "actifs travaillant dans une autre commune", "%"),
+    "walk_commute_share": ("iris_activity", ["transport_walk"], ["employed_15p"],
+                           "Part des actifs occupés allant travailler à pied", "actifs allant travailler à pied", "%"),
+    "car_commute_share": ("iris_activity", ["transport_car"], ["employed_15p"],
+                          "Part des actifs occupés allant travailler en voiture", "actifs allant travailler en voiture", "%"),
     "overcrowding_rate": ("iris_housing", ["rp_mild_overuse", "rp_heavy_overuse"],
                           ["rp_standard_occ", "rp_mild_underuse", "rp_heavy_underuse", "rp_extreme_underuse",
                            "rp_mild_overuse", "rp_heavy_overuse"],
@@ -100,7 +142,13 @@ INDICATORS = {
                               "actifs en transports en commun", "%"),
 }
 # Rapports (et non parts) : pas d'effectif / total affiché pour les IRIS (le dénominateur n'est pas la population)
-RATIOS = {"youth_ratio"}
+RATIOS = {"youth_ratio", "aging_index", "anchoring_ratio", "pop_growth"}
+# Indicateurs dont le numérateur et le dénominateur viennent de deux tables (jointure par IRIS et millésime)
+CROSS = {"one_person_households_share": ("SELECT f.iris_code, f.year, f.pop_15p_alone AS num, h.households AS den "
+                                         "FROM iris_families f JOIN iris_housing h ON h.iris_code = f.iris_code "
+                                         "AND h.year = f.year WHERE f.iris_code = ANY(:codes) ORDER BY f.year")}
+# Échelle à seuils (cartes d'évolution, valeurs négatives possibles) : renvoyée telle quelle au tableau de bord
+GROWTH_SCALE = {"breaks": [-1.0, -0.25, 0.25, 1.0], "legend_low": "Baisse", "legend_high": "Hausse"}
 
 # Indicateurs de la table iris_indicators (hors recensement). additive : la commune est la somme de ses IRIS
 # (count / total) ; sinon valeur de référence communale (geo_level 'COM'). den : dénominateur pris dans une table iris_*
@@ -113,6 +161,10 @@ EXTERNAL = {
     "social_benefits_share": {"label": "Part des prestations sociales dans le revenu disponible", "count_label": None,
                               "unit": "%", "additive": False,
                               "source": "Insee, Filosofi (revenus disponibles, données à l'IRIS)"},
+    "income_d1": {"label": "1er décile de niveau de vie (D1)", "count_label": None, "unit": "€", "additive": False,
+                  "source": "Insee, Filosofi (revenus disponibles, données à l'IRIS)"},
+    "interdecile_ratio": {"label": "Rapport interdécile D9/D1 du niveau de vie", "count_label": None, "unit": "",
+                          "additive": False, "source": "Insee, Filosofi (revenus disponibles, données à l'IRIS)"},
     "c2s_free_rate": {"label": "Part des assurés bénéficiant de la complémentaire santé solidaire gratuite",
                       "count_label": "bénéficiaires de la C2S gratuite", "unit": "%", "additive": True,
                       "source": "Cnam, bénéficiaires du régime général au 1er janvier (diffusion Insee à l'IRIS)"},
@@ -128,7 +180,10 @@ EXTERNAL = {
 
 # ménages sans voiture = ménages - ménages avec au moins une voiture
 SPECIAL = {"no_car_share": ("CASE WHEN households IS NULL OR hh_1p_car IS NULL THEN NULL ELSE households - hh_1p_car END",
-                            "households")}
+                            "households"),
+           "large_family_share_with_children": ("COALESCE(families_3_children, 0) + COALESCE(families_4p_children, 0)",
+                                                "families - families_0_children"),
+           "work_other_commune_share": ("employed_15p - work_same_commune", "employed_15p")}
 
 
 def _sum(cols):
@@ -186,14 +241,41 @@ class IrisMapService:
         finally:
             db.close()
 
-    def _values(self, key, iris_codes):
-        table, num, den, *_ = INDICATORS[key]
-        num_sql, den_sql = SPECIAL.get(key, (_sum(num), _sum(den)))
+    def _growth_values(self, iris_codes):
+        """Variation annuelle moyenne de la population entre le premier et le dernier millésime IRIS (2017 → 2023) ;
+        count = population finale, total = population initiale (la valeur communale se recalcule sur les sommes)."""
         db = SessionLocal()
         try:
-            rows = db.execute(text(
-                f"SELECT iris_code, year, {num_sql} AS num, {den_sql} AS den FROM {table} "
-                f"WHERE iris_code = ANY(:codes) ORDER BY year"), {"codes": list(iris_codes)}).fetchall()
+            rows = db.execute(text("SELECT iris_code, year, pop FROM iris_population WHERE iris_code = ANY(:codes)"),
+                              {"codes": list(iris_codes)}).fetchall()
+        finally:
+            db.close()
+        by = {}
+        for r in rows:
+            by.setdefault(r.iris_code, {})[r.year] = r.pop
+        years = sorted({r.year for r in rows})
+        if len(years) < 2:
+            return {}
+        y0, y1 = years[0], years[-1]
+        out = {}
+        for code, d in by.items():
+            p0, p1 = d.get(y0), d.get(y1)
+            ok = p0 and p1 and p0 > 0 and p1 > 0
+            out[code] = {y1: {"value": round(((p1 / p0) ** (1 / (y1 - y0)) - 1) * 100, 2) if ok else None,
+                              "count": round(p1) if p1 is not None else None,
+                              "total": round(p0) if p0 is not None else None, "start_year": y0}}
+        return out
+
+    def _values(self, key, iris_codes):
+        if key == "pop_growth":
+            return self._growth_values(iris_codes)
+        table, num, den, *_ = INDICATORS[key]
+        num_sql, den_sql = SPECIAL.get(key, (_sum(num), _sum(den)))
+        sql = CROSS.get(key) or (f"SELECT iris_code, year, {num_sql} AS num, {den_sql} AS den FROM {table} "
+                                 f"WHERE iris_code = ANY(:codes) ORDER BY year")
+        db = SessionLocal()
+        try:
+            rows = db.execute(text(sql), {"codes": list(iris_codes)}).fetchall()
         finally:
             db.close()
         out = {}
@@ -231,6 +313,11 @@ class IrisMapService:
                 continue
             cnt = sum((values.get(f["iris_code"], {}).get(y, {}) or {}).get("count") or 0 for f in features)
             tot = sum((values.get(f["iris_code"], {}).get(y, {}) or {}).get("total") or 0 for f in features)
+            if indicator == "pop_growth":
+                y0 = next((d.get(y, {}).get("start_year") for d in values.values() if d.get(y)), None)
+                v = round(((cnt / tot) ** (1 / (y - y0)) - 1) * 100, 2) if tot and cnt and y0 else None
+                commune[y] = {"value": v, "count": cnt, "total": tot}
+                continue
             commune[y] = {"value": round(cnt / tot * 100, 1) if tot else None, "count": cnt, "total": tot}
         for f in features:
             f["values"] = values.get(f["iris_code"], {})
@@ -244,7 +331,14 @@ class IrisMapService:
             ind = {"key": indicator, "label": meta[3], "count_label": meta[4], "unit": meta[5],
                    "additive": indicator not in RATIOS}
             source = "Insee, recensements de la population (bases infracommunales IRIS) ; IGN-Insee, contours IRIS 2024"
+        extra = {}
+        if indicator == "pop_growth" and years:
+            y0 = next((d.get(years[-1], {}).get("start_year") for d in values.values() if d.get(years[-1])), None)
+            ind["label"] = f"Évolution annuelle de la population {y0}-{years[-1]}"
+            extra = dict(GROWTH_SCALE, color_note="Couleur : taux de variation annuel moyen ; entre −0,25 % et +0,25 % "
+                                                  "par an, la population est quasi stable.")
         return {
+            **extra,
             "commune": {"code": com_code, "values": commune},
             "indicator": ind,
             "years": years,

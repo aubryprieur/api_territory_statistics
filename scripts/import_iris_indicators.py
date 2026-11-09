@@ -69,14 +69,16 @@ def filosofi():
         d = read(path)
         d = d[d["IRIS"].notna()]
         for ind, col in (("median_income", f"DISP_MED{yy}"), ("poverty_rate", f"DISP_TP60{yy}"),
-                         ("social_benefits_share", f"DISP_PPSOC{yy}")):
+                         ("social_benefits_share", f"DISP_PPSOC{yy}"), ("income_d1", f"DISP_D1{yy}"),
+                         ("interdecile_ratio", f"DISP_RD{yy}")):
             if col in d:
                 parts.append(rows("IRIS", d["IRIS"].str.zfill(9), year, ind, value=num(d[col])))
         com_path = f"data/revenues/commune/cc_filosofi_{year}_COM.csv"
         if os.path.exists(com_path):
             c = read(com_path)
             for ind, col in (("median_income", f"MED{yy}"), ("poverty_rate", f"TP60{yy}"),
-                             ("social_benefits_share", f"PPSOC{yy}")):
+                             ("social_benefits_share", f"PPSOC{yy}"), ("income_d1", f"D1{yy}"),
+                             ("interdecile_ratio", f"RD{yy}")):
                 if col in c:
                     parts.append(rows("COM", c["CODGEO"].str.zfill(5), year, ind, value=num(c[col])))
         logger.info(f"📖 Filosofi {year} : {len(d):,} IRIS")

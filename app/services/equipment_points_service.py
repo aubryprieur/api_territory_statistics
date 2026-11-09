@@ -43,6 +43,23 @@ GROUPS = {
                             ["F102", "F106", "F107", "F109", "F110", "F118", "F123", "F127", "F128"]),
         },
     },
+    "shops": {
+        "label": "Commerces et services de proximité",
+        "categories": {
+            "supermarket": ("Supermarché ou hypermarché", ["B104", "B105"]),
+            "grocery": ("Supérette ou épicerie", ["B201", "B202"]),
+            "bakery": ("Boulangerie-pâtisserie", ["B207"]),
+            "food_other": ("Autre commerce alimentaire (boucherie, primeur, poissonnerie…)",
+                           ["B204", "B205", "B206", "B208", "B209", "B210"]),
+            "restaurant": ("Restaurant, restauration rapide", ["A504"]),
+            "press": ("Librairie, papeterie, presse", ["B324", "B325"]),
+            "pharmacy": ("Pharmacie", ["D307"]),
+            "gp": ("Médecin généraliste", ["D265"]),
+            "post": ("Bureau, relais ou agence postale", ["A206", "A207", "A208"]),
+            "bank": ("Banque", ["A203"]),
+            "hair_beauty": ("Coiffure, institut de beauté", ["A501", "A507"]),
+        },
+    },
     "early_childhood": {
         "label": "Équipements pour la petite enfance",
         "categories": {
