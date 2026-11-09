@@ -72,6 +72,12 @@ INDICATORS = {
     "recent_movers_share": ("iris_housing", ["hh_moved_u2y"], ["households"],
                             "Part des ménages installés depuis moins de 2 ans", "ménages emménagés récemment", "%"),
     "foreigner_share": ("iris_population", ["pop_foreign"], ["pop"], "Part des étrangers", "étrangers", "%"),
+    # Nouveau format Insee à l'IRIS (2023 seulement, scripts/import_iris_population_ages.py) : indice de jeunesse proche
+    # de celui des communes (moins de 20 ans / 65 ans ou plus ; communes : 60 ans ou plus) ; moins de 2 ans
+    "youth_ratio": ("iris_population", ["pop_lt20"], ["pop_ge65"],
+                    "Indice de jeunesse (moins de 20 ans pour 100 personnes de 65 ans ou plus)", "moins de 20 ans", ""),
+    "under_2_share": ("iris_population", ["pop_lt2"], ["pop"], "Part des enfants de moins de 2 ans",
+                      "enfants de moins de 2 ans", "%"),
     "overcrowding_rate": ("iris_housing", ["rp_mild_overuse", "rp_heavy_overuse"],
                           ["rp_standard_occ", "rp_mild_underuse", "rp_heavy_underuse", "rp_extreme_underuse",
                            "rp_mild_overuse", "rp_heavy_overuse"],
@@ -91,6 +97,9 @@ INDICATORS = {
                               "Part des actifs occupés allant travailler en transports en commun",
                               "actifs en transports en commun", "%"),
 }
+# Rapports (et non parts) : pas d'effectif / total affiché pour les IRIS (le dénominateur n'est pas la population)
+RATIOS = {"youth_ratio"}
+
 # Indicateurs de la table iris_indicators (hors recensement). additive : la commune est la somme de ses IRIS
 # (count / total) ; sinon valeur de référence communale (geo_level 'COM'). den : dénominateur pris dans une table iris_*
 # (colonne, millésime) quand la source ne le fournit pas.
@@ -207,7 +216,9 @@ class IrisMapService:
             values, commune_ref = self._external_values(indicator, [f["iris_code"] for f in features], com_code)
         else:
             values = self._values(indicator, [f["iris_code"] for f in features])
-        years = sorted({y for v in values.values() for y in v})
+        # millésimes où au moins un IRIS a une valeur (les tranches du nouveau format n'existent qu'en 2023)
+        years = sorted({y for v in values.values() for y, d in v.items() if (d or {}).get("value") is not None})
+        values = {c: {y: d for y, d in v.items() if y in years} for c, v in values.items()}
         if len(years) > 2:  # premier et dernier millésimes seulement (évolution)
             years = [years[0], years[-1]]
             values = {c: {y: v for y, v in d.items() if y in years} for c, d in values.items()}
@@ -228,7 +239,8 @@ class IrisMapService:
             source = m["source"] + " ; IGN-Insee, contours IRIS 2024"
         else:
             meta = INDICATORS[indicator]
-            ind = {"key": indicator, "label": meta[3], "count_label": meta[4], "unit": meta[5], "additive": True}
+            ind = {"key": indicator, "label": meta[3], "count_label": meta[4], "unit": meta[5],
+                   "additive": indicator not in RATIOS}
             source = "Insee, recensements de la population (bases infracommunales IRIS) ; IGN-Insee, contours IRIS 2024"
         return {
             "commune": {"code": com_code, "values": commune},

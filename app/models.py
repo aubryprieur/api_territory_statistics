@@ -547,6 +547,13 @@ class IrisPopulation(Base):
     pop_immigrant = Column(Float, nullable=True)
     pop_women = Column(Float, nullable=True)
     pop_men   = Column(Float, nullable=True)
+    # Tranches du nouveau format Insee (DS_RP_POPULATION_PRINC_IRIS, 2023 seulement) — migration a5c7e9b1d3f4
+    pop_lt20  = Column(Float, nullable=True)
+    pop_ge65  = Column(Float, nullable=True)
+    pop_lt2   = Column(Float, nullable=True)
+    pop_2_5   = Column(Float, nullable=True)
+    pop_11_14 = Column(Float, nullable=True)
+    pop_15_17 = Column(Float, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("iris_code", "year", name="uq_iris_population_iris_year"),
