@@ -40,6 +40,21 @@ def read():
     raise FileNotFoundError(f"BPE introuvable dans {DIR}")
 
 
+def clean_names(df):
+    """Préfixes techniques de la source en tête de NOMRS : code du gestionnaire (« 1 », « 2 », « 3 », surtout dans le
+    Nord : « 3 RPE MAIRIE ANZIN ») ou numéro du département (« 09 - ALSH PERI… »). Les noms qui commencent par un
+    nombre (« 1 2 3 SOLEIL », « 12 - 17 ANS ») sont conservés."""
+    name = df.NOMRS.fillna("")
+    dep = df.DEPCOM.astype(str).str.zfill(5).str[:2]
+    manager = name.str.match(r"^[1-3]\s+(?!\d)")
+    name = name.where(~manager, name.str.replace(r"^[1-3]\s+", "", regex=True))
+    prefix = name.str.extract(r"^(\d{2})\s*-?\s+(?!\d)")[0]
+    same_dep = prefix.notna() & (prefix == dep)
+    name = name.where(~same_dep, name.str.replace(r"^\d{2}\s*-?\s+", "", regex=True))
+    logger.info(f"🧹 Noms nettoyés : {int(manager.sum()):,} codes gestionnaire, {int(same_dep.sum()):,} numéros de département")
+    return name.replace("", None)
+
+
 def build(df):
     df = df[df.TYPEQU.isin(ALL_TYPES)].dropna(subset=["LAMBERT_X", "LAMBERT_Y", "EPSG"]).copy()
     df["lat"], df["lon"] = float("nan"), float("nan")
@@ -53,7 +68,7 @@ def build(df):
     out = pd.DataFrame({
         "year": YEAR, "typequ": df.TYPEQU, "depcom": df.DEPCOM.astype(str).str.zfill(5),
         "epci": df.EPCI.where(df.EPCI.notna() & ~df.EPCI.isin(["ZZZZZZZZZ", ""]), None),
-        "commune_name": df.LIBCOM.str.title(), "name": df.NOMRS,
+        "commune_name": df.LIBCOM.str.title(), "name": clean_names(df),
         "lat": df.lat.round(6), "lon": df.lon.round(6),
         "qpv": qp.str.startswith("QN") | qp.str.startswith("QP"),  # code de quartier prioritaire (QP2024)
         "quality": df.QUALITE_XY,
