@@ -85,6 +85,9 @@ INDICATORS = {
     "age_25_39_share": ("iris_population", ["pop_25_39"], ["pop"], "Part des 25-39 ans", "personnes de 25 à 39 ans", "%"),
     "aging_index": ("iris_population", ["pop_ge65"], ["pop_lt20"],
                     "Indice de vieillissement (65 ans ou plus pour 100 moins de 20 ans)", "65 ans ou plus", ""),
+    "dependency_ratio": ("iris_population", ["pop_lt20", "pop_ge65"], ["pop"],  # SPECIAL : / 20-64 ans
+                         "Rapport de dépendance (moins de 20 ans et 65 ans ou plus pour 100 personnes de 20 à 64 ans)",
+                         "moins de 20 ans et 65 ans ou plus", ""),
     "pop_growth": ("iris_population", ["pop"], ["pop"],  # calcul propre (_growth_values) : variation annuelle 2017-2023
                    "Évolution annuelle de la population", "habitants", "%/an"),
     "couples_no_children_share": ("iris_families", ["couples_no_children"], ["families"],
@@ -142,7 +145,7 @@ INDICATORS = {
                               "actifs en transports en commun", "%"),
 }
 # Rapports (et non parts) : pas d'effectif / total affiché pour les IRIS (le dénominateur n'est pas la population)
-RATIOS = {"youth_ratio", "aging_index", "anchoring_ratio", "pop_growth"}
+RATIOS = {"youth_ratio", "aging_index", "anchoring_ratio", "pop_growth", "dependency_ratio"}
 # Indicateurs dont le numérateur et le dénominateur viennent de deux tables (jointure par IRIS et millésime)
 CROSS = {"one_person_households_share": ("SELECT f.iris_code, f.year, f.pop_15p_alone AS num, h.households AS den "
                                          "FROM iris_families f JOIN iris_housing h ON h.iris_code = f.iris_code "
@@ -183,7 +186,9 @@ SPECIAL = {"no_car_share": ("CASE WHEN households IS NULL OR hh_1p_car IS NULL T
                             "households"),
            "large_family_share_with_children": ("COALESCE(families_3_children, 0) + COALESCE(families_4p_children, 0)",
                                                 "families - families_0_children"),
-           "work_other_commune_share": ("employed_15p - work_same_commune", "employed_15p")}
+           "work_other_commune_share": ("employed_15p - work_same_commune", "employed_15p"),
+           # 20-64 ans = population - moins de 20 ans - 65 ans ou plus (2023, nouveau format Insee)
+           "dependency_ratio": ("pop_lt20 + pop_ge65", "pop - pop_lt20 - pop_ge65")}
 
 
 def _sum(cols):
