@@ -78,6 +78,8 @@ INDICATORS = {
                     "Indice de jeunesse (moins de 20 ans pour 100 personnes de 65 ans ou plus)", "moins de 20 ans", ""),
     "under_2_share": ("iris_population", ["pop_lt2"], ["pop"], "Part des enfants de moins de 2 ans",
                       "enfants de moins de 2 ans", "%"),
+    "age_2_5_share": ("iris_population", ["pop_2_5"], ["pop"], "Part des enfants de 2 à 5 ans",
+                      "enfants de 2 à 5 ans", "%"),
     "overcrowding_rate": ("iris_housing", ["rp_mild_overuse", "rp_heavy_overuse"],
                           ["rp_standard_occ", "rp_mild_underuse", "rp_heavy_underuse", "rp_extreme_underuse",
                            "rp_mild_overuse", "rp_heavy_overuse"],
