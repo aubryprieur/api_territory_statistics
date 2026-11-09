@@ -25,6 +25,27 @@ GROUPS = {
             "cinema": ("Cinéma", ["F303"]),
         },
     },
+    "early_childhood": {
+        "label": "Équipements pour la petite enfance",
+        "categories": {
+            "eaje": ("Établissement d'accueil du jeune enfant (crèche)", ["D502"]),
+            "micro_creche": ("Micro-crèche", ["D509"]),
+            "rpe": ("Relais petite enfance", ["D504"]),
+            "laep": ("Lieu d'accueil enfant-parent", ["D503"]),
+            "pmi": ("Protection maternelle et infantile (PMI)", ["D115"]),
+            "maternelle": ("École maternelle", ["C107"]),
+            "primaire": ("École primaire ou élémentaire", ["C108", "C109"]),
+        },
+    },
+    "seniors": {
+        "label": "Équipements et services pour les personnes âgées",
+        "categories": {
+            "elderly_housing": ("Hébergement pour personnes âgées (Ehpad, résidence autonomie…)", ["D401"]),
+            "home_nursing": ("Soins infirmiers à domicile", ["D402"]),
+            "home_help": ("Aide à domicile", ["D403"]),
+            "health_centre": ("Maison ou centre de santé", ["D108", "D113"]),
+        },
+    },
 }
 ALL_TYPES = sorted({t for g in GROUPS.values() for _, types in g["categories"].values() for t in types})
 QUALITY = {"A": "acceptable", "B": "bonne", "M": "mauvaise", "_U": "indéterminée", "_Z": "sans objet"}

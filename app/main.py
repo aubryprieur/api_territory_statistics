@@ -2132,8 +2132,10 @@ async def get_epci_population_projection(request: Request, epci: str):
 
 @protected_router.get("/equipment/points", summary="Équipements géolocalisés d'une emprise (BPE 2025)",
                       description="""Équipements de la Base permanente des équipements situés dans une emprise WGS84
-(west, south, east, north), pour un groupe de types (group=youth : accueils de loisirs, centres sociaux, collèges, lycées,
-bibliothèques, gymnases, terrains de grands jeux, plateaux et terrains de jeux extérieurs, bassins de natation, cinémas) :
+(west, south, east, north), pour un groupe de types (youth : accueils de loisirs, centres sociaux, collèges, lycées,
+bibliothèques, gymnases, terrains de grands jeux, plateaux et terrains de jeux extérieurs, bassins de natation, cinémas ;
+early_childhood : crèches, micro-crèches, relais petite enfance, lieux d'accueil enfant-parent, PMI, écoles maternelles et
+élémentaires ; seniors : hébergement pour personnes âgées, soins et aide à domicile, maisons et centres de santé) :
 catégorie, nom, commune, coordonnées, quartier prioritaire, qualité de géolocalisation. 20 000 points au plus.""")
 @limiter.limit(DEFAULT_RATE)
 async def get_equipment_points(request: Request, west: float, south: float, east: float, north: float, group: str = "youth"):
