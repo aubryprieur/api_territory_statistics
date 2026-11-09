@@ -2187,6 +2187,7 @@ EPCI_COMMUNE_DATASETS = {
     "pass-sport": pass_sport_service.by_commune,
     "energy-poverty": energy_poverty_service.by_commune,
     "municipal-elections": municipal_elections_service.by_commune,
+    "equipment": equipment_service.by_commune,  # liste « services » (nombre, densité pour 10 000 habitants)
 }
 
 
@@ -2213,7 +2214,7 @@ async def get_epci_communes_dataset(request: Request, epci: str, dataset: str):
         res = fn(code)
         if isinstance(res, dict) and not res.get("error"):
             out[code] = {k: v for k, v in res.items()
-                         if (k.endswith("_data") and isinstance(v, dict)) or k in ("latest_year", "available_years")}
+                         if (k.endswith("_data") and isinstance(v, dict)) or k in ("latest_year", "available_years", "services")}
     return {"epci": str(epci), "dataset": dataset,
             "communes": [{"code": c, "name": n} for c, n in members], "values": out}
 
