@@ -25,6 +25,24 @@ GROUPS = {
             "cinema": ("Cinéma", ["F303"]),
         },
     },
+    "local_life": {
+        "label": "Équipements de la vie locale",
+        "categories": {
+            "social_centre": ("Centre social ou espace de vie sociale", ["D506", "D508"]),
+            "library": ("Bibliothèque, médiathèque", ["F307"]),
+            "cinema": ("Cinéma", ["F303"]),
+            "conservatoire": ("Conservatoire", ["F305"]),
+            "performing_arts": ("Salle de spectacle", ["F315"]),
+            "exhibition": ("Lieu d'exposition et de médiation culturelle", ["F312"]),
+            "sports_hall": ("Gymnase ou salle de sport", ["F121", "F114", "F116", "F129"]),
+            "big_fields": ("Terrain de grands jeux", ["F113"]),
+            "outdoor_fields": ("Plateau, terrain extérieur ou skatepark", ["F111", "F130"]),
+            "swimming_pool": ("Bassin de natation", ["F101"]),
+            "tennis": ("Court de tennis", ["F103"]),
+            "other_sport": ("Autre équipement sportif (athlétisme, équitation, parcours…)",
+                            ["F102", "F106", "F107", "F109", "F110", "F118", "F123", "F127", "F128"]),
+        },
+    },
     "early_childhood": {
         "label": "Équipements pour la petite enfance",
         "categories": {
