@@ -8,6 +8,7 @@ cohérent. Les effectifs (numérateur, dénominateur) sont renvoyés pour chaque
 """
 import json
 import logging
+import math
 from typing import Optional
 
 from sqlalchemy import text
@@ -90,6 +91,9 @@ INDICATORS = {
                          "moins de 20 ans et 65 ans ou plus", ""),
     "pop_growth": ("iris_population", ["pop"], ["pop"],  # calcul propre (_growth_values) : variation annuelle 2017-2023
                    "Évolution annuelle de la population", "habitants", "%/an"),
+    # calculs propres (_population_values) : part de la population communale, habitants au km² (surface des contours)
+    "pop_share": ("iris_population", ["pop"], ["pop"], "Part des habitants de la commune", "habitants", "%"),
+    "density": ("iris_population", ["pop"], ["pop"], "Densité de population", "habitants", "hab/km²"),
     "couples_no_children_share": ("iris_families", ["couples_no_children"], ["families"],
                                   "Part des couples sans enfant", "couples sans enfant", "%"),
     "large_family_share_with_children": ("iris_families", ["families_3_children", "families_4p_children"],
@@ -145,7 +149,45 @@ INDICATORS = {
                               "actifs en transports en commun", "%"),
 }
 # Rapports (et non parts) : pas d'effectif / total affiché pour les IRIS (le dénominateur n'est pas la population)
-RATIOS = {"youth_ratio", "aging_index", "anchoring_ratio", "pop_growth", "dependency_ratio"}
+RATIOS = {"youth_ratio", "aging_index", "anchoring_ratio", "pop_growth", "dependency_ratio", "density"}
+# Cartes de répartition : classes par quantiles des IRIS (l'écart à la commune n'a pas de sens)
+QUANTILE_SCALES = {"pop_share": {"legend_low": "Moins peuplé", "legend_high": "Plus peuplé",
+                                 "color_note": "Couleur : part des habitants de la commune vivant dans l'IRIS, en cinq "
+                                               "classes de même effectif d'IRIS (du plus clair au plus foncé)."},
+                   "density": {"legend_low": "Peu dense", "legend_high": "Très dense",
+                               "color_note": "Couleur : habitants par km² (surface des contours IRIS, espaces non bâtis "
+                                             "compris), en cinq classes de même effectif d'IRIS."}}
+EARTH_RADIUS_KM = 6371.0088
+
+
+def _ring_area_km2(ring):
+    """Surface d'un anneau (lon, lat) en km² : projection équivalente locale (sinusoïdale autour de la latitude
+    moyenne), suffisante à l'échelle d'un IRIS."""
+    if len(ring) < 4:
+        return 0.0
+    lat0 = math.radians(sum(p[1] for p in ring) / len(ring))
+    pts = [(math.radians(p[0]) * math.cos(lat0) * EARTH_RADIUS_KM, math.radians(p[1]) * EARTH_RADIUS_KM) for p in ring]
+    return abs(sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(pts, pts[1:] + pts[:1]))) / 2
+
+
+def _area_km2(geometry):
+    g = geometry.get("geometry", geometry) if geometry.get("type") == "Feature" else geometry
+    polys = [g["coordinates"]] if g.get("type") == "Polygon" else g.get("coordinates", []) if g.get("type") == "MultiPolygon" else []
+    return sum(_ring_area_km2(p[0]) - sum(_ring_area_km2(h) for h in p[1:]) for p in polys if p)
+
+
+def _quantile_breaks(values):
+    """4 seuils (quintiles) arrondis à 2 chiffres significatifs."""
+    v = sorted(x for x in values if x is not None)
+    if len(v) < 2:
+        return None
+
+    def q(p):
+        k = (len(v) - 1) * p
+        lo, hi = math.floor(k), math.ceil(k)
+        x = v[lo] + (v[hi] - v[lo]) * (k - lo)
+        return round(x, 1 - int(math.floor(math.log10(abs(x))))) if x else 0.0
+    return [q(p) for p in (0.2, 0.4, 0.6, 0.8)]
 # Indicateurs dont le numérateur et le dénominateur viennent de deux tables (jointure par IRIS et millésime)
 CROSS = {"one_person_households_share": ("SELECT f.iris_code, f.year, f.pop_15p_alone AS num, h.households AS den "
                                          "FROM iris_families f JOIN iris_housing h ON h.iris_code = f.iris_code "
@@ -271,6 +313,34 @@ class IrisMapService:
                               "total": round(p0) if p0 is not None else None, "start_year": y0}}
         return out
 
+    def _population_values(self, key, features):
+        """pop_share : population de l'IRIS / population de la commune (somme des IRIS) ; density : habitants au km².
+        count = habitants ; total = population communale (pop_share) ou surface en km² (density)."""
+        codes = [f["iris_code"] for f in features]
+        db = SessionLocal()
+        try:
+            rows = db.execute(text("SELECT iris_code, year, pop FROM iris_population WHERE iris_code = ANY(:codes)"),
+                              {"codes": codes}).fetchall()
+        finally:
+            db.close()
+        area = {f["iris_code"]: _area_km2(f["geometry"]) for f in features}
+        totals = {}
+        for r in rows:
+            totals[r.year] = totals.get(r.year, 0) + (r.pop or 0)
+        out = {}
+        for r in rows:
+            if r.pop is None:
+                continue
+            if key == "pop_share":
+                tot = totals.get(r.year)
+                val = round(r.pop / tot * 100, 1) if tot else None
+                out.setdefault(r.iris_code, {})[r.year] = {"value": val, "count": round(r.pop), "total": round(tot or 0)}
+            else:
+                a = area.get(r.iris_code) or 0
+                out.setdefault(r.iris_code, {})[r.year] = {"value": round(r.pop / a, 1) if a > 0 else None,
+                                                           "count": round(r.pop), "total": round(a, 3)}
+        return out
+
     def _values(self, key, iris_codes):
         if key == "pop_growth":
             return self._growth_values(iris_codes)
@@ -303,6 +373,8 @@ class IrisMapService:
         external = indicator in EXTERNAL
         if external:
             values, commune_ref = self._external_values(indicator, [f["iris_code"] for f in features], com_code)
+        elif indicator in QUANTILE_SCALES:
+            values = self._population_values(indicator, features)
         else:
             values = self._values(indicator, [f["iris_code"] for f in features])
         # millésimes où au moins un IRIS a une valeur (les tranches du nouveau format n'existent qu'en 2023)
@@ -318,6 +390,9 @@ class IrisMapService:
                 continue
             cnt = sum((values.get(f["iris_code"], {}).get(y, {}) or {}).get("count") or 0 for f in features)
             tot = sum((values.get(f["iris_code"], {}).get(y, {}) or {}).get("total") or 0 for f in features)
+            if indicator == "density":  # habitants / surface de la commune (somme des IRIS)
+                commune[y] = {"value": round(cnt / tot, 1) if tot else None, "count": cnt, "total": round(tot, 3)}
+                continue
             if indicator == "pop_growth":
                 y0 = next((d.get(y, {}).get("start_year") for d in values.values() if d.get(y)), None)
                 v = round(((cnt / tot) ** (1 / (y - y0)) - 1) * 100, 2) if tot and cnt and y0 else None
@@ -342,6 +417,10 @@ class IrisMapService:
             ind["label"] = f"Évolution annuelle de la population {y0}-{years[-1]}"
             extra = dict(GROWTH_SCALE, color_note="Couleur : taux de variation annuel moyen ; entre −0,25 % et +0,25 % "
                                                   "par an, la population est quasi stable.")
+        if indicator in QUANTILE_SCALES and years:
+            breaks = _quantile_breaks([(f["values"].get(years[-1]) or {}).get("value") for f in features])
+            if breaks:
+                extra = dict(QUANTILE_SCALES[indicator], breaks=breaks)
         return {
             **extra,
             "commune": {"code": com_code, "values": commune},
