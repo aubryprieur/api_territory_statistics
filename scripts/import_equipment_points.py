@@ -21,7 +21,7 @@ from pyproj import Transformer
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.services.equipment_points_service import ALL_TYPES, YEAR  # noqa: E402
+from app.services.equipment_points_service import BPE_TYPES as ALL_TYPES, YEAR  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ def write(out):
     cols = ["year", "typequ", "depcom", "epci", "commune_name", "name", "lat", "lon", "qpv", "quality"]
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM equipment_points WHERE year = %s", (YEAR,))
+            cur.execute("DELETE FROM equipment_points WHERE year = %s AND typequ NOT LIKE 'DILA:%%'", (YEAR,))  # garde l'annuaire
             buf = io.StringIO()
             o = out[cols].copy()
             for c in ("commune_name", "name"):

@@ -1395,12 +1395,13 @@ class EquipmentNearest(Base):
 
 
 class EquipmentPoint(Base):
-    """Équipements géolocalisés de la BPE 2025 (sélection de types) — migration f4b6d8e0a2c3."""
+    """Équipements géolocalisés de la BPE 2025 (sélection de types) — migration f4b6d8e0a2c3 — et services publics de
+    l'Annuaire de l'administration (DILA, types « DILA:<code pivot> ») — migration b6d8f0a2c4e5."""
     __tablename__ = "equipment_points"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     year = Column(Integer, nullable=False)
-    typequ = Column(String(4), nullable=False)
+    typequ = Column(String(40), nullable=False, index=True)
     depcom = Column(String(5), nullable=False, index=True)
     epci = Column(String(9), index=True)
     commune_name = Column(String)
